@@ -350,7 +350,7 @@ function renderResumen(T,WS,WE){
   var areas=[...new Set(DATA.map(function(d){return d.AREA;}).filter(Boolean))];
   var trabs=[...new Set(DATA.map(function(d){return d.TRAB;}).filter(Boolean))];
   document.getElementById('sr').innerHTML=
-    '<div class="stat-card"><div class="stat-label">Total OP</div><div class="stat-value" style="color:var(--accent)">'+DATA.length+'</div><div class="stat-sub">ordenes activas</div></div>'+
+    '<div class="stat-card"><div class="stat-label">Total OP Abiertas</div><div class="stat-value" style="color:var(--accent)">'+DATA.length+'</div><div class="stat-sub">ordenes activas</div></div>'+
     '<div class="stat-card"><div class="stat-label">Esta Semana</div><div class="stat-value" style="color:var(--accent3)">'+wOPs+'</div><div class="stat-sub">FProm esta semana</div></div>'+
     '<div class="stat-card"><div class="stat-label">Siguiente Semana</div><div class="stat-value" style="color:var(--accent4)">'+nOPs+'</div><div class="stat-sub">FProm sig. semana</div></div>'+
     '<div class="stat-card"><div class="stat-label">Vencidas</div><div class="stat-value" style="color:var(--danger)">'+lOPs+'</div><div class="stat-sub">FProm ya paso</div></div>'+
