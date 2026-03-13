@@ -141,6 +141,7 @@ select{background:var(--surface2);border:1px solid var(--border);color:var(--tex
       </div>
       <div class="card"><div class="card-header"><span class="card-title">FProm - proximas 3 semanas</span></div><div class="card-body"><canvas id="cTL" height="110"></canvas></div></div>
       <div class="card"><div class="card-header"><span class="card-title">Carga por Area</span></div><div class="card-body" id="ap"></div></div>
+      <div class="card"><div class="card-header" style="display:flex;align-items:center;justify-content:space-between"><span class="card-title">OP Terminadas</span><span id="termBadge" style="font-family:IBM Plex Mono,monospace;font-size:11px;color:var(--accent3)"></span></div><div class="card-body" id="termList"></div></div>
     </div>
     <div class="view" id="view-semana">
       <div class="st"><span class="dot" style="background:var(--accent)"></span>Entregas esta semana (FProm)<span id="wc" style="font-size:11px;color:var(--muted);font-weight:400"></span></div>
@@ -185,10 +186,10 @@ select{background:var(--surface2);border:1px solid var(--border);color:var(--tex
 </div>
 <script>
 
-const SHEETS_URL = "https://api.allorigins.win/raw?url="+encodeURIComponent("https://docs.google.com/spreadsheets/d/e/2PACX-1vTA4aJq6wK2UDcgp4JhF0PIDni-x-b2g085E23OGJtbRzSnQ5K9TfpH160GgwwDIfSYOD9WB7yB1eRs/pub?gid=1158485786&single=true&output=csv");
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyZ3uLNjByNM9AyzZ9fvOiluqgKRCz8jBL-CoEAicDA_vSDOFJbd5ew7AEidgRKy0a6/exec";
 const AC={'Disco':'#3d8aff','Var':'#ff6b35','Aros':'#00d4aa','TELAR':'#ffd166','.ALMC':'#c77dff'};
 const TC={'Juana':'#3d8aff','ISRAEL':'#00d4aa','Armando':'#ff6b35','ALMA':'#ffd166','TORRES':'#c77dff','ALEX':'#ff4d8a'};
-var RAW=[], DATA=[], sflt='all', wflt='all', proxOff=1, chA=null, chT=null, chTL=null;
+var RAW=[], DATA=[], TERM=[], sflt='all', wflt='all', proxOff=1, chA=null, chT=null, chTL=null;
 
 function ac(a){return AC[a]||'#888';}
 function tc(t){return TC[t]||'#aaa';}
@@ -239,10 +240,17 @@ async function loadData(){
   document.getElementById('loadingScreen').style.display='flex';
   document.getElementById('appContent').style.display='none';
   try {
-    var resp = await fetch(SHEETS_URL);
+    var resp = await fetch(SCRIPT_URL);
     if(!resp.ok) throw new Error('HTTP '+resp.status);
-    var text = await resp.text();
-    RAW = fixNames(parseCSV(text));
+    var json = await resp.json();
+    RAW = fixNames(json.map(function(r){
+      // Convert date serial numbers if needed
+      Object.keys(r).forEach(function(k){
+        if(r[k] instanceof Date) r[k] = (r[k].getMonth()+1)+'/'+(r[k].getDate())+'/'+r[k].getFullYear();
+        else r[k] = String(r[k]);
+      });
+      return r;
+    }));
     var umap={};
     RAW.forEach(function(r){if(r.OP&&!umap[r.OP])umap[r.OP]=r;});
     DATA = Object.values(umap);
