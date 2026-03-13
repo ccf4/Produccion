@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Órdenes de Producción</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@300;400;600;700&display=swap');
+:root{--bg:#0d0f14;--surface:#14171f;--surface2:#1c2030;--border:#252a3a;--accent:#3d8aff;--accent3:#00d4aa;--accent4:#ffd166;--accent5:#c77dff;--text:#e8ecf4;--muted:#6b7694;--danger:#ff4d4d;--warn:#ffd166;}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:var(--bg);color:var(--text);font-family:'IBM Plex Sans',sans-serif;min-height:100vh;}
+header{background:var(--surface);border-bottom:1px solid var(--border);padding:16px 28px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;}
+.logo{font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--accent);letter-spacing:2px;text-transform:uppercase;}
+.title{font-size:17px;font-weight:700;}
+.week-badge{background:var(--accent);color:#fff;font-size:11px;font-weight:600;padding:4px 12px;border-radius:20px;font-family:'IBM Plex Mono',monospace;white-space:nowrap;}
+.tabs{display:flex;background:var(--surface);border-bottom:1px solid var(--border);padding:0 28px;overflow-x:auto;}
+.tab{padding:12px 18px;font-size:11px;font-weight:600;color:var(--muted);cursor:pointer;border-bottom:2px solid transparent;transition:all .2s;letter-spacing:.5px;text-transform:uppercase;white-space:nowrap;}
+.tab:hover{color:var(--text);}.tab.active{color:var(--accent);border-bottom-color:var(--accent);}
+main{padding:22px 28px;max-width:1400px;margin:0 auto;}
+.view{display:none;}.view.active{display:block;}
+.stats-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:20px;}
+.stat-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px 16px;}
+.stat-label{font-size:10px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:5px;}
+.stat-value{font-size:28px;font-weight:700;font-family:'IBM Plex Mono',monospace;}
+.stat-sub{font-size:10px;color:var(--muted);margin-top:3px;}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;}
+@media(max-width:900px){.grid2{grid-template-columns:1fr;}}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden;margin-bottom:16px;}
+.card-header{padding:12px 16px;border-bottom:1px solid var(--border);}
+.card-title{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--muted);}
+.card-body{padding:16px;}
+.week-days{display:grid;grid-template-columns:140px repeat(7,1fr);gap:1px;font-size:10px;font-weight:600;text-transform:uppercase;color:var(--muted);letter-spacing:.8px;margin-bottom:1px;}
+.week-days div{padding:5px 6px;background:var(--surface2);text-align:center;}
+.week-days .today-col{color:var(--accent);background:rgba(61,138,255,.1);}
+.week-row{display:grid;grid-template-columns:140px repeat(7,1fr);gap:1px;margin-bottom:1px;}
+.week-row .row-label{background:var(--surface2);padding:5px 8px;font-size:11px;font-weight:600;display:flex;align-items:center;gap:5px;}
+.week-row .day-cell{background:var(--surface2);min-height:34px;padding:3px;display:flex;flex-direction:column;gap:2px;}
+.week-row .day-cell.today{background:rgba(61,138,255,.06);outline:1px solid rgba(61,138,255,.2);}
+.day-op{background:rgba(61,138,255,.14);border-left:2px solid var(--accent);border-radius:3px;padding:1px 4px;font-size:9px;font-family:'IBM Plex Mono',monospace;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer;}
+.day-op.late-op{border-color:var(--danger);background:rgba(255,77,77,.11);}
+.day-op.today-op{border-color:var(--warn);background:rgba(255,209,102,.11);}
+.week-summary{margin-top:16px;border-top:1px solid var(--border);padding-top:14px;}
+.ws-title{font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px;}
+.ws-grid{display:flex;flex-wrap:wrap;gap:8px;}
+.ws-chip{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:7px 12px;font-size:11px;min-width:140px;}
+.ws-area{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;margin-bottom:3px;}
+.ws-sub{font-size:10px;color:var(--muted);margin-bottom:2px;}
+.ws-cant{font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:600;}
+.gantt-wrap{overflow-x:auto;}
+.gantt-table{width:100%;border-collapse:collapse;font-size:11px;}
+.gantt-table th{padding:7px 9px;background:var(--surface2);color:var(--muted);font-weight:600;font-size:10px;text-transform:uppercase;text-align:left;border-bottom:1px solid var(--border);white-space:nowrap;}
+.gantt-table td{padding:6px 9px;border-bottom:1px solid var(--border);vertical-align:middle;}
+.gantt-table tr:last-child td{border-bottom:none;}
+.gantt-table tr:hover td{background:var(--surface2);cursor:pointer;}
+.tl-cell{min-width:180px;}
+.tl-bg{background:var(--surface2);border-radius:4px;height:14px;position:relative;overflow:hidden;}
+.tl-bar{position:absolute;height:100%;border-radius:4px;top:0;}
+.tl-labs{display:flex;justify-content:space-between;font-size:9px;color:var(--muted);margin-top:2px;font-family:'IBM Plex Mono',monospace;}
+.badge{display:inline-block;padding:2px 6px;border-radius:10px;font-size:9px;font-weight:600;letter-spacing:.5px;text-transform:uppercase;white-space:nowrap;}
+.bl{background:rgba(61,138,255,.15);color:var(--accent);}
+.br{background:rgba(255,165,0,.15);color:#ffa500;}
+.ba{background:rgba(0,212,170,.15);color:var(--accent3);}
+.bc{background:rgba(200,100,255,.15);color:var(--accent5);}
+.filter-bar{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:16px;align-items:center;}
+.fl{font-size:10px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.8px;}
+.fb{padding:4px 11px;border-radius:20px;font-size:11px;font-weight:600;cursor:pointer;border:1px solid var(--border);background:var(--surface2);color:var(--muted);transition:all .15s;}
+.fb:hover,.fb.active{border-color:var(--accent);color:var(--accent);background:rgba(61,138,255,.1);}
+.wsec{margin-bottom:20px;}
+.wh{display:flex;align-items:center;gap:10px;padding:8px 0;margin-bottom:7px;border-bottom:1px solid var(--border);}
+.wa{width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px;flex-shrink:0;}
+.wn{font-size:13px;font-weight:700;}
+.wc{font-size:10px;color:var(--muted);font-family:'IBM Plex Mono',monospace;}
+.wbt{height:6px;background:var(--surface2);border-radius:4px;overflow:hidden;flex:1;}
+.wbf{height:100%;border-radius:4px;}
+.og{display:flex;flex-wrap:wrap;gap:6px;}
+.oc{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:6px 10px;font-size:10px;cursor:pointer;transition:all .15s;min-width:118px;}
+.oc:hover{border-color:var(--accent);background:rgba(61,138,255,.07);}
+.on{font-family:'IBM Plex Mono',monospace;font-weight:600;font-size:11px;}
+.oi{color:var(--muted);font-size:9px;margin-top:2px;}
+.od{font-size:9px;margin-top:3px;}
+.late{border-left:3px solid var(--danger);}
+.tdue{border-left:3px solid var(--warn);}
+.ontime{border-left:3px solid var(--accent3);}
+.apl{display:flex;justify-content:space-between;font-size:11px;margin-bottom:4px;}
+.apb{height:8px;background:var(--surface2);border-radius:5px;overflow:hidden;margin-bottom:12px;}
+.apf{height:100%;border-radius:5px;}
+.st{font-size:14px;font-weight:700;margin-bottom:12px;display:flex;align-items:center;gap:7px;}
+.dot{width:7px;height:7px;border-radius:50%;display:inline-block;}
+.wknav{display:flex;align-items:center;gap:10px;margin-bottom:16px;}
+.nb{padding:5px 12px;background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:7px;cursor:pointer;font-size:12px;transition:all .15s;}
+.nb:hover{border-color:var(--accent);color:var(--accent);}
+.nb:disabled{opacity:.3;cursor:not-allowed;}
+.nwl{font-size:12px;font-weight:600;font-family:'IBM Plex Mono',monospace;color:var(--accent4);min-width:190px;text-align:center;}
+select{background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:4px 9px;border-radius:6px;font-size:11px;}
+.mo{display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:500;align-items:center;justify-content:center;}
+.mo.open{display:flex;}
+.md{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:24px;max-width:460px;width:90%;position:relative;}
+.md h2{font-size:16px;margin-bottom:12px;}
+.mc{position:absolute;top:12px;right:16px;font-size:17px;cursor:pointer;background:none;border:none;color:var(--muted);}
+.dr{display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border);font-size:12px;gap:10px;}
+.dr:last-child{border:none;}
+.dk{color:var(--muted);font-size:11px;white-space:nowrap;}
+</style>
+</head>
+<body>
+<header>
+  <div><div class="logo">Panel de Control</div><div class="title">Ordenes de Produccion</div></div>
+  <div style="display:flex;align-items:center;gap:10px;">
+    <span style="font-size:10px;color:var(--muted);font-family:'IBM Plex Mono',monospace" id="upd"></span>
+    <div class="week-badge" id="wb">--</div>
+  </div>
+</header>
+<div class="tabs">
+  <div class="tab active" onclick="switchTab('resumen')">Resumen</div>
+  <div class="tab" onclick="switchTab('semana')">Esta Semana</div>
+  <div class="tab" onclick="switchTab('proxima')">Proxima Semana</div>
+  <div class="tab" onclick="switchTab('trabajadores')">Trabajadores / Area</div>
+  <div class="tab" onclick="switchTab('todas')">Todas las OP</div>
+</div>
+<main>
+  <div class="view active" id="view-resumen">
+    <div class="stats-row" id="sr"></div>
+    <div class="grid2">
+      <div class="card"><div class="card-header"><span class="card-title">OP por Area</span></div><div class="card-body"><canvas id="cA" height="220"></canvas></div></div>
+      <div class="card"><div class="card-header"><span class="card-title">OP por Trabajador</span></div><div class="card-body"><canvas id="cT" height="220"></canvas></div></div>
+    </div>
+    <div class="card"><div class="card-header"><span class="card-title">FProm - proximas 3 semanas</span></div><div class="card-body"><canvas id="cTL" height="110"></canvas></div></div>
+    <div class="card"><div class="card-header"><span class="card-title">Carga por Area</span></div><div class="card-body" id="ap"></div></div>
+  </div>
+  <div class="view" id="view-semana">
+    <div class="st"><span class="dot" style="background:var(--accent)"></span>Entregas esta semana (FProm)<span id="wc" style="font-size:11px;color:var(--muted);font-weight:400"></span></div>
+    <div class="card"><div class="card-body" style="padding:12px"><div id="wg"></div><div id="wsum"></div></div></div>
+    <div class="st" style="margin-top:20px"><span class="dot" style="background:var(--danger)"></span>Vencidas<span id="lc" style="font-size:11px;color:var(--muted);font-weight:400"></span></div>
+    <div class="card"><div class="card-body" id="lo" style="padding:12px"></div></div>
+  </div>
+  <div class="view" id="view-proxima">
+    <div class="wknav">
+      <button class="nb" id="btnP" onclick="changeWeek(-1)">anterior</button>
+      <div class="nwl" id="pl">--</div>
+      <button class="nb" onclick="changeWeek(1)">siguiente</button>
+    </div>
+    <div class="st"><span class="dot" style="background:var(--accent4)"></span>Entregas semana seleccionada<span id="pc" style="font-size:11px;color:var(--muted);font-weight:400"></span></div>
+    <div class="card"><div class="card-body" style="padding:12px"><div id="pg"></div><div id="psum"></div></div></div>
+  </div>
+  <div class="view" id="view-trabajadores">
+    <div class="filter-bar">
+      <span class="fl">Area:</span>
+      <div class="fb active" onclick="filterW('all',this)">Todas</div>
+      <div id="wab"></div>
+    </div>
+    <div id="ws"></div>
+  </div>
+  <div class="view" id="view-todas">
+    <div class="filter-bar">
+      <span class="fl">Estado:</span>
+      <div class="fb active" onclick="filterAll('all',this)">Todas</div>
+      <div class="fb" onclick="filterAll('list x prod',this)">Lista x Prod</div>
+      <div class="fb" onclick="filterAll('X Rev',this)">X Rev</div>
+      <div class="fb" onclick="filterAll('Alm x ent',this)">Alm x Ent</div>
+      <div class="fb" onclick="filterAll('RECORTE',this)">Recorte</div>
+      <span class="fl" style="margin-left:10px">Area:</span>
+      <select id="af" onchange="renderTable()"><option value="all">Todas</option></select>
+    </div>
+    <div class="card"><div class="gantt-wrap"><table class="gantt-table"><thead><tr><th>OP</th><th>Estado</th><th>Area</th><th>Subarea</th><th>Trab.</th><th>Cant.</th><th>FVale</th><th>FProm</th><th>FTerm</th><th>Linea de tiempo</th></tr></thead><tbody id="tb"></tbody></table></div></div>
+  </div>
+</main>
+<div class="mo" id="modal" onclick="if(event.target===this)this.classList.remove('open')">
+  <div class="md"><button class="mc" onclick="document.getElementById('modal').classList.remove('open')">x</button><h2 id="mt"></h2><div id="mb"></div></div>
+</div>
+<script>
+const RAW=[{"OP": 9098, "XSTATUS": "list x prod", "FEMIT": "11/24/2025", "FVALE": "11/24/2025", "FProm": "3/6/2026", "FTERM": "1/9/2026", "AREA": "Var", "SUBAREA": ":EMBOLSADOS", "CANT": 3500, "PART": "1/5", "TRAB": "ALMA", "MESH": "40/50/80", "MAT": "304"}, {"OP": 9098, "XSTATUS": "list x prod", "FEMIT": "11/24/2025", "FVALE": "11/24/2025", "FProm": "3/6/2026", "FTERM": "1/9/2026", "AREA": "Var", "SUBAREA": ":EMBOLSADOS", "CANT": 4700, "PART": "2/5", "TRAB": "ALMA", "MESH": "20/40/80", "MAT": "304"}, {"OP": 9098, "XSTATUS": "list x prod", "FEMIT": "11/24/2025", "FVALE": "11/24/2025", "FProm": "3/6/2026", "FTERM": "1/9/2026", "AREA": "Var", "SUBAREA": ":EMBOLSADOS", "CANT": 900, "PART": "3/5", "TRAB": "ALMA", "MESH": "40/60/80", "MAT": "304"}, {"OP": 9098, "XSTATUS": "list x prod", "FEMIT": "11/24/2025", "FVALE": "11/24/2025", "FProm": "3/6/2026", "FTERM": "1/9/2026", "AREA": "Var", "SUBAREA": ":EMBOLSADOS", "CANT": 1000, "PART": "4/5", "TRAB": "ALMA", "MESH": "16/40/60", "MAT": "304"}, {"OP": 9098, "XSTATUS": "list x prod", "FEMIT": "11/24/2025", "FVALE": "11/24/2025", "FProm": "3/6/2026", "FTERM": "1/9/2026", "AREA": "Var", "SUBAREA": ":EMBOLSADOS", "CANT": 2000, "PART": "5/5", "TRAB": "ALMA", "MESH": "20/40/80", "MAT": "304"}, {"OP": 9101, "XSTATUS": "list x prod", "FEMIT": "12/4/2025", "FVALE": "12/4/2025", "FProm": "3/6/2026", "FTERM": "1/16/2026", "AREA": "Disco", "SUBAREA": "HELVEX", "CANT": 10000, "PART": "1/1", "TRAB": "ISRAEL", "MESH": "100", "MAT": "304"}, {"OP": 9101, "XSTATUS": "list x prod", "FEMIT": "12/4/2025", "FVALE": "12/4/2025", "FProm": "3/6/2026", "FTERM": "1/16/2026", "AREA": "Disco", "SUBAREA": "HELVEX", "CANT": 10000, "PART": "1/1", "TRAB": "ISRAEL", "MESH": "100", "MAT": "304"}, {"OP": 9104, "XSTATUS": "list x prod", "FEMIT": "12/5/2025", "FVALE": "12/4/2025", "FProm": "3/10/2026", "FTERM": "1/15/2026", "AREA": "Disco", "SUBAREA": ".TAPAS", "CANT": 1000, "PART": "1/2", "TRAB": "Juana", "MESH": "60", "MAT": "Carb\u00f3n"}, {"OP": 9104, "XSTATUS": "list x prod", "FEMIT": "12/5/2025", "FVALE": "12/5/2025", "FProm": "3/10/2026", "FTERM": "1/15/2026", "AREA": "Disco", "SUBAREA": ".TAPAS", "CANT": 720, "PART": "2/2", "TRAB": "Juana", "MESH": "40", "MAT": "Carb\u00f3n"}, {"OP": 29841, "XSTATUS": "X Rev", "FEMIT": "3/12/2025", "FVALE": "3/12/2025", "FProm": "3/13/2026", "FTERM": "4/30/2025", "AREA": "Disco", "SUBAREA": ".TIRAS", "CANT": 34, "PART": "1/1", "TRAB": "Juana", "MESH": "20", "MAT": "304"}, {"OP": 29841, "XSTATUS": "X Rev", "FEMIT": "3/12/2025", "FVALE": "3/12/2025", "FProm": "3/13/2026", "FTERM": "4/30/2025", "AREA": "Disco", "SUBAREA": ".TIRAS", "CANT": 0, "PART": "1/1", "TRAB": "Juana", "MESH": "20", "MAT": "304"}, {"OP": 30343, "XSTATUS": "Alm x ent", "FEMIT": "9/3/2025", "FVALE": "9/3/2025", "FProm": "3/6/2026", "FTERM": "1/9/2026", "AREA": "Disco", "SUBAREA": "HELVEX", "CANT": 5000, "PART": "1/1", "TRAB": "ISRAEL", "MESH": "100", "MAT": "304"}, {"OP": 30550, "XSTATUS": "list x prod", "FEMIT": "11/10/2025", "FVALE": "11/10/2025", "FProm": "3/6/2026", "FTERM": "1/9/2026", "AREA": "Disco", "SUBAREA": "HELVEX", "CANT": 10000, "PART": "1/1", "TRAB": "ISRAEL", "MESH": "100", "MAT": "304"}, {"OP": 30756, "XSTATUS": "list x prod", "FEMIT": "2/9/2026", "FVALE": "2/9/2026", "FProm": "3/6/2026", "FTERM": "2/24/2026", "AREA": "TELAR", "SUBAREA": ".CRIBA", "CANT": 2, "PART": "1/1", "TRAB": "ISRAEL", "MESH": "5/16\" X 5/16\" cal 12", "MAT": "304"}, {"OP": 30756, "XSTATUS": "list x prod", "FEMIT": "2/9/2026", "FVALE": "2/9/2026", "FProm": "3/6/2026", "FTERM": "2/24/2026", "AREA": "TELAR", "SUBAREA": ".CRIBA", "CANT": 2, "PART": "1/1", "TRAB": "ISRAEL", "MESH": "5/16\" X 5/16\" cal 12", "MAT": "304"}, {"OP": 30756, "XSTATUS": "list x prod", "FEMIT": "2/9/2026", "FVALE": "2/9/2026", "FProm": "3/6/2026", "FTERM": "2/24/2026", "AREA": "TELAR", "SUBAREA": ".CRIBA", "CANT": 2, "PART": "1/1", "TRAB": "ISRAEL", "MESH": "5/16\" X 5/16\" cal 12", "MAT": "304"}, {"OP": 30756, "XSTATUS": "list x prod", "FEMIT": "2/9/2026", "FVALE": "2/9/2026", "FProm": "3/6/2026", "FTERM": "2/24/2026", "AREA": "TELAR", "SUBAREA": ".CRIBA", "CANT": 2, "PART": "1/1", "TRAB": "ISRAEL", "MESH": "5/16\" X 5/16\" cal 12", "MAT": "304"}, {"OP": 30766, "XSTATUS": "Alm x ent", "FEMIT": "2/12/2026", "FVALE": "2/16/2026", "FProm": "3/13/2026", "FTERM": "3/5/2026", "AREA": "Disco", "SUBAREA": ":RI\u00d1ON", "CANT": 1500, "PART": "1/1", "TRAB": "Juana", "MESH": "24/80/24", "MAT": "304"}, {"OP": 30771, "XSTATUS": "X Rev", "FEMIT": "2/12/2026", "FVALE": "2/19/2026", "FProm": "3/11/2026", "FTERM": "2/26/2026", "AREA": "Disco", "SUBAREA": "MANUAL", "CANT": 1000, "PART": "1/2", "TRAB": "Juana", "MESH": "12 X 64", "MAT": "Carb\u00f3n"}, {"OP": 30771, "XSTATUS": "X Rev", "FEMIT": "2/12/2026", "FVALE": "2/19/2026", "FProm": "3/11/2026", "FTERM": "2/26/2026", "AREA": "Disco", "SUBAREA": "MANUAL", "CANT": 1000, "PART": "2/2", "TRAB": "Juana", "MESH": "24 X 110", "MAT": "Carb\u00f3n"}, {"OP": 30771, "XSTATUS": "X Rev", "FEMIT": "2/12/2026", "FVALE": "2/19/2026", "FProm": "3/11/2026", "FTERM": "2/26/2026", "AREA": "Disco", "SUBAREA": "MANUAL", "CANT": 500, "PART": "1/2", "TRAB": "Juana", "MESH": "12 X 64", "MAT": "Carb\u00f3n"}, {"OP": 30771, "XSTATUS": "X Rev", "FEMIT": "2/12/2026", "FVALE": "2/19/2026", "FProm": "3/11/2026", "FTERM": "2/26/2026", "AREA": "Disco", "SUBAREA": "MANUAL", "CANT": 500, "PART": "2/2", "TRAB": "Juana", "MESH": "24 X 110", "MAT": "Carb\u00f3n"}, {"OP": 30785, "XSTATUS": "X Rev", "FEMIT": "2/16/2026", "FVALE": "2/16/2026", "FProm": "3/3/2026", "FTERM": "3/3/2026", "AREA": "Aros", "SUBAREA": "Remallado", "CANT": 4, "PART": "1/3", "TRAB": "Armando", "MESH": "6 RC", "MAT": "304"}, {"OP": 30785, "XSTATUS": "X Rev", "FEMIT": "2/16/2026", "FVALE": "2/16/2026", "FProm": "3/3/2026", "FTERM": "3/3/2026", "AREA": "Aros", "SUBAREA": "Remallado", "CANT": 2, "PART": "2/3", "TRAB": "Armando", "MESH": "20/250 ADIC", "MAT": "304"}, {"OP": 30785, "XSTATUS": "X Rev", "FEMIT": "2/16/2026", "FVALE": "2/16/2026", "FProm": "3/3/2026", "FTERM": "3/3/2026", "AREA": "Aros", "SUBAREA": "Remallado", "CANT": 4, "PART": "3/3", "TRAB": "Armando", "MESH": "20/250 RC", "MAT": "304"}, {"OP": 30786, "XSTATUS": "X Rev", "FEMIT": "2/16/2026", "FVALE": "2/16/2026", "FProm": "3/9/2026", "FTERM": "3/9/2026", "AREA": "Var", "SUBAREA": "ELIMINADOR", "CANT": 14, "PART": "1/1", "TRAB": "TORRES", "MESH": "DEMISTER", "MAT": "304"}, {"OP": 30799, "XSTATUS": "Alm x ent", "FEMIT": "2/20/2026", "FVALE": "2/24/2026", "FProm": "3/13/2026", "FTERM": "3/6/2026", "AREA": "Disco", "SUBAREA": "MANUAL", "CANT": 1000, "PART": "1/1", "TRAB": "Juana", "MESH": "30", "MAT": "304"}, {"OP": 30803, "XSTATUS": "Alm x ent", "FEMIT": "2/20/2026", "FVALE": "2/20/2026", "FProm": "3/6/2026", "FTERM": "3/6/2026", "AREA": "Disco", "SUBAREA": "DISCO", "CANT": 2500, "PART": "1/1", "TRAB": "Juana", "MESH": "14", "MAT": "304"}, {"OP": 30804, "XSTATUS": "X Rev", "FEMIT": "2/23/2026", "FVALE": "2/23/2026", "FProm": "3/9/2026", "FTERM": "3/9/2026", "AREA": "Disco", "SUBAREA": "PACK", "CANT": 500, "PART": "1/2", "TRAB": "Juana", "MESH": "20/100/20", "MAT": "304"}, {"OP": 30804, "XSTATUS": "X Rev", "FEMIT": "2/23/2026", "FVALE": "2/23/2026", "FProm": "3/9/2026", "FTERM": "3/9/2026", "AREA": "Disco", "SUBAREA": "PACK", "CANT": 500, "PART": "2/2", "TRAB": "Juana", "MESH": "20/100/20", "MAT": "304"}, {"OP": 30806, "XSTATUS": "X Rev", "FEMIT": "2/23/2026", "FVALE": "2/23/2026", "FProm": "3/9/2026", "FTERM": "3/9/2026", "AREA": "Disco", "SUBAREA": "PACK", "CANT": 100, "PART": "1/2", "TRAB": "Juana", "MESH": "20/100/20", "MAT": "304"}, {"OP": 30806, "XSTATUS": "X Rev", "FEMIT": "2/23/2026", "FVALE": "2/23/2026", "FProm": "3/9/2026", "FTERM": "3/9/2026", "AREA": "Disco", "SUBAREA": "PACK", "CANT": 200, "PART": "2/2", "TRAB": "Juana", "MESH": "20/100/20", "MAT": "304"}, {"OP": 30807, "XSTATUS": "Alm x ent", "FEMIT": "2/23/2026", "FVALE": "2/23/2026", "FProm": "3/9/2026", "FTERM": "3/9/2026", "AREA": "Disco", "SUBAREA": "DISCO", "CANT": 1000, "PART": "1/1", "TRAB": "Juana", "MESH": "60", "MAT": "304"}, {"OP": 30808, "XSTATUS": "X Rev", "FEMIT": "2/23/2026", "FVALE": "2/23/2026", "FProm": "3/9/2026", "FTERM": "3/9/2026", "AREA": "Disco", "SUBAREA": "DISCO", "CANT": 200, "PART": "1/1", "TRAB": "Juana", "MESH": "20", "MAT": "304"}, {"OP": 30809, "XSTATUS": "Alm x ent", "FEMIT": "2/23/2026", "FVALE": "2/23/2026", "FProm": "3/9/2026", "FTERM": "3/9/2026", "AREA": "Disco", "SUBAREA": "PACK", "CANT": 100, "PART": "1/2", "TRAB": "Juana", "MESH": "60/35/18", "MAT": "304"}, {"OP": 30809, "XSTATUS": "Alm x ent", "FEMIT": "2/23/2026", "FVALE": "2/23/2026", "FProm": "3/9/2026", "FTERM": "3/9/2026", "AREA": "Disco", "SUBAREA": "PACK", "CANT": 200, "PART": "2/2", "TRAB": "Juana", "MESH": "150/60/35", "MAT": "304"}, {"OP": 30810, "XSTATUS": "X Rev", "FEMIT": "2/23/2026", "FVALE": "2/23/2026", "FProm": "3/9/2026", "FTERM": "3/9/2026", "AREA": "Disco", "SUBAREA": "PACK", "CANT": 100, "PART": "1/1", "TRAB": "Juana", "MESH": "20/60/10", "MAT": "304"}, {"OP": 30811, "XSTATUS": "X Rev", "FEMIT": "2/23/2026", "FVALE": "2/23/2026", "FProm": "3/6/2026", "FTERM": "3/6/2026", "AREA": "Aros", "SUBAREA": "Remallado", "CANT": 1, "PART": "1/1", "TRAB": "Armando", "MESH": "8 ADIC", "MAT": "304"}, {"OP": 30812, "XSTATUS": "X Rev", "FEMIT": "2/24/2026", "FVALE": "2/24/2026", "FProm": "3/10/2026", "FTERM": "3/10/2026", "AREA": "Disco", "SUBAREA": ".TIRAS", "CANT": 40, "PART": "1/1", "TRAB": "Juana", "MESH": "12/60/20", "MAT": "304"}, {"OP": 30813, "XSTATUS": "Alm x ent", "FEMIT": "2/24/2026", "FVALE": "2/24/2026", "FProm": "3/10/2026", "FTERM": "3/10/2026", "AREA": "Disco", "SUBAREA": "DISCO", "CANT": 1200, "PART": "1/2", "TRAB": "Juana", "MESH": "50", "MAT": "304"}, {"OP": 30813, "XSTATUS": "Alm x ent", "FEMIT": "2/24/2026", "FVALE": "2/24/2026", "FProm": "3/10/2026", "FTERM": "3/10/2026", "AREA": "Disco", "SUBAREA": "DISCO", "CANT": 1500, "PART": "2/2", "TRAB": "Juana", "MESH": "325", "MAT": "304"}, {"OP": 30814, "XSTATUS": "X Rev", "FEMIT": "2/24/2026", "FVALE": "2/24/2026", "FProm": "3/10/2026", "FTERM": "3/10/2026", "AREA": "Aros", "SUBAREA": "Remallado", "CANT": 1, "PART": "1/2", "TRAB": "Armando", "MESH": "20/100 RC", "MAT": "304"}, {"OP": 30814, "XSTATUS": "X Rev", "FEMIT": "2/24/2026", "FVALE": "2/24/2026", "FProm": "3/10/2026", "FTERM": "3/10/2026", "AREA": "Aros", "SUBAREA": "Remallado", "CANT": 1, "PART": "2/2", "TRAB": "Armando", "MESH": "8 PC", "MAT": "304"}, {"OP": 30815, "XSTATUS": "Alm x ent", "FEMIT": "2/26/2026", "FVALE": "2/26/2026", "FProm": "3/12/2026", "FTERM": "3/12/2026", "AREA": "Disco", "SUBAREA": "DISCO", "CANT": 1500, "PART": "1/2", "TRAB": "Juana", "MESH": "60", "MAT": "304"}, {"OP": 30815, "XSTATUS": "Alm x ent", "FEMIT": "2/26/2026", "FVALE": "2/26/2026", "FProm": "3/12/2026", "FTERM": "3/12/2026", "AREA": "Disco", "SUBAREA": "DISCO", "CANT": 1500, "PART": "2/2", "TRAB": "Juana", "MESH": "60", "MAT": "304"}, {"OP": 30816, "XSTATUS": "Alm x ent", "FEMIT": "2/26/2026", "FVALE": "2/26/2026", "FProm": "3/11/2026", "FTERM": "3/11/2026", "AREA": "Disco", "SUBAREA": "DISCO", "CANT": 200, "PART": "1/1", "TRAB": "Juana", "MESH": "60", "MAT": "304"}, {"OP": 30817, "XSTATUS": "X Rev", "FEMIT": "2/26/2026", "FVALE": "2/26/2026", "FProm": "3/12/2026", "FTERM": "3/12/2026", "AREA": "Aros", "SUBAREA": "Remallado", "CANT": 2, "PART": "1/5", "TRAB": "Armando", "MESH": "14/10 ADIC", "MAT": "304"}, {"OP": 30817, "XSTATUS": "X Rev", "FEMIT": "2/26/2026", "FVALE": "2/26/2026", "FProm": "3/12/2026", "FTERM": "3/12/2026", "AREA": "Aros", "SUBAREA": "Remallado", "CANT": 1, "PART": "2/5", "TRAB": "Armando", "MESH": "16/10 ADIC", "MAT": "304"}, {"OP": 30817, "XSTATUS": "X Rev", "FEMIT": "2/26/2026", "FVALE": "2/26/2026", "FProm": "3/12/2026", "FTERM": "3/12/2026", "AREA": "Aros", "SUBAREA": "Remallado", "CANT": 2, "PART": "3/5", "TRAB": "Armando", "MESH": "18/10 ADIC", "MAT": "304"}, {"OP": 30817, "XSTATUS": "X Rev", "FEMIT": "2/26/2026", "FVALE": "2/26/2026", "FProm": "3/12/2026", "FTERM": "3/12/2026", "AREA": "Aros", "SUBAREA": "Remallado", "CANT": 1, "PART": "4/5", "TRAB": "Armando", "MESH": "32/10 ADIC", "MAT": "304"}, {"OP": 30817, "XSTATUS": "X Rev", "FEMIT": "2/26/2026", "FVALE": "2/26/2026", "FProm": "3/12/2026", "FTERM": "3/12/2026", "AREA": "Aros", "SUBAREA": "Remallado", "CANT": 1, "PART": "5/5", "TRAB": "Armando", "MESH": "36/10 ADIC", "MAT": "304"}, {"OP": 30819, "XSTATUS": "Alm x ent", "FEMIT": "2/26/2026", "FVALE": "3/2/2026", "FProm": "3/11/2026", "FTERM": "3/11/2026", "AREA": "Disco", "SUBAREA": "PACK", "CANT": 300, "PART": "1/1", "TRAB": "Juana", "MESH": "20/40/60", "MAT": "304"}, {"OP": 30820, "XSTATUS": "Alm x ent", "FEMIT": "2/26/2026", "FVALE": "2/26/2026", "FProm": "3/12/2026", "FTERM": "3/12/2026", "AREA": "Disco", "SUBAREA": "PACK", "CANT": 100, "PART": "1/1", "TRAB": "Juana", "MESH": "150/60/35/18", "MAT": "304"}, {"OP": 30821, "XSTATUS": "Alm x ent", "FEMIT": "2/26/2026", "FVALE": "2/26/2026", "FProm": "3/12/2026", "FTERM": "3/12/2026", "AREA": "Disco", "SUBAREA": "PACK", "CANT": 100, "PART": "1/1", "TRAB": "Juana", "MESH": "24/24X110", "MAT": "304"}, {"OP": 30823, "XSTATUS": "Alm x ent", "FEMIT": "2/27/2026", "FVALE": "2/27/2026", "FProm": "3/13/2026", "FTERM": "3/13/2026", "AREA": "Aros", "SUBAREA": "Remallado", "CANT": 3, "PART": "1/2", "TRAB": "Armando", "MESH": "18/165 ADISC", "MAT": "304"}, {"OP": 30823, "XSTATUS": "Alm x ent", "FEMIT": "2/27/2026", "FVALE": "2/27/2026", "FProm": "3/13/2026", "FTERM": "3/13/2026", "AREA": "Aros", "SUBAREA": "Remallado", "CANT": 3, "PART": "2/2", "TRAB": "Armando", "MESH": "18/180 ADISC", "MAT": "304"}, {"OP": 30824, "XSTATUS": "X Rev", "FEMIT": "2/27/2026", "FVALE": "2/27/2026", "FProm": "3/13/2026", "FTERM": "3/13/2026", "AREA": "Disco", "SUBAREA": "DISCO", "CANT": 100, "PART": "1/2", "TRAB": "Juana", "MESH": "20", "MAT": "304"}, {"OP": 30824, "XSTATUS": "X Rev", "FEMIT": "2/27/2026", "FVALE": "2/27/2026", "FProm": "3/13/2026", "FTERM": "3/13/2026", "AREA": "Disco", "SUBAREA": "DISCO", "CANT": 100, "PART": "2/2", "TRAB": "Juana", "MESH": "60", "MAT": "304"}, {"OP": 30826, "XSTATUS": "Alm x ent", "FEMIT": "2/27/2026", "FVALE": "2/27/2026", "FProm": "3/11/2026", "FTERM": "3/11/2026", "AREA": "Disco", "SUBAREA": "DISCO", "CANT": 280, "PART": "1/1", "TRAB": "Juana", "MESH": "100", "MAT": "304"}, {"OP": 30828, "XSTATUS": "Alm x ent", "FEMIT": "2/27/2026", "FVALE": "3/4/2026", "FProm": "3/13/2026", "FTERM": "3/13/2026", "AREA": "Disco", "SUBAREA": "PACK", "CANT": 500, "PART": "1/4", "TRAB": "Juana", "MESH": "30/80/100", "MAT": "304"}, {"OP": 30828, "XSTATUS": "Alm x ent", "FEMIT": "2/27/2026", "FVALE": "3/4/2026", "FProm": "3/13/2026", "FTERM": "3/13/2026", "AREA": "Disco", "SUBAREA": "PACK", "CANT": 500, "PART": "2/4", "TRAB": "Juana", "MESH": "30/80/100", "MAT": "304"}, {"OP": 30828, "XSTATUS": "Alm x ent", "FEMIT": "2/27/2026", "FVALE": "3/4/2026", "FProm": "3/13/2026", "FTERM": "3/13/2026", "AREA": "Disco", "SUBAREA": "PACK", "CANT": 100, "PART": "3/4", "TRAB": "Juana", "MESH": "30/80/100", "MAT": "304"}, {"OP": 30828, "XSTATUS": "Alm x ent", "FEMIT": "2/27/2026", "FVALE": "3/4/2026", "FProm": "3/13/2026", "FTERM": "3/13/2026", "AREA": "Disco", "SUBAREA": "PACK", "CANT": 100, "PART": "4/4", "TRAB": "Juana", "MESH": "30/80/100", "MAT": "304"}, {"OP": 30829, "XSTATUS": "X Rev", "FEMIT": "2/27/2026", "FVALE": "2/27/2026", "FProm": "3/13/2026", "FTERM": "3/13/2026", "AREA": "Disco", "SUBAREA": ":Armar / Puntear", "CANT": 50, "PART": "1/2", "TRAB": "Juana", "MESH": "80/60/40", "MAT": "304"}, {"OP": 30829, "XSTATUS": "X Rev", "FEMIT": "2/27/2026", "FVALE": "2/27/2026", "FProm": "3/13/2026", "FTERM": "3/13/2026", "AREA": "Disco", "SUBAREA": ":Armar / Puntear", "CANT": 50, "PART": "2/2", "TRAB": "Juana", "MESH": "60/40", "MAT": "304"}, {"OP": 30830, "XSTATUS": "list x prod", "FEMIT": "2/27/2026", "FVALE": "2/27/2026", "FProm": "3/4/2026", "FTERM": "3/4/2026", "AREA": "Disco", "SUBAREA": ".TIRAS", "CANT": 5, "PART": "1/1", "TRAB": "Juana", "MESH": "24 X 110", "MAT": "Carb\u00f3n"}, {"OP": 30825, "XSTATUS": "list x prod", "FEMIT": "2/27/2026", "FVALE": "2/27/2026", "FProm": "3/10/2026", "FTERM": "3/10/2026", "AREA": "TELAR", "SUBAREA": ".CRIBA", "CANT": 1, "PART": "1/1", "TRAB": "ISRAEL", "MESH": "2 1/2\" X 2 1/2\" cal 5/32\"", "MAT": "304"}, {"OP": 30831, "XSTATUS": "Alm x ent", "FEMIT": "3/3/2026", "FVALE": "3/3/2026", "FProm": "3/11/2026", "FTERM": "3/11/2026", "AREA": "Var", "SUBAREA": "DISCO", "CANT": 36, "PART": "1/4", "TRAB": "ALMA", "MESH": "8", "MAT": "304"}, {"OP": 30831, "XSTATUS": "Alm x ent", "FEMIT": "3/3/2026", "FVALE": "3/3/2026", "FProm": "3/11/2026", "FTERM": "3/11/2026", "AREA": "Var", "SUBAREA": "FTUBO", "CANT": 32, "PART": "2/4", "TRAB": "ALMA", "MESH": "8", "MAT": "304"}, {"OP": 30831, "XSTATUS": "Alm x ent", "FEMIT": "3/3/2026", "FVALE": "3/3/2026", "FProm": "3/11/2026", "FTERM": "3/11/2026", "AREA": "Var", "SUBAREA": "FTUBO", "CANT": 8, "PART": "3/4", "TRAB": "ALMA", "MESH": "8", "MAT": "304"}, {"OP": 30831, "XSTATUS": "Alm x ent", "FEMIT": "3/3/2026", "FVALE": "3/3/2026", "FProm": "3/11/2026", "FTERM": "3/11/2026", "AREA": "Var", "SUBAREA": "DISCO", "CANT": 6, "PART": "4/4", "TRAB": "ALMA", "MESH": "8", "MAT": "304"}, {"OP": 30832, "XSTATUS": "Alm x ent", "FEMIT": "3/3/2026", "FVALE": "3/3/2026", "FProm": "3/10/2026", "FTERM": "3/10/2026", "AREA": ".ALMC", "SUBAREA": "MANUAL", "CANT": 50, "PART": "1/1", "TRAB": "ALEX", "MESH": "60", "MAT": "304"}, {"OP": 30833, "XSTATUS": "Alm x ent", "FEMIT": "3/3/2026", "FVALE": "3/3/2026", "FProm": "3/17/2026", "FTERM": "3/17/2026", "AREA": ".ALMC", "SUBAREA": "MANUAL", "CANT": 300, "PART": "1/1", "TRAB": "ALEX", "MESH": "80", "MAT": "304"}, {"OP": 30834, "XSTATUS": "Alm x ent", "FEMIT": "3/3/2026", "FVALE": "3/3/2026", "FProm": "3/17/2026", "FTERM": "3/17/2026", "AREA": "Disco", "SUBAREA": ":Oblongo / Manual", "CANT": 150, "PART": "1/1", "TRAB": "Juana", "MESH": "50", "MAT": "304"}, {"OP": 30835, "XSTATUS": "Alm x ent", "FEMIT": "3/3/2026", "FVALE": "3/3/2026", "FProm": "3/18/2026", "FTERM": "3/18/2026", "AREA": "Disco", "SUBAREA": ":Armar / Puntear", "CANT": 200, "PART": "1/3", "TRAB": "Juana", "MESH": "20/24X110/20", "MAT": "304"}, {"OP": 30835, "XSTATUS": "Alm x ent", "FEMIT": "3/3/2026", "FVALE": "3/3/2026", "FProm": "3/18/2026", "FTERM": "3/18/2026", "AREA": "Disco", "SUBAREA": ":Armar / Puntear", "CANT": 200, "PART": "2/3", "TRAB": "Juana", "MESH": "24X110/20", "MAT": "304"}, {"OP": 30835, "XSTATUS": "Alm x ent", "FEMIT": "3/3/2026", "FVALE": "3/3/2026", "FProm": "3/18/2026", "FTERM": "3/18/2026", "AREA": "Disco", "SUBAREA": ":Armar / Puntear", "CANT": 200, "PART": "3/3", "TRAB": "Juana", "MESH": "24/60/24", "MAT": "304"}, {"OP": 30837, "XSTATUS": "list x prod", "FEMIT": "3/4/2026", "FVALE": "3/4/2026", "FProm": "3/18/2026", "FTERM": "3/18/2026", "AREA": "Aros", "SUBAREA": "Remallado", "CANT": 1, "PART": "1/5", "TRAB": "Armando", "MESH": "400 ADISC", "MAT": "304"}, {"OP": 30837, "XSTATUS": "list x prod", "FEMIT": "3/4/2026", "FVALE": "3/4/2026", "FProm": "3/18/2026", "FTERM": "3/18/2026", "AREA": "Aros", "SUBAREA": "Remallado", "CANT": 3, "PART": "2/5", "TRAB": "Armando", "MESH": "400 ADISC", "MAT": "304"}, {"OP": 30837, "XSTATUS": "list x prod", "FEMIT": "3/4/2026", "FVALE": "3/4/2026", "FProm": "3/18/2026", "FTERM": "3/18/2026", "AREA": "Aros", "SUBAREA": "Remallado", "CANT": 1, "PART": "3/5", "TRAB": "Armando", "MESH": "200 ADISC", "MAT": "304"}, {"OP": 30837, "XSTATUS": "list x prod", "FEMIT": "3/4/2026", "FVALE": "3/4/2026", "FProm": "3/18/2026", "FTERM": "3/18/2026", "AREA": "Aros", "SUBAREA": "Remallado", "CANT": 1, "PART": "4/5", "TRAB": "Armando", "MESH": "180 ADISC", "MAT": "304"}, {"OP": 30837, "XSTATUS": "list x prod", "FEMIT": "3/4/2026", "FVALE": "3/4/2026", "FProm": "3/18/2026", "FTERM": "3/18/2026", "AREA": "Aros", "SUBAREA": "Remallado", "CANT": 1, "PART": "5/5", "TRAB": "Armando", "MESH": "100 ADISC", "MAT": "304"}, {"OP": 30838, "XSTATUS": "Alm x ent", "FEMIT": "3/4/2026", "FVALE": "3/4/2026", "FProm": "3/18/2026", "FTERM": "3/18/2026", "AREA": "Aros", "SUBAREA": "Remallado", "CANT": 2, "PART": "1/2", "TRAB": "Armando", "MESH": "14 ADIC", "MAT": "304"}, {"OP": 30838, "XSTATUS": "Alm x ent", "FEMIT": "3/4/2026", "FVALE": "3/4/2026", "FProm": "3/18/2026", "FTERM": "3/18/2026", "AREA": "Aros", "SUBAREA": "Remallado", "CANT": 2, "PART": "2/2", "TRAB": "Armando", "MESH": "12 ADIC", "MAT": "304"}, {"OP": 30839, "XSTATUS": "Alm x ent", "FEMIT": "3/4/2026", "FVALE": "3/4/2026", "FProm": "3/18/2026", "FTERM": "3/18/2026", "AREA": "Disco", "SUBAREA": "PACK", "CANT": 80, "PART": "1/1", "TRAB": "Juana", "MESH": "18/100/80/30", "MAT": "304"}, {"OP": 30840, "XSTATUS": "list x prod", "FEMIT": "3/4/2026", "FVALE": "3/4/2026", "FProm": "3/19/2026", "FTERM": "3/19/2026", "AREA": "Var", "SUBAREA": "ELIMINADOR", "CANT": 1, "PART": "1/1", "TRAB": "TORRES", "MESH": "DEMISTER", "MAT": "316"}, {"OP": 30841, "XSTATUS": "Alm x ent", "FEMIT": "3/4/2026", "FVALE": "3/4/2026", "FProm": "3/18/2026", "FTERM": "3/18/2026", "AREA": "Disco", "SUBAREA": "PACK", "CANT": 200, "PART": "1/1", "TRAB": "Juana", "MESH": "20/12X64", "MAT": "Carb\u00f3n"}, {"OP": 30842, "XSTATUS": "Alm x ent", "FEMIT": "3/5/2026", "FVALE": "3/5/2026", "FProm": "3/20/2026", "FTERM": "3/20/2026", "AREA": "Disco", "SUBAREA": "DISCO", "CANT": 200, "PART": "1/1", "TRAB": "Juana", "MESH": "40", "MAT": "Carb\u00f3n"}, {"OP": 30843, "XSTATUS": "Alm x ent", "FEMIT": "3/5/2026", "FVALE": "3/5/2026", "FProm": "3/11/2026", "FTERM": "3/11/2026", "AREA": "Disco", "SUBAREA": "DISCO", "CANT": 500, "PART": "1/1", "TRAB": "Juana", "MESH": "12 X 64", "MAT": "304"}, {"OP": 30844, "XSTATUS": "Alm x ent", "FEMIT": "3/5/2026", "FVALE": "3/5/2026", "FProm": "3/19/2026", "FTERM": "3/19/2026", "AREA": "Var", "SUBAREA": "FTUBO", "CANT": 10, "PART": "1/2", "TRAB": "ALMA", "MESH": "8", "MAT": "304"}, {"OP": 30844, "XSTATUS": "Alm x ent", "FEMIT": "3/5/2026", "FVALE": "3/5/2026", "FProm": "3/19/2026", "FTERM": "3/19/2026", "AREA": "Var", "SUBAREA": "DISCO", "CANT": 12, "PART": "2/2", "TRAB": "ALMA", "MESH": "8", "MAT": "304"}, {"OP": 30845, "XSTATUS": "Alm x ent", "FEMIT": "3/5/2026", "FVALE": "3/5/2026", "FProm": "3/19/2026", "FTERM": "3/19/2026", "AREA": "Disco", "SUBAREA": "MANUAL", "CANT": 50, "PART": "1/2", "TRAB": "Juana", "MESH": "24 X 110", "MAT": "Carb\u00f3n"}, {"OP": 30845, "XSTATUS": "Alm x ent", "FEMIT": "3/5/2026", "FVALE": "3/5/2026", "FProm": "3/19/2026", "FTERM": "3/19/2026", "AREA": "Disco", "SUBAREA": "MANUAL", "CANT": 50, "PART": "2/2", "TRAB": "Juana", "MESH": "24 X 110", "MAT": "304"}, {"OP": 30846, "XSTATUS": "RECORTE", "FEMIT": "3/5/2026", "FVALE": "3/5/2026", "FProm": "3/19/2026", "FTERM": "3/19/2026", "AREA": "Disco", "SUBAREA": "DISCO", "CANT": 50, "PART": "1/2", "TRAB": "Juana", "MESH": "12 X 64", "MAT": "Carb\u00f3n"}, {"OP": 30846, "XSTATUS": "RECORTE", "FEMIT": "3/5/2026", "FVALE": "3/5/2026", "FProm": "3/19/2026", "FTERM": "3/19/2026", "AREA": "Disco", "SUBAREA": "DISCO", "CANT": 50, "PART": "2/2", "TRAB": "Juana", "MESH": "12 X 64", "MAT": "304"}];
+
+const umap={};
+RAW.forEach(function(r){if(!umap[r.OP])umap[r.OP]=r;});
+const DATA=Object.values(umap);
+
+const AC={'Disco':'#3d8aff','Var':'#ff6b35','Aros':'#00d4aa','TELAR':'#ffd166','.ALMC':'#c77dff'};
+const TC={'Juana':'#3d8aff','ISRAEL':'#00d4aa','Armando':'#ff6b35','ALMA':'#ffd166','TORRES':'#c77dff','ALEX':'#ff4d8a'};
+var sflt='all', wflt='all', proxOff=1, chA=null, chT=null, chTL=null;
+
+function ac(a){return AC[a]||'#888';}
+function tc(t){return TC[t]||'#aaa';}
+function today(){var d=new Date();d.setHours(0,0,0,0);return d;}
+function wkS(base,off){var d=new Date(base),day=d.getDay(),diff=day===0?-6:1-day;d.setDate(d.getDate()+diff+(off||0)*7);d.setHours(0,0,0,0);return d;}
+function wkE(s){var d=new Date(s);d.setDate(d.getDate()+6);d.setHours(23,59,59,999);return d;}
+function inR(d,s,e){return d&&d>=s&&d<=e;}
+
+function pd(s){
+  if(!s||!s.trim)return null;
+  s=s.trim();if(!s)return null;
+  var p=s.split('/');
+  if(p.length===3){var m=parseInt(p[0])-1,dy=parseInt(p[1]),y=parseInt(p[2]);var dt=new Date(y,m,dy);if(!isNaN(dt.getTime()))return dt;}
+  var dt2=new Date(s);return isNaN(dt2.getTime())?null:dt2;
+}
+function fd(d){if(!d)return '--';return d.toLocaleDateString('es-MX',{day:'2-digit',month:'short',year:'2-digit'});}
+function fds(d){if(!d)return '--';return d.toLocaleDateString('es-MX',{day:'2-digit',month:'short'});}
+function fwk(s){return fds(s)+' - '+fds(wkE(s));}
+function sb(s){var m={'list x prod':'bl','X Rev':'br','Alm x ent':'ba','RECORTE':'bc'};return '<span class="badge '+(m[s]||'')+'">'+s+'</span>';}
+function fmtNum(n){return n.toLocaleString('es-MX');}
+
+function switchTab(t){
+  var ids=['resumen','semana','proxima','trabajadores','todas'];
+  document.querySelectorAll('.tab').forEach(function(e,i){e.classList.toggle('active',ids[i]===t);});
+  document.querySelectorAll('.view').forEach(function(e){e.classList.toggle('active',e.id==='view-'+t);});
+}
+function filterW(a,btn){wflt=a;document.querySelectorAll('#view-trabajadores .fb').forEach(function(b){b.classList.remove('active');});btn.classList.add('active');renderWorkers();}
+function filterAll(s,btn){sflt=s;document.querySelectorAll('#view-todas .fb').forEach(function(b){b.classList.remove('active');});btn.classList.add('active');renderTable();}
+function changeWeek(d){proxOff=Math.max(1,proxOff+d);renderProx(today());}
+
+function showDetail(op){
+  var r=DATA.find(function(d){return String(d.OP)===String(op);});
+  if(!r)return;
+  var parts=RAW.filter(function(d){return String(d.OP)===String(op);});
+  var fp=pd(r.FProm),isL=fp&&fp<today();
+  document.getElementById('mt').innerHTML='OP <span style="font-family:IBM Plex Mono,monospace;color:var(--accent)">'+op+'</span>'+(isL?' <span class="badge bc" style="margin-left:6px">VENCIDA</span>':'');
+  document.getElementById('mb').innerHTML=
+    '<div class="dr"><span class="dk">Estado</span><span>'+sb(r.XSTATUS)+'</span></div>'+
+    '<div class="dr"><span class="dk">Area / Subarea</span><span>'+r.AREA+' / '+r.SUBAREA+'</span></div>'+
+    '<div class="dr"><span class="dk">Trabajador</span><span style="color:'+tc(r.TRAB)+';font-weight:600">'+r.TRAB+'</span></div>'+
+    '<div class="dr"><span class="dk">Material</span><span>'+(r.MAT||'--')+'</span></div>'+
+    '<div class="dr"><span class="dk">Malla</span><span style="font-family:IBM Plex Mono,monospace;font-size:10px">'+(r.MESH||'--')+'</span></div>'+
+    '<div class="dr"><span class="dk">FEMIT</span><span>'+fd(pd(r.FEMIT))+'</span></div>'+
+    '<div class="dr"><span class="dk">FVALE</span><span>'+fd(pd(r.FVALE))+'</span></div>'+
+    '<div class="dr"><span class="dk">FProm</span><span style="color:'+(isL?'var(--danger)':'var(--accent3)')+';font-weight:700">'+fd(fp)+(isL?' !':'')+'</span></div>'+
+    '<div class="dr"><span class="dk">FTERM (cliente)</span><span>'+fd(pd(r.FTERM))+'</span></div>'+
+    '<div class="dr"><span class="dk">Partes ('+parts.length+')</span><span style="text-align:right;font-size:10px">'+parts.map(function(p){return (p.PART||'')+' - '+fmtNum(parseInt(p.CANT)||0)+' pzas';}).join('<br>')+'</span></div>';
+  document.getElementById('modal').classList.add('open');
+}
+
+// Build week summary by area/subarea for a set of OPs (using RAW for full CANT)
+function buildSummary(WS, WE) {
+  var ops = RAW.filter(function(r){ return inR(pd(r.FProm), WS, WE); });
+  // group by area+subarea
+  var groups = {};
+  ops.forEach(function(r){
+    var key = r.AREA + '||' + r.SUBAREA;
+    if(!groups[key]) groups[key] = {area: r.AREA, subarea: r.SUBAREA, cant: 0, ops: 0};
+    groups[key].cant += (parseInt(r.CANT)||0);
+    groups[key].ops += 1;
+  });
+  if(!Object.keys(groups).length) return '';
+  var chips = Object.values(groups).sort(function(a,b){return b.cant-a.cant;}).map(function(g){
+    return '<div class="ws-chip"><div class="ws-area" style="color:'+ac(g.area)+'">'+g.area+' / '+g.subarea+'</div>'+
+           '<div class="ws-cant">'+fmtNum(g.cant)+' pzas</div>'+
+           '<div class="ws-sub">'+g.ops+' OP</div></div>';
+  }).join('');
+  var total = Object.values(groups).reduce(function(s,g){return s+g.cant;},0);
+  return '<div class="week-summary"><div class="ws-title">Resumen de unidades por area / subarea &nbsp;<span style="font-family:IBM Plex Mono,monospace;color:var(--accent4)">Total: '+fmtNum(total)+' pzas</span></div><div class="ws-grid">'+chips+'</div></div>';
+}
+
+function buildGrid(WS, gridId, countId, sumId){
+  var WE=wkE(WS),T=today(),days=[],dlabs=[];
+  for(var i=0;i<7;i++){var d=new Date(WS);d.setDate(d.getDate()+i);days.push(d);dlabs.push(d.toLocaleDateString('es-MX',{weekday:'short',day:'2-digit'}));}
+  var ops=DATA.filter(function(d){return inR(pd(d.FProm),WS,WE);});
+  if(countId) document.getElementById(countId).textContent=' - '+ops.length+' OP';
+  var trabs=[...new Set(ops.map(function(d){return d.TRAB;}).filter(Boolean))];
+  if(!trabs.length){
+    document.getElementById(gridId).innerHTML='<div style="color:var(--muted);font-size:12px;padding:16px 0">Sin ordenes con FProm esta semana.</div>';
+    if(sumId) document.getElementById(sumId).innerHTML='';
+    return;
+  }
+  var html='<div class="week-days"><div>Trabajador</div>'+days.map(function(d,i){return '<div class="'+(d.toDateString()===T.toDateString()?'today-col':'')+'">' +dlabs[i]+'</div>';}).join('')+'</div>';
+  trabs.forEach(function(trab){
+    var col=tc(trab);
+    var row='<div class="week-row"><div class="row-label"><span style="width:6px;height:6px;border-radius:50%;background:'+col+';display:inline-block"></span>'+trab+'</div>';
+    days.forEach(function(dayD){
+      var dk=dayD.toISOString().slice(0,10),isT=dayD.toDateString()===T.toDateString();
+      var dayOps=DATA.filter(function(d){var fp=pd(d.FProm);return d.TRAB===trab&&fp&&fp.toISOString().slice(0,10)===dk;});
+      var cells=dayOps.map(function(op){
+        var fp=pd(op.FProm);
+        var cls=fp&&fp<T?'late-op':fp&&fp.toDateString()===T.toDateString()?'today-op':'';
+        var allParts=RAW.filter(function(r){return String(r.OP)===String(op.OP);});
+        var totalCant=allParts.reduce(function(s,r){return s+(parseInt(r.CANT)||0);},0);
+        return '<div class="day-op '+cls+'" onclick="showDetail(\''+op.OP+'\')" title="OP '+op.OP+' - '+op.SUBAREA+' - '+fmtNum(totalCant)+' pzas">OP '+op.OP+' ('+fmtNum(totalCant)+')</div>';
+      }).join('');
+      row+='<div class="day-cell '+(isT?'today':'')+'">'+(cells||'')+'</div>';
+    });
+    row+='</div>';html+=row;
+  });
+  document.getElementById(gridId).innerHTML=html;
+  if(sumId) document.getElementById(sumId).innerHTML=buildSummary(WS,WE);
+}
+
+function renderResumen(T,WS,WE){
+  var wOPs=DATA.filter(function(d){return inR(pd(d.FProm),WS,WE);}).length;
+  var lOPs=DATA.filter(function(d){var p=pd(d.FProm);return p&&p<T;}).length;
+  var WS2=wkS(T,1),WE2=wkE(WS2);
+  var nOPs=DATA.filter(function(d){return inR(pd(d.FProm),WS2,WE2);}).length;
+  var areas=[...new Set(DATA.map(function(d){return d.AREA;}).filter(Boolean))];
+  var trabs=[...new Set(DATA.map(function(d){return d.TRAB;}).filter(Boolean))];
+  document.getElementById('sr').innerHTML=
+    '<div class="stat-card"><div class="stat-label">Total OP</div><div class="stat-value" style="color:var(--accent)">'+DATA.length+'</div><div class="stat-sub">ordenes activas</div></div>'+
+    '<div class="stat-card"><div class="stat-label">Esta Semana</div><div class="stat-value" style="color:var(--accent3)">'+wOPs+'</div><div class="stat-sub">FProm esta semana</div></div>'+
+    '<div class="stat-card"><div class="stat-label">Siguiente Semana</div><div class="stat-value" style="color:var(--accent4)">'+nOPs+'</div><div class="stat-sub">FProm sig. semana</div></div>'+
+    '<div class="stat-card"><div class="stat-label">Vencidas</div><div class="stat-value" style="color:var(--danger)">'+lOPs+'</div><div class="stat-sub">FProm ya paso</div></div>'+
+    '<div class="stat-card"><div class="stat-label">Areas</div><div class="stat-value" style="color:var(--accent)">'+areas.length+'</div><div class="stat-sub">'+areas.join(', ')+'</div></div>'+
+    '<div class="stat-card"><div class="stat-label">Trabajadores</div><div class="stat-value" style="color:var(--accent5)">'+trabs.length+'</div><div class="stat-sub">'+trabs.join(', ')+'</div></div>';
+
+  var ac2={},tc2={},ac_cant={};
+  DATA.forEach(function(d){if(d.AREA)ac2[d.AREA]=(ac2[d.AREA]||0)+1;if(d.TRAB)tc2[d.TRAB]=(tc2[d.TRAB]||0)+1;});
+  RAW.forEach(function(r){if(r.AREA)ac_cant[r.AREA]=(ac_cant[r.AREA]||0)+(parseInt(r.CANT)||0);});
+
+  if(chA)chA.destroy();
+  chA=new Chart(document.getElementById('cA'),{
+    type:'doughnut',
+    data:{
+      labels:Object.keys(ac2),
+      datasets:[{data:Object.values(ac2),backgroundColor:Object.keys(ac2).map(function(a){return AC[a]||'#888';}),borderColor:'#14171f',borderWidth:3}]
+    },
+    options:{
+      plugins:{
+        legend:{labels:{color:'#e8ecf4',font:{family:'IBM Plex Sans'},padding:14}},
+        tooltip:{callbacks:{label:function(ctx){return ' '+ctx.label+': '+ctx.parsed+' OP';}}},
+        datalabels:{
+          color:'#fff',
+          font:{weight:'bold',size:13,family:'IBM Plex Mono'},
+          formatter:function(value,ctx){
+            var total=ctx.chart.data.datasets[0].data.reduce(function(a,b){return a+b;},0);
+            return value+'\n('+(Math.round(value/total*100))+'%)';
+          }
+        }
+      },
+      cutout:'55%'
+    }
+  });
+
+  if(chT)chT.destroy();
+  chT=new Chart(document.getElementById('cT'),{type:'bar',data:{labels:Object.keys(tc2),datasets:[{data:Object.values(tc2),backgroundColor:Object.keys(tc2).map(function(t){return TC[t]||'#888';}),borderRadius:5,borderSkipped:false}]},options:{indexAxis:'y',plugins:{legend:{display:false}},scales:{x:{ticks:{color:'#6b7694'},grid:{color:'#252a3a'}},y:{ticks:{color:'#e8ecf4'},grid:{display:false}}}}});
+
+  var dkeys=[],dlabs2=[],dcnts={};
+  for(var i=0;i<21;i++){var dd=new Date(T);dd.setDate(dd.getDate()+i);var k=dd.toISOString().slice(0,10);dkeys.push(k);dlabs2.push(dd.toLocaleDateString('es-MX',{weekday:'short',day:'2-digit',month:'2-digit'}));dcnts[k]=0;}
+  DATA.forEach(function(d){var fp=pd(d.FProm);if(fp){var k=fp.toISOString().slice(0,10);if(dcnts.hasOwnProperty(k))dcnts[k]++;}});
+  var dcols=dkeys.map(function(k){var d=new Date(k);if(d.toDateString()===T.toDateString())return '#3d8aff';if(inR(d,WS,WE))return 'rgba(61,138,255,.5)';return 'rgba(107,118,148,.35)';});
+  if(chTL)chTL.destroy();
+  chTL=new Chart(document.getElementById('cTL'),{type:'bar',data:{labels:dlabs2,datasets:[{data:Object.values(dcnts),backgroundColor:dcols,borderRadius:4,borderSkipped:false}]},options:{plugins:{legend:{display:false}},scales:{x:{ticks:{color:'#6b7694',font:{size:9}},grid:{color:'#252a3a'}},y:{ticks:{color:'#6b7694',stepSize:1},grid:{color:'#252a3a'}}}}});
+
+  var mx=Math.max.apply(null,Object.values(ac2));
+  document.getElementById('ap').innerHTML=Object.entries(ac2).sort(function(a,b){return b[1]-a[1];}).map(function(e){
+    var area=e[0],ops=e[1],cant=ac_cant[area]||0;
+    return '<div class="apl"><span style="font-weight:600;color:'+ac(area)+'">'+area+'</span>'+
+           '<span style="font-family:IBM Plex Mono,monospace;font-size:11px">'+
+           '<span style="color:var(--muted)">'+ops+' OP</span>'+
+           ' &nbsp; <span style="color:var(--accent4)">'+fmtNum(cant)+' pzas</span>'+
+           '</span></div>'+
+           '<div class="apb"><div class="apf" style="width:'+(ops/mx*100)+'%;background:'+(AC[area]||'#888')+'"></div></div>';
+  }).join('');
+}
+
+function renderSemana(T,WS,WE){
+  buildGrid(WS,'wg','wc','wsum');
+  var late=DATA.filter(function(d){var p=pd(d.FProm);return p&&p<T;});
+  document.getElementById('lc').textContent=' - '+late.length+' OP';
+  if(!late.length){document.getElementById('lo').innerHTML='<span style="color:var(--accent3)">Sin ordenes vencidas</span>';return;}
+  late.sort(function(a,b){return pd(a.FProm)-pd(b.FProm);});
+  document.getElementById('lo').innerHTML='<div class="og">'+late.map(function(op){return '<div class="oc late" onclick="showDetail(\''+op.OP+'\')"><div class="on">OP '+op.OP+'</div><div class="oi">'+op.AREA+' - '+op.SUBAREA+'</div><div class="od" style="color:var(--danger)">FProm: '+fd(pd(op.FProm))+'</div></div>';}).join('')+'</div>';
+}
+
+function renderProx(T){
+  var WS=wkS(T,proxOff);
+  document.getElementById('pl').textContent=fwk(WS);
+  document.getElementById('btnP').disabled=proxOff<=1;
+  buildGrid(WS,'pg','pc','psum');
+}
+
+function renderWorkers(){
+  var T=today(),WS=wkS(T,0),WE=wkE(WS);
+  var fil=wflt==='all'?DATA:DATA.filter(function(d){return d.AREA===wflt;});
+  var tm={};
+  fil.forEach(function(d){if(d.TRAB){if(!tm[d.TRAB])tm[d.TRAB]=[];tm[d.TRAB].push(d);}});
+  if(!Object.keys(tm).length){document.getElementById('ws').innerHTML='<div style="color:var(--muted);padding:16px">Sin datos.</div>';return;}
+  var mx=Math.max.apply(null,Object.values(tm).map(function(v){return v.length;}));
+  document.getElementById('ws').innerHTML=Object.entries(tm).sort(function(a,b){return b[1].length-a[1].length;}).map(function(entry){
+    var trab=entry[0],ops=entry[1],col=tc(trab);
+    var wOps=ops.filter(function(o){return inR(pd(o.FProm),WS,WE);});
+    var lOps=ops.filter(function(o){var p=pd(o.FProm);return p&&p<T;});
+    var chips=ops.sort(function(a,b){return pd(a.FProm)-pd(b.FProm);}).map(function(op){
+      var fp=pd(op.FProm),isL=fp&&fp<T,isW=inR(fp,WS,WE);
+      return '<div class="oc '+(isL?'late':isW?'tdue':'ontime')+'" onclick="showDetail(\''+op.OP+'\')"><div class="on">OP '+op.OP+' <span style="color:'+col+';font-size:9px">'+op.AREA+'</span></div><div class="oi">'+op.SUBAREA+' - '+fmtNum(parseInt(op.CANT)||0)+' pzas</div><div class="od" style="color:'+(isL?'var(--danger)':isW?'var(--warn)':'var(--accent3)')+'">FProm: '+fd(fp)+'</div></div>';
+    }).join('');
+    return '<div class="wsec"><div class="wh"><div class="wa" style="background:'+col+'22;color:'+col+'">'+trab[0].toUpperCase()+'</div><div><div class="wn">'+trab+'</div><div class="wc">'+ops.length+' OP - <span style="color:var(--accent3)">'+wOps.length+' esta semana</span>'+(lOps.length?' - <span style="color:var(--danger)">'+lOps.length+' vencidas</span>':'')+'</div></div><div class="wbt" style="margin-left:auto"><div class="wbf" style="width:'+(ops.length/mx*100)+'%;background:'+col+'"></div></div></div><div class="og">'+chips+'</div></div>';
+  }).join('');
+}
+
+function renderTable(){
+  var T=today(),WS=wkS(T,0),WE=wkE(WS),aF=document.getElementById('af').value;
+  var d=[].concat(DATA);
+  if(sflt!=='all')d=d.filter(function(x){return x.XSTATUS===sflt;});
+  if(aF!=='all')d=d.filter(function(x){return x.AREA===aF;});
+  d.sort(function(a,b){return (pd(a.FProm)||new Date(9999,0))-(pd(b.FProm)||new Date(9999,0));});
+  var allD=DATA.reduce(function(acc,r){var v=pd(r.FVALE),p=pd(r.FProm);if(v)acc.push(v);if(p)acc.push(p);return acc;},[]);
+  var mn=allD.length?new Date(Math.min.apply(null,allD)):new Date();
+  var mx=allD.length?new Date(Math.max.apply(null,allD)):new Date();
+  var sp=mx-mn||1;
+  document.getElementById('tb').innerHTML=d.map(function(r){
+    var fp=pd(r.FProm),vd=pd(r.FVALE),isL=fp&&fp<T,isW=inR(fp,WS,WE);
+    var rc=isL?'color:var(--danger)':isW?'color:var(--warn)':'';
+    var bar='';
+    if(vd&&fp){var l=Math.max(0,(vd-mn)/sp*100),w=Math.max(2,(fp-vd)/sp*100);bar='<div class="tl-bg"><div class="tl-bar" style="left:'+l+'%;width:'+w+'%;background:'+(isL?'var(--danger)':'var(--accent)')+'"></div></div><div class="tl-labs"><span>'+fds(mn)+'</span><span>'+fds(mx)+'</span></div>';}
+    return '<tr onclick="showDetail(\''+r.OP+'\')"><td><b style="font-family:IBM Plex Mono,monospace">'+r.OP+'</b></td><td>'+sb(r.XSTATUS)+'</td><td style="font-size:10px;font-weight:600;color:'+ac(r.AREA)+'">'+r.AREA+'</td><td style="color:var(--muted);font-size:10px">'+r.SUBAREA+'</td><td style="font-weight:600;color:'+tc(r.TRAB)+'">'+r.TRAB+'</td><td style="font-family:IBM Plex Mono,monospace">'+fmtNum(parseInt(r.CANT)||0)+'</td><td style="font-family:IBM Plex Mono,monospace;font-size:10px">'+fd(pd(r.FVALE))+'</td><td style="font-family:IBM Plex Mono,monospace;font-size:10px;'+rc+'"><b>'+fd(fp)+'</b></td><td style="font-family:IBM Plex Mono,monospace;font-size:10px">'+fd(pd(r.FTERM))+'</td><td class="tl-cell">'+bar+'</td></tr>';
+  }).join('');
+}
+
+function init(){
+  var T=today(),WS=wkS(T,0),WE=wkE(WS);
+  document.getElementById('wb').textContent=fwk(WS);
+  document.getElementById('upd').textContent='Datos: '+T.toLocaleDateString('es-MX',{day:'2-digit',month:'short',year:'numeric'});
+  var areas=[...new Set(DATA.map(function(d){return d.AREA;}).filter(Boolean))];
+  var sel=document.getElementById('af');
+  areas.forEach(function(a){var o=document.createElement('option');o.value=a;o.textContent=a;sel.appendChild(o);});
+  document.getElementById('wab').innerHTML=areas.map(function(a){return '<div class="fb" onclick="filterW(\''+a+'\',this)">'+a+'</div>';}).join('');
+  renderResumen(T,WS,WE);
+  renderSemana(T,WS,WE);
+  renderProx(T);
+  renderWorkers();
+  renderTable();
+}
+init();
+</script></body></html>
