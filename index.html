@@ -121,10 +121,10 @@ select{background:var(--surface2);border:1px solid var(--border);color:var(--tex
   <div class="tab" onclick="switchTab('areas')">Area / Subarea</div>
   <div class="tab" onclick="switchTab('todas')">Todas las OP</div>
 </div>
-<div style="background:var(--surface);border-bottom:1px solid var(--border);padding:8px 28px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+<div style="background:var(--surface);border-bottom:1px solid var(--border);padding:8px 28px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;flex-direction:row;">
   <span class="fl">Vendedor:</span>
   <div class="fb active" id="vfAll" onclick="filterVend('all',this)">Todos</div>
-  <div id="vendBtns"></div>
+  <div id="vendBtns" style="display:flex;flex-wrap:wrap;gap:6px"></div>
 </div>
 <main>
   <div class="view active" id="view-semana">
