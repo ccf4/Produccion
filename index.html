@@ -20,6 +20,16 @@ header{background:var(--surface);border-bottom:1px solid var(--border);padding:1
 .tab:hover{color:var(--text);} .tab.active{color:var(--accent);border-bottom-color:var(--accent);}
 main{padding:22px 28px;max-width:1400px;margin:0 auto;}
 .view{display:none;} .view.active{display:block;}
+.stats-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:20px;}
+.stat-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px 16px;}
+.stat-label{font-size:10px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:5px;}
+.stat-value{font-size:28px;font-weight:700;font-family:IBM Plex Mono,monospace;}
+.stat-sub{font-size:10px;color:var(--muted);margin-top:3px;}
+.term-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:8px;}
+.term-card{background:var(--surface2);border:1px solid var(--border);border-left:3px solid var(--accent3);border-radius:8px;padding:8px 12px;}
+.apl{display:flex;justify-content:space-between;font-size:11px;margin-bottom:4px;}
+.apb{height:8px;background:var(--surface2);border-radius:5px;overflow:hidden;margin-bottom:12px;}
+.apf{height:100%;border-radius:5px;}
 .card{background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden;margin-bottom:16px;}
 .card-body{padding:16px;}
 .week-days{display:grid;grid-template-columns:100px repeat(7,1fr);gap:1px;font-size:10px;font-weight:600;text-transform:uppercase;color:var(--muted);letter-spacing:.8px;margin-bottom:1px;}
@@ -206,6 +216,66 @@ function fmtNum(n){return n.toLocaleString('es-MX');}
 function daysDiff(d1,d2){return Math.round((d2-d1)/(1000*60*60*24));}
 function ped(op){return PEDIDOS[String(op)]||'';}
 function pedShort(op){var p=ped(op);return p?p.replace('P-000','P-').replace('P-00','P-'):''}
+
+
+var chA=null,chV=null,chTL=null;
+
+function renderResumen(){
+  var src=activeData();
+  var T=today(),WS=wkS(T,0),WE=wkE(WS),WS2=wkS(T,1),WE2=wkE(WS2);
+  var wOPs=src.filter(function(d){return inR(pd(d.FProm),WS,WE);}).length;
+  var nOPs=src.filter(function(d){return inR(pd(d.FProm),WS2,WE2);}).length;
+  var lOPs=src.filter(function(d){var p=pd(d.FProm);return p&&p<T;}).length;
+  var areas=[...new Set(src.map(function(d){return d.AREA;}).filter(Boolean))];
+  var vends=[...new Set(src.map(function(d){return (d.VENDEDOR||'').trim();}).filter(Boolean))];
+  document.getElementById('sr').innerHTML=
+    '<div class="stat-card"><div class="stat-label">Total OP Abiertas</div><div class="stat-value" style="color:var(--accent)">'+src.length+'</div><div class="stat-sub">ordenes activas</div></div>'+
+    '<div class="stat-card"><div class="stat-label">Esta Semana</div><div class="stat-value" style="color:var(--accent3)">'+wOPs+'</div><div class="stat-sub">FProm esta semana</div></div>'+
+    '<div class="stat-card"><div class="stat-label">Siguiente Semana</div><div class="stat-value" style="color:var(--accent4)">'+nOPs+'</div><div class="stat-sub">FProm sig. semana</div></div>'+
+    '<div class="stat-card"><div class="stat-label">Vencidas</div><div class="stat-value" style="color:var(--danger)">'+lOPs+'</div><div class="stat-sub">FProm ya paso</div></div>'+
+    '<div class="stat-card"><div class="stat-label">Areas</div><div class="stat-value" style="color:var(--accent)">'+areas.length+'</div><div class="stat-sub">'+areas.join(', ')+'</div></div>'+
+    '<div class="stat-card"><div class="stat-label">Vendedores</div><div class="stat-value" style="color:var(--accent5)">'+vends.length+'</div><div class="stat-sub">'+vends.join(', ')+'</div></div>';
+
+  var ac2={},vc2={},ac_cant={};
+  src.forEach(function(d){if(d.AREA)ac2[d.AREA]=(ac2[d.AREA]||0)+1;if(d.VENDEDOR&&d.VENDEDOR.trim())vc2[d.VENDEDOR.trim()]=(vc2[d.VENDEDOR.trim()]||0)+1;});
+  RAW.filter(function(r){return (r.STATUS||'').trim().toUpperCase()!=='T';}).forEach(function(r){if(r.AREA)ac_cant[r.AREA]=(ac_cant[r.AREA]||0)+(parseInt(r.CANT)||0);});
+
+  if(chA)chA.destroy();
+  chA=new Chart(document.getElementById('cA'),{type:'doughnut',data:{labels:Object.keys(ac2),datasets:[{data:Object.values(ac2),backgroundColor:Object.keys(ac2).map(function(a){return ac(a);}),borderColor:'var(--surface)',borderWidth:3}]},options:{plugins:{legend:{labels:{color:'var(--text)',font:{family:'IBM Plex Sans'},padding:14}},tooltip:{callbacks:{label:function(ctx){return ' '+ctx.label+': '+ctx.parsed+' OP';}}}},cutout:'55%'}});
+
+  if(chV)chV.destroy();
+  chV=new Chart(document.getElementById('cV'),{type:'bar',data:{labels:Object.keys(vc2),datasets:[{data:Object.values(vc2),backgroundColor:['#3d8aff','#00d4aa','#ff6b35','#ffd166','#c77dff','#ff4d8a','#59c3ff'],borderRadius:5,borderSkipped:false}]},options:{indexAxis:'y',plugins:{legend:{display:false}},scales:{x:{ticks:{color:'var(--muted)'},grid:{color:'var(--border)'}},y:{ticks:{color:'var(--text)'},grid:{display:false}}}}});
+
+  var dkeys=[],dlabs=[],dcnts={};
+  for(var i=0;i<21;i++){var dd=new Date(T);dd.setDate(dd.getDate()+i);var k=dd.toISOString().slice(0,10);dkeys.push(k);dlabs.push(dd.toLocaleDateString('es-MX',{weekday:'short',day:'2-digit',month:'2-digit'}));dcnts[k]=0;}
+  src.forEach(function(d){var fp=pd(d.FProm);if(fp){var k=fp.toISOString().slice(0,10);if(dcnts.hasOwnProperty(k))dcnts[k]++;}});
+  var dcols=dkeys.map(function(k){var d=new Date(k);if(d.toDateString()===T.toDateString())return '#3d8aff';if(inR(d,WS,WE))return 'rgba(61,138,255,.5)';return 'rgba(107,118,148,.35)';});
+  if(chTL)chTL.destroy();
+  chTL=new Chart(document.getElementById('cTL'),{type:'bar',data:{labels:dlabs,datasets:[{data:Object.values(dcnts),backgroundColor:dcols,borderRadius:4,borderSkipped:false}]},options:{plugins:{legend:{display:false}},scales:{x:{ticks:{color:'var(--muted)',font:{size:9}},grid:{color:'var(--border)'}},y:{ticks:{color:'var(--muted)',stepSize:1},grid:{color:'var(--border)'}}}}});
+
+  var mx=Math.max.apply(null,Object.values(ac2).concat([1]));
+  document.getElementById('apRes').innerHTML=Object.entries(ac2).sort(function(a,b){return b[1]-a[1];}).map(function(e){
+    var area=e[0],ops=e[1],cant=ac_cant[area]||0;
+    return '<div class="apl"><span style="font-weight:600;color:'+ac(area)+'">'+area+'</span>'+
+      '<span style="font-family:IBM Plex Mono,monospace;font-size:11px"><span style="color:var(--muted)">'+ops+' OP</span> &nbsp; <span style="color:var(--accent4)">'+fmtNum(cant)+' pzas</span></span></div>'+
+      '<div class="apb"><div class="apf" style="width:'+(ops/mx*100)+'%;background:'+ac(area)+'"></div></div>';
+  }).join('');
+
+  var total=src.length+TERM.length;
+  document.getElementById('termBadge').textContent=TERM.length+' de '+total+' OP ('+Math.round(TERM.length/(total||1)*100)+'%)';
+  if(!TERM.length){document.getElementById('termList').innerHTML='<span style="color:var(--muted);font-size:12px">Sin ordenes terminadas aun.</span>';return;}
+  var sorted=TERM.slice().sort(function(a,b){return (pd(b.FTERM)||new Date(0))-(pd(a.FTERM)||new Date(0));});
+  document.getElementById('termList').innerHTML='<div class="term-grid">'+sorted.map(function(r){
+    var ft=pd(r.FTERM);
+    return '<div class="term-card"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">'+
+      '<span style="font-family:IBM Plex Mono,monospace;font-weight:700;font-size:12px">OP '+r.OP+'</span>'+
+      '<span style="font-size:9px;background:rgba(0,212,170,.15);color:var(--accent3);padding:2px 6px;border-radius:10px;font-weight:600">TERMINADA</span></div>'+
+      (ped(r.OP)?'<div style="font-size:9px;color:var(--accent4);font-family:IBM Plex Mono,monospace;margin-bottom:3px">'+ped(r.OP)+'</div>':'')+
+      '<div style="font-size:10px;color:'+ac(r.AREA)+';font-weight:600">'+r.AREA+' / '+r.SUBAREA+'</div>'+
+      '<div style="font-size:10px;color:var(--muted);margin-top:2px">Cerrada: '+fd(ft)+'</div>'+
+      '</div>';
+  }).join('')+'</div>';
+}
 
 function activeData(){return vflt==='all'?DATA:DATA.filter(function(d){return (d.VENDEDOR||'').trim()===vflt;});}
 
