@@ -356,7 +356,7 @@ function buildGrid(WS, gridId, countId, sumId){
   });
 
   if(mnetOps.length){
-    html+='<div class="mnet-sep">MNET</div>';
+    html+='<div class="mnet-sep">ÓRDENES POR ASIGNAR</div>';
     mnetTypes.forEach(function(tipo){
       var typeMops=mnetOps.filter(function(m){return mnetTipo(m.ARTICULO)===tipo;});
       var row='<div class="week-row"><div class="row-label" style="font-size:10px;color:var(--muted)">'+tipo+'</div>';
