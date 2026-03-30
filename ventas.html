@@ -119,7 +119,7 @@ select{background:var(--surface2);border:1px solid var(--border);color:var(--tex
   <div class="view active" id="view-semana">
     <div class="st"><span class="dot" style="background:var(--accent)"></span>Entregas esta semana<span id="wc" style="font-size:11px;color:var(--muted);font-weight:400"></span></div>
     <div class="card"><div class="card-body" style="padding:12px"><div style="overflow-x:auto"><div id="wg"></div></div><div id="wsum"></div></div></div>
-    <div class="st" style="margin-top:20px"><span class="dot" style="background:var(--danger)"></span>Vencidas y atrasadas<span id="lc" style="font-size:11px;color:var(--muted);font-weight:400"></span></div>
+    <div class="st" style="margin-top:20px"><span class="dot" style="background:var(--danger)"></span>Vencidas<span id="lc" style="font-size:11px;color:var(--muted);font-weight:400"></span></div>
     <div class="card"><div class="card-body" id="lo" style="padding:12px"></div></div>
     <div class="st" style="margin-top:20px"><span class="dot" style="background:var(--accent3)"></span>Cerradas recientemente<span id="cc" style="font-size:11px;color:var(--muted);font-weight:400"></span></div>
     <div class="card"><div class="card-body" id="cl" style="padding:12px"></div></div>
@@ -355,52 +355,25 @@ function renderSemana(T,WS,WE){
   buildGrid(WS,'wg','wc','wsum');
   var src=activeData();
 
-  // VENCIDAS: FProm pasada + aviso de MNET vencida con FProm aun vigente
-  var lateFProm=src.filter(function(d){var p=pd(d.FProm);return p&&p<T;});
-  var lateOnlyMnet=src.filter(function(d){
-    var fp=pd(d.FProm),mD=pd(MNET_DATES[String(d.OP)]||'');
-    return (!fp||fp>=T)&&mD&&mD<T;
-  });
-  var totalLate=lateFProm.length+lateOnlyMnet.length;
-  document.getElementById('lc').textContent=' - '+totalLate+' OP';
-
-  if(!totalLate){
+  // VENCIDAS
+  var late=src.filter(function(d){var p=pd(d.FProm);return p&&p<T;});
+  document.getElementById('lc').textContent=' - '+late.length+' OP';
+  if(!late.length){
     document.getElementById('lo').innerHTML='<span style="color:var(--accent3);font-size:12px">Sin ordenes vencidas.</span>';
   } else {
-    var html='';
-    if(lateFProm.length){
-      lateFProm.sort(function(a,b){return pd(a.FProm)-pd(b.FProm);});
-      html+='<div class="late-grid">'+lateFProm.map(function(r){
-        var fp=pd(r.FProm),fe=pd(r.FEMIT),daysLate=fp?daysDiff(fp,T):0;
-        var parts=RAW.filter(function(x){return String(x.OP)===String(r.OP);});
-        var totalCant=parts.reduce(function(s,p){return s+(parseInt(p.CANT)||0);},0);
-        return '<div class="late-card" style="background:rgba(220,38,38,.04);border:1px solid rgba(220,38,38,.2);border-left:4px solid var(--danger)" onclick="showDetail(\''+r.OP+'\')">'+
-          '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px"><span style="font-family:IBM Plex Mono,monospace;font-weight:700;font-size:13px">OP '+r.OP+'</span><span style="background:rgba(220,38,38,.1);color:var(--danger);font-size:10px;font-weight:700;padding:2px 7px;border-radius:10px">'+daysLate+' dia'+(daysLate!==1?'s':'')+' vencido</span></div>'+
-          (ped(r.OP)?'<div style="font-size:9px;color:var(--accent4);font-family:IBM Plex Mono,monospace;margin-bottom:4px">'+ped(r.OP)+'</div>':'')+
-          '<div style="font-size:11px;font-weight:700;color:'+ac(r.AREA)+';margin-bottom:3px">'+r.AREA+' / '+r.SUBAREA+'</div>'+
-          '<div style="font-size:10px;color:var(--muted);margin-bottom:6px">'+fmtNum(totalCant)+' pzas &nbsp;·&nbsp; '+(r.MAT||'--')+'</div>'+
-          '<div style="display:flex;justify-content:space-between;font-size:10px;font-family:IBM Plex Mono,monospace"><span style="color:var(--muted)">Emitida: '+fd(fe)+'</span><span style="color:var(--danger);font-weight:600">FProm: '+fd(fp)+'</span></div></div>';
-      }).join('')+'</div>';
-    }
-    if(lateOnlyMnet.length){
-      if(lateFProm.length) html+='<div style="height:1px;background:var(--border);margin:12px 0"></div>';
-      html+='<div style="font-size:11px;color:var(--accent4);font-weight:600;margin-bottom:8px">Fecha de sistema (MNET) vencida — FProm produccion aun vigente</div>';
-      html+='<div class="late-grid">'+lateOnlyMnet.map(function(r){
-        var fp=pd(r.FProm),mD=pd(MNET_DATES[String(r.OP)]||'');
-        var parts=RAW.filter(function(x){return String(x.OP)===String(r.OP);});
-        var totalCant=parts.reduce(function(s,p){return s+(parseInt(p.CANT)||0);},0);
-        return '<div class="late-card" style="background:rgba(217,119,6,.04);border:1px solid rgba(217,119,6,.2);border-left:4px solid var(--accent4)" onclick="showDetail(\''+r.OP+'\')">'+
-          '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px"><span style="font-family:IBM Plex Mono,monospace;font-weight:700;font-size:13px">OP '+r.OP+'</span><span style="background:rgba(217,119,6,.12);color:var(--accent4);font-size:10px;font-weight:700;padding:2px 7px;border-radius:10px">MNET vencida</span></div>'+
-          (ped(r.OP)?'<div style="font-size:9px;color:var(--accent4);font-family:IBM Plex Mono,monospace;margin-bottom:4px">'+ped(r.OP)+'</div>':'')+
-          '<div style="font-size:11px;font-weight:700;color:'+ac(r.AREA)+';margin-bottom:3px">'+r.AREA+' / '+r.SUBAREA+'</div>'+
-          '<div style="font-size:10px;color:var(--muted);margin-bottom:6px">'+fmtNum(totalCant)+' pzas</div>'+
-          '<div style="display:flex;justify-content:space-between;font-size:10px;font-family:IBM Plex Mono,monospace">'+
-          '<span style="color:var(--danger)">MNET: '+fd(mD)+'</span>'+
-          '<span style="color:var(--accent3)">FProm: '+fd(fp)+'</span>'+
-          '</div></div>';
-      }).join('')+'</div>';
-    }
-    document.getElementById('lo').innerHTML=html;
+    late.sort(function(a,b){return pd(a.FProm)-pd(b.FProm);});
+    document.getElementById('lo').innerHTML='<div class="late-grid">'+late.map(function(r){
+      var fp=pd(r.FProm),fe=pd(r.FEMIT),daysLate=fp?daysDiff(fp,T):0;
+      var parts=RAW.filter(function(x){return String(x.OP)===String(r.OP);});
+      var totalCant=parts.reduce(function(s,p){return s+(parseInt(p.CANT)||0);},0);
+      var meshList=[...new Set(parts.map(function(p){return p.MESH||'';}).filter(Boolean))].join(' · ');
+      return '<div class="late-card" style="background:rgba(255,77,77,.06);border:1px solid rgba(255,77,77,.2);border-left:4px solid var(--danger)" onclick="showDetail(\''+r.OP+'\')">'+
+        '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px"><span style="font-family:IBM Plex Mono,monospace;font-weight:700;font-size:13px">OP '+r.OP+'</span><span style="background:rgba(255,77,77,.15);color:var(--danger);font-size:10px;font-weight:700;padding:2px 7px;border-radius:10px">'+daysLate+' dia'+(daysLate!==1?'s':'')+' vencido</span></div>'+
+        (ped(r.OP)?'<div style="font-size:9px;color:var(--accent4);font-family:IBM Plex Mono,monospace;margin-bottom:4px">'+ped(r.OP)+'</div>':'')+
+        '<div style="font-size:11px;font-weight:700;color:'+ac(r.AREA)+';margin-bottom:3px">'+r.AREA+' / '+r.SUBAREA+'</div>'+
+        '<div style="font-size:10px;color:var(--muted);margin-bottom:6px">'+fmtNum(totalCant)+' pzas &nbsp;·&nbsp; '+(r.MAT||'--')+(meshList?' &nbsp;·&nbsp; '+meshList:'')+'</div>'+
+        '<div style="display:flex;justify-content:space-between;font-size:10px;font-family:IBM Plex Mono,monospace"><span style="color:var(--muted)">Emitida: '+fd(fe)+'</span><span style="color:var(--danger);font-weight:600">FProm: '+fd(fp)+'</span></div></div>';
+    }).join('')+'</div>';
   }
 
   // CERRADAS RECIENTEMENTE (7 dias)
