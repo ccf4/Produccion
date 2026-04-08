@@ -245,7 +245,7 @@ function showDetail(op){
   var daysOpen=fe?daysDiff(fe,today()):0,daysLate=isL?daysDiff(fp,today()):0;
   var totalCant=parts.reduce(function(s,p){return s+(parseInt(p.CANT)||0);},0);
   var arts=getArts(op);
-  document.getElementById('mt').innerHTML='OP <span style="font-family:IBM Plex Mono,monospace;color:var(--accent)">'+op+'</span>'+(isL?' <span class="badge" style="background:rgba(255,77,77,.15);color:var(--danger)">VENCIDA</span>':'');
+  document.getElementById('mt').innerHTML='OP <span style="font-family:IBM Plex Mono,monospace;color:var(--accent)">'+op+'</span>'+'<span class="badge" style="background:rgba(255,209,102,.12);color:var(--accent4);margin-left:6px">VALIDAR ENTREGA CON PRODUCCIÓN</span>';
   document.getElementById('mb').innerHTML=
     (ped(op)?'<div class="dr"><span class="dk">Pedido</span><span style="font-family:IBM Plex Mono,monospace;font-weight:600;color:var(--accent4)">'+ped(op)+'</span></div>':'')+
     (r.VENDEDOR?'<div class="dr"><span class="dk">Vendedor</span><span style="font-weight:600">'+r.VENDEDOR+'</span></div>':'')+
@@ -268,7 +268,7 @@ function showMissing(op){
   var m=MISSING.find(function(x){return x.OP===op;});
   if(!m)return;
   var fp=pd(m.FProm),fe=pd(m.FEMIT),isL=fp&&fp<today(),daysOpen=fe?daysDiff(fe,today()):0;
-  document.getElementById('mt').innerHTML='OP <span style="font-family:IBM Plex Mono,monospace;color:var(--mnet)">'+op+'</span> <span class="badge" style="background:rgba(107,114,128,.15);color:var(--muted)">MNET</span>'+(isL?' <span class="badge" style="background:rgba(255,77,77,.15);color:var(--danger)">VENCIDA</span>':'');
+  document.getElementById('mt').innerHTML='OP <span style="font-family:IBM Plex Mono,monospace;color:var(--mnet)">'+op+'</span> <span class="badge" style="background:rgba(107,114,128,.15);color:var(--muted)">MNET</span>'+'<span class="badge" style="background:rgba(255,209,102,.12);color:var(--accent4);margin-left:6px">VALIDAR ENTREGA CON PRODUCCIÓN</span>';
   document.getElementById('mb').innerHTML=
     (m.PEDIDO?'<div class="dr"><span class="dk">Pedido</span><span style="font-family:IBM Plex Mono,monospace;font-weight:600;color:var(--accent4)">'+m.PEDIDO+'</span></div>':'')+
     '<div class="dr" style="align-items:flex-start"><span class="dk">Articulo</span><span style="font-size:10px;text-align:right;max-width:280px;line-height:1.5">'+m.ARTICULO+'</span></div>'+
@@ -276,7 +276,7 @@ function showMissing(op){
     '<div style="height:1px;background:var(--border);margin:6px 0"></div>'+
     '<div class="dr"><span class="dk">Fecha emision</span><span>'+fd(fe)+'</span></div>'+
     '<div class="dr"><span class="dk">Dias abierta</span><span style="font-weight:600;color:'+(daysOpen>60?'var(--danger)':'var(--accent4)')+'">'+daysOpen+' dias</span></div>'+
-    '<div class="dr"><span class="dk">Entrega sistema</span><span style="font-weight:700;color:'+(isL?'var(--danger)':'var(--accent3)')+'">'+fd(fp)+(isL?' — VENCIDA':'')+'</span></div>'+
+    '<div class="dr"><span class="dk">Entrega sistema</span><span style="font-weight:700;color:'+(isL?'var(--danger)':'var(--accent3)')+'">'+fd(fp)+'</span></div>'+
     '<div class="dr"><span class="dk">Folio MNET</span><span style="font-family:IBM Plex Mono,monospace;font-size:10px">'+m.FOLIO+'</span></div>';
   document.getElementById('modal').classList.add('open');
 }
@@ -335,7 +335,7 @@ function buildGrid(WS,gridId,countId,sumId){
     row+='</div>';html+=row;
   });
   if(mnetOps.length){
-    html+='<div class="mnet-sep">ORDENES POR ASIGNAR</div>';
+    html+='<div class="mnet-sep">EXTERNAS / OTRAS ÓRDENES</div>';
     mnetTypes.forEach(function(tipo){
       var typeMops=mnetOps.filter(function(m){return mnetTipo(m.ARTICULO)===tipo;});
       var row='<div class="week-row"><div class="row-label" style="font-size:10px;color:var(--muted)">'+tipo+'</div>';
