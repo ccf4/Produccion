@@ -395,11 +395,11 @@ function renderSemana(T,WS,WE){
   var seen2={};
   var mnetWarn=src.filter(function(d){
     if(seen1[d.OP]||seen2[d.OP])return false;
-    var fp=pd(d.FProm);if(fp&&fp<T)return false;
-    var mf=pd(mnetFecha(d.OP));if(!mf||mf>=T)return false;
+    var fpr=pd(d.Fprod||d.FProm);if(!fpr||fpr<T)return false;
+    var fp0=pd(d.FProm);if(!fp0||fp0>=T)return false;
     seen2[d.OP]=true;return true;
   });
-  document.getElementById('lc').textContent=' - '+late.length+' vencidas'+(mnetWarn.length?' + '+mnetWarn.length+' atrasadas':'');
+  document.getElementById('lc').textContent=' - '+late.length+' vencidas'+(mnetWarn.length?' + '+mnetWarn.length+' cambio fecha':'');
   if(!late.length&&!mnetWarn.length){
     document.getElementById('lo').innerHTML='<span style="color:var(--accent3);font-size:12px">Sin ordenes vencidas.</span>';
   } else {
@@ -420,18 +420,24 @@ function renderSemana(T,WS,WE){
       }).join('')+'</div>';
     }
     if(mnetWarn.length){
-      mnetWarn.sort(function(a,b){return pd(mnetFecha(a.OP))-pd(mnetFecha(b.OP));});
-      if(late.length)lhtml+='<div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin:16px 0 10px;padding-top:14px;border-top:1px solid var(--border)">Fecha sistema vencida \u2014 FProm vigente</div>';
+      mnetWarn.sort(function(a,b){return pd(a.FProm)-pd(b.FProm);});
+      lhtml+='<div style="font-size:11px;font-weight:700;color:var(--accent4);text-transform:uppercase;letter-spacing:1px;margin:'+(late.length?'16px':'8px')+' 0 10px;'+(late.length?'padding-top:14px;border-top:1px solid var(--border)':'')+'">Retrasadas \u2014 con nueva fecha de entrega</div>';
       lhtml+='<div class="late-grid">'+mnetWarn.map(function(r){
-        var fp=pd(r.FProm),mf=pd(mnetFecha(r.OP)),daysMnet=mf?daysDiff(mf,T):0;
+        var fp0=pd(r.FProm),fprod=pd(r.Fprod||r.FProm),daysL=fp0?daysDiff(fp0,T):0;
         var parts=RAW.filter(function(x){return String(x.OP)===String(r.OP);});
         var totalCant=parts.reduce(function(s,p){return s+(parseInt(p.CANT)||0);},0);
-        return '<div class="late-card" style="background:rgba(251,191,36,.05);border:1px solid rgba(251,191,36,.2);border-left:4px solid var(--accent4)" onclick="showDetail(\''+r.OP+'\')">'+
-          '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px"><span style="font-family:IBM Plex Mono,monospace;font-weight:700;font-size:13px">OP '+r.OP+'</span><span style="background:rgba(251,191,36,.15);color:var(--accent4);font-size:10px;font-weight:700;padding:2px 7px;border-radius:10px">sistema +'+daysMnet+'d</span></div>'+
-          (ped(r.OP)?'<div style="font-size:9px;color:var(--accent4);font-family:IBM Plex Mono,monospace;margin-bottom:4px">'+ped(r.OP)+'</div>':'')+
-          '<div style="font-size:11px;font-weight:700;color:'+ac(r.AREA)+';margin-bottom:3px">'+r.AREA+' / '+r.SUBAREA+'</div>'+
-          '<div style="font-size:10px;color:var(--muted);margin-bottom:6px">'+fmtNum(totalCant)+' pzas</div>'+
-          '<div style="display:flex;justify-content:space-between;font-size:10px;font-family:IBM Plex Mono,monospace"><span style="color:var(--danger)">Sistema: '+fd(mf)+'</span><span style="color:var(--accent3);font-weight:600">FProm: '+fd(fp)+'</span></div></div>';
+        var arts=getArts(r.OP);
+        return '<div class="late-card" style="background:rgba(249,115,22,.05);border:1px solid rgba(249,115,22,.2);border-left:4px solid var(--warn)" onclick="showDetail(\''+r.OP+'\')">'+
+          '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">'+
+          '<span style="font-size:14px;font-weight:700;color:'+ac(r.AREA)+'">'+normSub(r.SUBAREA)+'</span>'+
+          '<span style="background:rgba(249,115,22,.15);color:var(--warn);font-size:10px;font-weight:600;padding:2px 8px;border-radius:10px">Fecha en OP: '+fd(fp0)+' (+'+daysL+'d)</span>'+
+          '</div>'+
+          '<div style="font-size:12px;font-weight:700;font-family:IBM Plex Mono,monospace;color:var(--muted);margin-bottom:2px">OP '+r.OP+(ped(r.OP)?'<span style="font-weight:400"> \u00b7 '+ped(r.OP)+'</span>':'')+' </div>'+
+          (arts.length?'<div style="font-size:10px;color:var(--muted);margin-bottom:8px;line-height:1.4">'+(arts[0]||'').slice(0,70)+'</div>':'')+
+          '<div style="display:flex;justify-content:space-between;align-items:center;font-size:10px">'+
+          '<span style="color:var(--muted)">'+fmtNum(totalCant)+' pzas \u00b7 '+(r.MAT||'--')+'</span>'+
+          '<span style="background:rgba(5,150,105,.12);color:var(--accent3);font-weight:700;padding:3px 8px;border-radius:6px;font-family:IBM Plex Mono,monospace">Fecha de entrega: '+fd(fprod)+'</span>'+
+          '</div></div>';
       }).join('')+'</div>';
     }
     document.getElementById('lo').innerHTML=lhtml;
@@ -702,6 +708,17 @@ document.addEventListener('mousemove',function(e){
   _opTT.style.left=x+'px';_opTT.style.top=y+'px';
 });
 
+function normSub(s){
+  if(!s)return s;
+  var map={'FTUBO':'Tubular','TAPAS':'Tapas','MANUAL':'Manual','DISCO':'Disco',
+    'PACK':'Pack','OBLONGO':'Oblongo','REMALLADO':'Remallado','CRIBA':'Criba',
+    'ELIMINADOR':'Eliminador','P.FILTRANTE':'Placa filtrante','EMBOLSADOS':'Embolsados',
+    'TUBULARES':'Tubulares','ARMAR':'Armar','HELVEX':'Tubulares','NUEVO':'Nuevo',
+    'RINON':'Riñon','RIÑON':'Riñon','TIRAS':'Tiras'};
+  var s2=s.trim();
+  if(s2[0]===':'||s2[0]==='.') s2=s2.slice(1);
+  return map[s2.toUpperCase()]||(s2.charAt(0).toUpperCase()+s2.slice(1).toLowerCase());
+}
 function init(){
   var T=today(),WS=wkS(T,0),WE=wkE(WS);
   renderGantt();
