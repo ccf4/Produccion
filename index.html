@@ -289,7 +289,7 @@ function showDetail(op){
   if(!r)return;
   var parts=RAW.filter(function(d){return String(d.OP)===String(op);});
   var fp=pd(r.FProm),fe=pd(r.FEMIT);
-  var isTerminated=!!TERM.find(function(x){return String(x.OP)===String(op);});
+  var isTerminated=parts.length>0&&parts.every(function(p){var s=(p.STATUS||'').trim().toUpperCase();return s==='T'||s==='C';});
   var fp2=pd(r.Fprod||r.FProm),isL=!isTerminated&&fp2&&fp2<today();
   var daysOpen=fe?daysDiff(fe,today()):0,daysLate=isL?daysDiff(fp,today()):0;
   var totalCant=parts.reduce(function(s,p){return s+(parseInt(p.CANT)||0);},0);
