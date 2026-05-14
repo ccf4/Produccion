@@ -152,8 +152,10 @@ select{background:var(--surface2);border:1px solid var(--border);color:var(--tex
       <div class="card"><div class="card-body" id="lo" style="padding:12px"></div></div>
       <div class="st" style="margin-top:20px"><span class="dot" style="background:var(--accent3)"></span>Cerradas últimos 5 días hábiles<span id="cc" style="font-size:11px;color:var(--muted);font-weight:400"></span></div>
       <div class="card"><div class="card-body" id="cl" style="padding:12px"></div></div>
+      <div id="otrosSec">
       <div class="st" style="margin-top:20px"><span class="dot" style="background:#ff9500"></span>Otros<span id="oc2" style="font-size:11px;color:var(--muted);font-weight:400"></span></div>
       <div class="card"><div class="card-body" id="oc" style="padding:12px"></div></div>
+      </div>
     </div>
   </div>
   <div class="view active" id="view-areas">
@@ -454,9 +456,8 @@ function renderSemana(T){
   document.getElementById('btnN').disabled=proxOff>=mx;
   document.getElementById('pl').textContent=proxOff===0?('Esta semana — '+fwk(WS)):fwk(WS);
   document.getElementById('wgTitle').textContent=proxOff===0?'Entregas esta semana':'Entregas '+fwk(WS);
-  document.getElementById('extraSecs').style.display=proxOff===0?'block':'none';
+  document.getElementById('otrosSec').style.display=proxOff===0?'block':'none';
   buildGrid(WS,'wg','wc');
-  if(proxOff!==0)return;
   var src=activeData().filter(function(d){var fe=pd(d.FEMIT);return !fe||Math.floor((T-fe)/86400000)<=100;});
   var seen1={};
   var late=src.filter(function(d){var p=pd(d.Fprod||d.FProm);if(!p||p>=T)return false;if(seen1[d.OP])return false;seen1[d.OP]=true;return true;});
