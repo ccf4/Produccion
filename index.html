@@ -401,7 +401,7 @@ function maxWeekOff(T){
   return Math.max(0,Math.min(maxOff,52));
 }
 function changeWeek(d){var T=today(),mx=maxWeekOff(T);proxOff=Math.max(0,Math.min(mx,proxOff+d));renderSemana(T);}
-function refreshAll(){var T=today();renderSemana(T);renderTable();}
+function refreshAll(){var T=today();renderSemana(T);renderTable();if(document.getElementById('ganttScroll'))renderGantt();}
 
 function showDetail(op){
   var r=DATA.find(function(d){return String(d.OP)===String(op);})||TERM.find(function(d){return String(d.OP)===String(op);});
@@ -1399,6 +1399,8 @@ function init(){
     document.querySelectorAll('.entregas-row').forEach(function(e){e.style.display='none';});
     var logoEl=document.querySelector('.logo');
     if(logoEl)logoEl.style.display='none';
+    var searchEl=document.getElementById('searchBox');
+    if(searchEl)searchEl.placeholder='Buscar por OP';
   }
   renderGantt();
   var areas=[...new Set(DATA.map(function(d){return d.AREA;}).filter(Boolean))];
