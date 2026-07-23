@@ -271,7 +271,6 @@ function applyOverrides(){
   });
 }
 function loadOverrides(){
-  if(!EDITOR_MODE)return;
   fetch('https://raw.githubusercontent.com/ccf4/Produccion/main/overrides.json')
     .then(function(r){return r.ok?r.json():[];})
     .then(function(arr){
@@ -410,7 +409,7 @@ function showDetail(op){
   var fp=pd(r.FProm),fe=pd(r.FEMIT);
   var isTerminated=parts.length>0&&parts.every(function(p){var s=(p.STATUS||'').trim().toUpperCase();return s==='T'||s==='C';});
   var fp2=pd(r.Fprod||r.FProm),isL=!isTerminated&&fp2&&fp2<today();
-  var daysOpen=fe?daysDiff(fe,today()):0,daysLate=isL?daysDiff(fp,today()):0;
+  var daysOpen=fe?daysDiff(fe,today()):0,daysLate=isL?daysDiff(fp2,today()):0;
   var totalCant=parts.reduce(function(s,p){return s+(parseInt(p.CANT)||0);},0);
   var arts=getArts(op);
   var mf=pd(mnetFecha(op));
@@ -428,9 +427,8 @@ function showDetail(op){
     '<div class="dr"><span class="dk">Fecha emisión</span><span>'+fd(fe)+'</span></div>'+
     '<div class="dr"><span class="dk">D\u00edas abierta</span><span style="font-weight:600;color:'+(daysOpen>180?'var(--danger)':daysOpen>60?'var(--accent4)':'var(--muted)')+'">'+daysOpen+' d\u00edas</span></div>'+
     
-    '<div class="dr"><span class="dk">Fecha de entrega</span><span style="color:'+(isL?'var(--danger)':'var(--accent3)')+';font-weight:700">'+fd(fp)+(isL?' \u2014 '+daysLate+' d\u00eda'+(daysLate!==1?'s':'')+' vencido':'')+'</span></div>'+
+    '<div class="dr"><span class="dk">Fecha de entrega</span><span style="color:'+(isL?'var(--danger)':'var(--accent3)')+';font-weight:700">'+fd(fp2)+(isL?' \u2014 '+daysLate+' d\u00eda'+(daysLate!==1?'s':'')+' vencido':'')+(isEdited?' <span class="badge" style="background:rgba(255,209,102,.15);color:var(--accent4);margin-left:4px">EDITADA</span>':'')+'</span></div>'+
     '<div class="dr"><span class="dk">Fecha promesa entrega en OP</span><span style="font-weight:600">'+(fd(pd(r.FProm))||'--')+'</span></div>'+
-    '<div class="dr"><span class="dk">Fecha de producci\u00f3n (Fprod)</span><span style="font-weight:700">'+fd(pd(r.Fprod))+(isEdited?' <span class="badge" style="background:rgba(255,209,102,.15);color:var(--accent4);margin-left:4px">EDITADA</span>':'')+'</span></div>'+
     '<div class="dr"><span class="dk">Estado</span><span>'+sb(r.XSTATUS)+'</span></div>'+
     (EDITOR_MODE?
       '<div style="margin-top:10px;padding-top:10px;border-top:1px dashed var(--border)">'+
@@ -805,6 +803,11 @@ function renderTable(){
   }).join('');
 }
 
+function scrollGanttToday(){
+  var el=document.getElementById('ganttScroll');
+  if(!el)return;
+  el.scrollTo({left:Math.max(0,(window._ganttTodayOffset-7)*window._ganttDayW),behavior:'smooth'});
+}
 function renderGantt(){
   var src=activeData().filter(function(r){var fe=pd(r.FEMIT);return !fe||daysDiff(fe,today())<=100;});
   var _activeOPs=new Set(src.map(function(r){return String(r.OP);}));
@@ -818,7 +821,8 @@ function renderGantt(){
   var maxD=new Date(Math.max.apply(null,allDates));
   minD.setDate(minD.getDate()-2);maxD.setDate(maxD.getDate()+5);
   var totalDays=Math.round((maxD-minD)/(1000*60*60*24))+1;
-  var dayW=32,LABEL_W=180,ROW_H=30,AREA_H=28,SUB_H=22,H1=26,H2=22;
+  var _mobileGantt=window.innerWidth<700;
+  var dayW=_mobileGantt?22:32,LABEL_W=_mobileGantt?110:180,ROW_H=30,AREA_H=28,SUB_H=22,H1=26,H2=22;
   var days=[];
   for(var i=0;i<totalDays;i++){var d=new Date(minD);d.setDate(d.getDate()+i);days.push(d);}
   var todayOffset=daysDiff(minD,T);
@@ -844,14 +848,14 @@ function renderGantt(){
   mGroups.forEach(function(g){mRowHtml+='<th colspan="'+g.count+'" style="height:'+H1+'px;text-align:center;font-size:11px;font-weight:700;color:var(--text);border-right:none;border-bottom:1px solid var(--border);background:var(--bg);white-space:nowrap;overflow:hidden;padding:0 4px">'+g.label+'</th>';});
   mRowHtml+='</tr>';
   var dRowHtml='<tr style="background:var(--bg)"><th style="width:'+LABEL_W+'px;height:'+H2+'px;background:var(--bg);border-bottom:2px solid var(--border);border-right:1px solid var(--border);position:sticky;left:0;z-index:11"></th>';
-  days.forEach(function(d){var isT=d.toDateString()===T.toDateString(),isWk=d.getDay()===0||d.getDay()===6;dRowHtml+='<th style="width:'+dayW+'px;height:'+H2+'px;text-align:center;font-size:10px;font-weight:'+(isT?'700':'400')+';color:'+(isT?'#34d399':'var(--muted)')+';background:'+(isT?'rgba(52,211,153,.12)':isWk?'rgba(255,255,255,.03)':'var(--bg)')+';border-bottom:2px solid var(--border)">'+d.getDate()+'</th>';});
+  days.forEach(function(d){var isT=d.toDateString()===T.toDateString(),isWk=d.getDay()===0||d.getDay()===6;dRowHtml+='<th style="width:'+dayW+'px;height:'+H2+'px;text-align:center;font-size:10px;font-weight:'+(isT?'700':'400')+';color:'+(isT?'#34d399':'var(--muted)')+';background:'+(isT?'rgba(52,211,153,.12)':isWk?'rgba(255,255,255,.03)':'var(--bg)')+';border-bottom:2px solid var(--border);scroll-snap-align:start">'+d.getDate()+'</th>';});
   dRowHtml+='</tr>';
   var bodyRows='';
   var _aOrder=['Disco','Aros','Telar','Varios','ALMC'];
   var _sortedAreas=_aOrder.filter(function(a){return areaMap[a];}).concat(Object.keys(areaMap).filter(function(a){return _aOrder.indexOf(a)===-1&&areaMap[a];}));
   _sortedAreas.forEach(function(area){
     var subs=areaMap[area],col=ac(area);
-    bodyRows+='<tr><td style="height:'+AREA_H+'px;padding:0 10px;font-size:11px;font-weight:700;color:'+col+';border-bottom:1px solid var(--border);background:var(--surface);position:sticky;left:0;z-index:2;box-shadow:3px 0 6px rgba(0,0,0,.4);white-space:nowrap"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:'+col+';margin-right:6px;vertical-align:middle"></span>'+area+'</td>';
+    bodyRows+='<tr><td style="height:'+AREA_H+'px;padding:0 10px;font-size:11px;font-weight:700;color:'+col+';border-bottom:1px solid var(--border);background:var(--surface);position:sticky;left:0;z-index:2;box-shadow:3px 0 6px rgba(0,0,0,.4);white-space:nowrap;overflow:hidden;text-overflow:ellipsis"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:'+col+';margin-right:6px;vertical-align:middle"></span>'+area+'</td>';
     bodyRows+='<td colspan="'+totalDays+'" style="height:'+AREA_H+'px;background:rgba(59,130,246,.03);border-bottom:1px solid var(--border);position:relative">'+wkBands()+todayLine()+'</td></tr>';
     var _subOrder=['Disco','Pack','Manual','Riñon','Oblongo/Manual','Riñon/Manual','Oblongo','Pack Rect / Manual','Tiras','Tapas','Armar','Tubular','Tubulares','Remallado','Criba','Eliminador','Placa filtrante','Embolsados','Nuevo'];
   var _subsKeys=_subOrder.filter(function(s){return subs[s];}).concat(Object.keys(subs).filter(function(s){return _subOrder.indexOf(s)===-1&&subs[s];}));
@@ -868,7 +872,7 @@ function renderGantt(){
       },0);
       var _unit=_isPack?' gol.':' pzas';
       var _totStr=_tot>0?' <span style="font-weight:600;opacity:.75;font-size:10px;color:var(--muted)">('+fmtNum(_tot)+_unit+')</span>':'';
-      bodyRows+='<tr><td style="height:'+SUB_H+'px;padding:0 10px 0 20px;font-size:10px;font-weight:600;color:var(--muted);border-bottom:1px solid rgba(255,255,255,.04);background:var(--surface);position:sticky;left:0;z-index:2;box-shadow:3px 0 6px rgba(0,0,0,.4);white-space:nowrap;display:flex;align-items:center;">'+subIcon(se[0],area)+sub+_totStr+'</td>';
+      bodyRows+='<tr><td style="height:'+SUB_H+'px;padding:0 10px 0 20px;font-size:10px;font-weight:600;color:var(--muted);border-bottom:1px solid rgba(255,255,255,.04);background:var(--surface);position:sticky;left:0;z-index:2;box-shadow:3px 0 6px rgba(0,0,0,.4);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:flex;align-items:center;">'+subIcon(se[0],area)+sub+_totStr+'</td>';
       bodyRows+='<td colspan="'+totalDays+'" style="height:'+SUB_H+'px;background:rgba(255,255,255,.01);border-bottom:1px solid rgba(255,255,255,.04);position:relative">'+wkBands()+todayLine()+'</td></tr>';
       ops.forEach(function(r){
         var fe=pd(r.FVALE),fp=pd(r.Fprod||r.FProm);
@@ -896,8 +900,12 @@ function renderGantt(){
       });
     });
   });
-  container.innerHTML='<div style="font-size:10px;color:var(--muted);margin-bottom:8px">'+src.length+' OP abiertas (vigentes y vencidas recientes)</div>'+
-    '<div id="ganttScroll" style="overflow:auto;border:1px solid var(--border);border-radius:12px;background:var(--surface)">'+
+  window._ganttTodayOffset=todayOffset;window._ganttDayW=dayW;
+  container.innerHTML='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">'+
+    '<div style="font-size:10px;color:var(--muted)">'+src.length+' OP abiertas (vigentes y vencidas recientes)</div>'+
+    '<button onclick="scrollGanttToday()" style="background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:3px 10px;font-size:11px;font-weight:600;cursor:pointer">Hoy</button>'+
+    '</div>'+
+    '<div id="ganttScroll" style="overflow:auto;border:1px solid var(--border);border-radius:12px;background:var(--surface);scroll-snap-type:x proximity;-webkit-overflow-scrolling:touch">'+
     '<table style="border-collapse:separate;border-spacing:0;table-layout:fixed;width:'+totalW+'px">'+
     '<thead style="position:sticky;top:0;z-index:10;box-shadow:0 3px 8px rgba(0,0,0,.5)">'+mRowHtml+dRowHtml+'</thead>'+
     '<tbody>'+bodyRows+'</tbody></table></div>';
