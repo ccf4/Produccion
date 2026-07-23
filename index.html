@@ -905,15 +905,17 @@ function renderGantt(){
     '<div style="font-size:10px;color:var(--muted)">'+src.length+' OP abiertas (vigentes y vencidas recientes)</div>'+
     '<button onclick="scrollGanttToday()" style="background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:3px 10px;font-size:11px;font-weight:600;cursor:pointer">Hoy</button>'+
     '</div>'+
-    '<div id="ganttScroll" style="overflow:auto;border:1px solid var(--border);border-radius:12px;background:var(--surface);scroll-snap-type:x proximity">'+
+    '<div id="ganttScroll" style="overflow-x:auto;overflow-y:'+(_mobileGantt?'visible':'auto')+';border:1px solid var(--border);border-radius:12px;background:var(--surface);scroll-snap-type:x proximity">'+
     '<table style="border-collapse:separate;border-spacing:0;table-layout:fixed;width:'+totalW+'px">'+
     '<thead style="position:sticky;top:0;z-index:10;box-shadow:0 3px 8px rgba(0,0,0,.5)">'+mRowHtml+dRowHtml+'</thead>'+
     '<tbody>'+bodyRows+'</tbody></table></div>';
   setTimeout(function(){
     var el=document.getElementById('ganttScroll');
     if(el){
-      var rect=el.getBoundingClientRect();
-      el.style.maxHeight=(window.innerHeight-rect.top-16)+'px';
+      if(!_mobileGantt){
+        var rect=el.getBoundingClientRect();
+        el.style.maxHeight=(window.innerHeight-rect.top-16)+'px';
+      }
       el.scrollLeft=Math.max(0,(todayOffset-7)*dayW);
       el.addEventListener('scroll',function(){
         var sl=el.scrollLeft;
