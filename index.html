@@ -148,9 +148,9 @@ select{background:var(--surface2);border:1px solid var(--border);color:var(--tex
     <div class="st"><span class="dot" style="background:var(--danger)"></span>Reprogramadas y vencidas<span id="lc" style="font-size:11px;color:var(--muted);font-weight:400"></span></div>
     <div class="card"><div class="card-body" id="lo" style="padding:12px"></div></div>
     <div class="wknav" style="margin-top:20px">
-      <button class="nb" id="btnP" onclick="changeWeek(-1)">anterior</button>
+      <button class="nb" id="btnP" onclick="changeWeek(-1)">semana anterior</button>
       <div class="nwl" id="pl">--</div>
-      <button class="nb" id="btnN" onclick="changeWeek(1)">siguiente</button>
+      <button class="nb" id="btnN" onclick="changeWeek(1)">semana siguiente</button>
     </div>
     <div class="st"><span class="dot" style="background:var(--accent)"></span><span id="wgTitle">Entregas programadas</span><span id="wc" style="font-size:11px;color:var(--muted);font-weight:400"></span></div>
     <div class="card"><div class="card-body" style="padding:12px"><div style="overflow-x:auto"><div id="wg"></div></div></div></div>
@@ -488,7 +488,7 @@ function buildGrid(WS,gridId,countId,sumId){
   var mnetTypes=[...new Set(mnetOps.map(function(m){return mnetTipo(m.ARTICULO);}))];
   var noWorkDays=['2026-04-01','2026-04-02','2026-04-03'];
   if(!areas.length&&!mnetOps.length){
-    document.getElementById(gridId).innerHTML='<div style="color:var(--muted);font-size:12px;padding:16px 0">Sin ordenes con FProm esta semana.</div>';
+    document.getElementById(gridId).innerHTML='<div style="color:var(--muted);font-size:12px;padding:16px 0">Fin órdenes pendientes esta semana.</div>';
     if(sumId)document.getElementById(sumId).innerHTML='';
     return;
   }
