@@ -265,11 +265,83 @@ function mdyFromIso(s){
   var p=s.split('-');
   return (parseInt(p[1]))+'/'+(parseInt(p[2]))+'/'+p[0];
 }
+function todayIso(){
+  var t=today();
+  return t.getFullYear()+'-'+String(t.getMonth()+1).padStart(2,'0')+'-'+String(t.getDate()).padStart(2,'0');
+}
 function applyOverrides(){
   Object.keys(OVERRIDES).forEach(function(op){
     var fecha=OVERRIDES[op];
     RAW.forEach(function(r){ if(String(r.OP)===String(op)) r.Fprod=fecha; });
   });
+}
+
+// ===== Cierres de OP en vivo (sin pasar por chat) =====
+// Igual que OVERRIDES pero para marcar una OP completa como entregada
+// (STATUS V->T, FTERM=fecha). Es permanente: STATUS=T siempre le gana a un
+// V que venga del PROD.xlsx en el refresh semanal, asi que no hace falta
+// resetear cierres.json cada semana (a diferencia de overrides.json).
+var CIERRES = {};
+function applyCierres(){
+  Object.keys(CIERRES).forEach(function(op){
+    var info=CIERRES[op];
+    RAW.forEach(function(r){
+      if(String(r.OP)===String(op)&&r.STATUS==='V'){
+        r.STATUS='T';
+        r.FTERM=info.fecha;
+      }
+    });
+  });
+  updateEntregasHeader();
+}
+function updateEntregasHeader(){
+  var latest=null;
+  Object.keys(CIERRES).forEach(function(op){
+    var ts=CIERRES[op].timestamp;
+    if(ts&&(!latest||ts>latest))latest=ts;
+  });
+  if(!latest)return;
+  var d=new Date(latest);
+  var utcMs=d.getTime()+d.getTimezoneOffset()*60000;
+  var mx=new Date(utcMs+(-6*3600*1000));
+  var meses=['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
+  var dd=String(mx.getDate()).padStart(2,'0'),mmm=meses[mx.getMonth()],yy=String(mx.getFullYear()).slice(-2);
+  var hh=String(mx.getHours()).padStart(2,'0'),mi=String(mx.getMinutes()).padStart(2,'0');
+  var rows=document.querySelectorAll('.entregas-row');
+  if(rows.length>=3){rows[1].textContent=dd+'/'+mmm+'/'+yy;rows[2].textContent=hh+':'+mi;}
+}
+function loadCierres(){
+  fetch('https://raw.githubusercontent.com/ccf4/Produccion/main/cierres.json')
+    .then(function(r){return r.ok?r.json():[];})
+    .then(function(arr){
+      (arr||[]).forEach(function(o){CIERRES[String(o.op)]={fecha:o.fecha,timestamp:o.timestamp};});
+      applyCierres();
+      if(document.getElementById('ganttScroll'))renderGantt();
+      renderSemana(today());
+    })
+    .catch(function(){});
+}
+function saveCierre(op){
+  var iso=document.getElementById('cierreFechaInput').value;
+  var pass=document.getElementById('cierrePass').value;
+  var msgEl=document.getElementById('cierreMsg');
+  if(!iso){msgEl.textContent='Selecciona una fecha.';msgEl.style.color='var(--danger)';return;}
+  var cierreFecha=mdyFromIso(iso);
+  msgEl.textContent='Guardando...';msgEl.style.color='var(--muted)';
+  fetch(EDIT_WORKER_URL,{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({op:String(op),cierreFecha:cierreFecha,password:pass})
+  }).then(function(r){return r.text().then(function(t){return {ok:r.ok,text:t};});})
+  .then(function(res){
+    if(!res.ok){msgEl.textContent='Error: '+res.text;msgEl.style.color='var(--danger)';return;}
+    CIERRES[String(op)]={fecha:cierreFecha,timestamp:new Date().toISOString()};
+    applyCierres();
+    msgEl.textContent='OP marcada como entregada.';msgEl.style.color='var(--accent3)';
+    showDetail(op);
+    if(document.getElementById('ganttScroll'))renderGantt();
+    renderSemana(today());
+  }).catch(function(){msgEl.textContent='Error de conexión.';msgEl.style.color='var(--danger)';});
 }
 function loadOverrides(){
   fetch('https://raw.githubusercontent.com/ccf4/Produccion/main/overrides.json')
@@ -438,7 +510,14 @@ function showDetail(op){
         '<div style="display:flex;justify-content:flex-end;margin-top:6px"><button onclick="saveFechaEdit(\''+op+'\')" style="background:var(--accent);color:#fff;border:none;border-radius:6px;padding:6px 14px;font-weight:600;cursor:pointer">Guardar</button></div>'+
         '<div id="editFechaMsg" style="font-size:11px;text-align:right;margin-top:4px;min-height:14px"></div>'+
       '</div>'
-      :'');
+      :(!isTerminated?
+      '<div style="margin-top:10px;padding-top:10px;border-top:1px dashed var(--border)">'+
+        '<div class="dr"><span class="dk">Marcar como entregada</span><span><input type="date" id="cierreFechaInput" value="'+todayIso()+'" style="background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:4px 8px;font-family:inherit"></span></div>'+
+        '<div class="dr"><span class="dk">Contrase\u00f1a</span><span><input type="password" id="cierrePass" style="background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:4px 8px;font-family:inherit;width:120px"></span></div>'+
+        '<div style="display:flex;justify-content:flex-end;margin-top:6px"><button onclick="saveCierre(\''+op+'\')" style="background:var(--accent3);color:#fff;border:none;border-radius:6px;padding:6px 14px;font-weight:600;cursor:pointer">Cerrar OP</button></div>'+
+        '<div id="cierreMsg" style="font-size:11px;text-align:right;margin-top:4px;min-height:14px"></div>'+
+      '</div>'
+      :''));
   document.getElementById('modal').classList.add('open');
 }
 
@@ -1446,6 +1525,7 @@ function init(){
   renderTable();
   renderGantt();
   loadOverrides();
+  loadCierres();
 }
 init();
 </script><div id="op-tooltip"></div><div id="hm-tooltip"></div>
