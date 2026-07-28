@@ -289,6 +289,17 @@ function applyCierres(){
       if(String(r.OP)===String(op)&&r.STATUS==='V'){
         r.STATUS='T';
         r.FTERM=info.fecha;
+        // mover de "abiertas" a "cerradas" para que el calendario y
+        // Cerradas recientemente reflejen el cierre correctamente
+        if(umap[r.OP]===r){
+          delete umap[r.OP];
+          var idx=DATA.indexOf(r);
+          if(idx>=0)DATA.splice(idx,1);
+        }
+        if(!tmap[r.OP]){
+          tmap[r.OP]=r;
+          TERM.push(r);
+        }
       }
     });
   });
