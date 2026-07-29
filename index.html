@@ -406,7 +406,7 @@ function ac(a){return AC[a]||'#888';}
 function subIcon(sub,area){
   var s=normSub(sub)||sub||'';
   if(area==='Aros'&&(sub==='NUEVO'||s==='Nuevo'))s='Nuevo';
-  var aliases={'Tubulares':'Tubular','Ftubo':'Tubular','P.filtrante':'P.Filtrante','Placa filtrante':'P.Filtrante','Aro nuevo':'Nuevo','Armar':'Armar / Puntear','Armar / puntear':'Armar / Puntear','ARILLOS':'Arillos','Arillos':'Arillos','MALLA':'Malla','Malla':'Malla','EMPAQUE':'Nuevo','Empaque':'Nuevo','BANDA':'Banda','Pack / Dona':'Pack','Pack / dona':'Pack','RUMBA':'Rumba'};
+  var aliases={'Tubulares':'Tubular','Ftubo':'Tubular','P.filtrante':'P.Filtrante','Placa filtrante':'P.Filtrante','Aro nuevo':'Nuevo','Armar':'Armar / Puntear','Armar / puntear':'Armar / Puntear','Puntear':'Armar / Puntear','ARILLOS':'Arillos','Arillos':'Arillos','MALLA':'Malla','Malla':'Malla','EMPAQUE':'Nuevo','Empaque':'Nuevo','BANDA':'Banda','Pack / Dona':'Pack','Pack / dona':'Pack','RUMBA':'Rumba'};
   var sUp=s.toUpperCase();
   var key=(s==='Remallado'&&area==='Varios')?'Remallado Varios':
     (sUp.includes('MANUAL')&&sUp!=='MANUAL')?'Manual':
@@ -502,6 +502,7 @@ function showDetail(op){
   var r=DATA.find(function(d){return String(d.OP)===String(op);})||TERM.find(function(d){return String(d.OP)===String(op);});
   if(!r)return;
   var parts=RAW.filter(function(d){return String(d.OP)===String(op);});
+  parts.sort(function(a,b){return (parseInt((a.PART||'0/0').split('/')[0])||0)-(parseInt((b.PART||'0/0').split('/')[0])||0);});
   var fp=pd(r.FProm),fe=pd(r.FEMIT);
   var isTerminated=parts.length>0&&parts.every(function(p){var s=(p.STATUS||'').trim().toUpperCase();return s==='T'||s==='C';});
   var fp2=pd(r.Fprod||r.FProm),isL=!isTerminated&&fp2&&fp2<today();
