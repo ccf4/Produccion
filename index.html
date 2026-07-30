@@ -970,7 +970,7 @@ function renderGantt(){
   _sortedAreas.forEach(function(area){
     var subs=areaMap[area],col=ac(area);
     rows.push({h:AREA_H,pad:'0 10px',flex:false,labelStyle:'font-size:12px;font-weight:700;color:'+col+';',border:'var(--border)',bg:'rgba(59,130,246,.03)',label:'<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:'+col+';margin-right:6px;vertical-align:middle"></span>'+area,content:wkBands()+todayLine()});
-    var _subOrder=['Disco','Pack','Manual','Riñon','Oblongo/Manual','Riñon/Manual','Oblongo','Pack Rect / Manual','Tiras','Tapas','Armar','Tubular','Tubulares','Remallado','Criba','Eliminador','Placa filtrante','Embolsados','Nuevo'];
+    var _subOrder=['Disco','Pack','Manual','Oblongo/Manual','Riñon','Riñon/Manual','Oblongo','Pack Rect / Manual','Tiras','Tapas','Armar','Tubular','Tubulares','Remallado','Criba','Eliminador','Placa filtrante','Embolsados','Nuevo'];
     var _subsKeys=_subOrder.filter(function(s){return subs[s];}).concat(Object.keys(subs).filter(function(s){return _subOrder.indexOf(s)===-1&&subs[s];}));
     _subsKeys.forEach(function(subKey){
       var se=[subKey,subs[subKey]];
