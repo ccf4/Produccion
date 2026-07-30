@@ -604,7 +604,7 @@ function buildGrid(WS,gridId,countId,sumId){
     html+='<div class="week-row" style="min-height:0"><div class="row-label" style="height:22px;min-height:22px;background:rgba(0,0,0,.2);font-size:11px;font-weight:700;color:'+col+'"><span style="width:7px;height:7px;border-radius:50%;background:'+col+';display:inline-block;flex-shrink:0"></span>'+area+'</div>';
     days.forEach(function(dayD){var isT=dayD.toDateString()===T.toDateString();html+='<div class="day-cell '+(isT?'today':'')+'" style="height:22px;min-height:22px;background:rgba(0,0,0,.15)"></div>';});
     html+='</div>';
-    var _subOrd=['Disco','Pack','Manual','Riñon','Oblongo/Manual','Riñon/Manual','Oblongo','Pack Rect / Manual','Tiras','Tapas','Armar','Tubular','Tubulares','Remallado','Empaque','Criba','Eliminador','Placa filtrante','Embolsados','Nuevo'];
+    var _subOrd=['Disco','Pack','Manual','Oblongo/Manual','Riñon','Riñon/Manual','Oblongo','Pack Rect / Manual','Tiras','Tapas','Armar','Tubular','Tubulares','Remallado','Empaque','Criba','Eliminador','Placa filtrante','Embolsados','Nuevo'];
     var subareas=_subOrd.filter(function(s){return areaSubMap[area]&&areaSubMap[area][s];}).concat(Object.keys(areaSubMap[area]||{}).filter(function(s){return _subOrd.indexOf(s)===-1;}));
     subareas.forEach(function(subarea){
       var subInfo=areaSubMap[area][subarea]||{cant:0,golpe:0,opSet:new Set()};
