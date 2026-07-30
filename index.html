@@ -329,7 +329,8 @@ function updateEntregasHeader(){
   var mx=new Date(utcMs+(-6*3600*1000));
   var meses=['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
   var dd=String(mx.getDate()).padStart(2,'0'),mmm=meses[mx.getMonth()],yy=String(mx.getFullYear()).slice(-2);
-  var hh=String(mx.getHours()).padStart(2,'0'),mi=String(mx.getMinutes()).padStart(2,'0');
+  var mi5=Math.floor(mx.getMinutes()/5)*5;
+  var hh=String(mx.getHours()).padStart(2,'0'),mi=String(mi5).padStart(2,'0');
   var rows=document.querySelectorAll('.entregas-row');
   if(rows.length>=3){rows[1].textContent=dd+'/'+mmm+'/'+yy;rows[2].textContent=hh+':'+mi;}
 }
