@@ -723,8 +723,8 @@ function renderSemana(T){
         var meshList=[...new Set(parts.map(function(p){return p.MESH||'';}).filter(Boolean))].join(' \u00b7 ');
         return '<div class="late-card" style="background:rgba(239,68,68,.06);border:1px solid rgba(239,68,68,.2);border-left:4px solid var(--danger)" onclick="showDetail(\''+r.OP+'\')">'+
           '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px"><span style="font-family:IBM Plex Mono,monospace;font-weight:700;font-size:13px">OP '+r.OP+'</span><span style="background:rgba(239,68,68,.15);color:var(--danger);font-size:10px;font-weight:700;padding:2px 7px;border-radius:10px">'+daysLate+' d\u00eda'+(daysLate!==1?'s':'')+' vencido</span></div>'+
+          '<div style="display:flex;align-items:center;gap:4px;font-size:11px;font-weight:700;color:'+ac(r.AREA)+';margin-bottom:4px">'+subIcon(r.SUBAREA,r.AREA)+(r.AREA==='Aros'&&r.SUBAREA==='NUEVO'?'Aro nuevo':r.AREA+' / '+r.SUBAREA)+'</div>'+
           (ped(r.OP)?'<div style="font-size:9px;color:var(--accent4);font-family:IBM Plex Mono,monospace;margin-bottom:4px">'+ped(r.OP)+'</div>':'')+
-          '<div style="display:flex;align-items:center;gap:4px;font-size:11px;font-weight:700;color:'+ac(r.AREA)+';margin-bottom:3px">'+subIcon(r.SUBAREA,r.AREA)+(r.AREA==='Aros'&&r.SUBAREA==='NUEVO'?'Aro nuevo':r.AREA+' / '+r.SUBAREA)+'</div>'+
           '<div style="font-size:10px;color:var(--muted);margin-bottom:6px">'+fmtNum(totalCant)+' pzas \u00b7 '+(r.MAT||'--')+(meshList?' \u00b7 '+meshList:'')+'</div>'+
           '<div style="display:flex;justify-content:space-between;font-size:10px;font-family:IBM Plex Mono,monospace"><span style="color:var(--muted)">Emitida: '+fd(fe)+'</span><span style="color:var(--danger);font-weight:600">FProm: '+fd(fp)+'</span></div></div>';
       }).join('')+'</div>';
@@ -818,9 +818,9 @@ function renderSemana(T){
         var areaSubLabel=r._scope==='area'?r._area:((r._area==='Aros'&&(r._sub==='NUEVO'||subDisp==='Nuevo'))?'Aro nuevo':r._area+' / '+subDisp);
         return '<div class="late-card" style="background:'+cardBg+';border:1px solid '+cardBorder+';border-left:4px solid '+cardAccent+'" onclick="showDetail(\''+opId+'\')">'+
           '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px"><span style="font-family:IBM Plex Mono,monospace;font-weight:700;font-size:13px">OP '+opId+'</span><span style="background:'+badgeBg+';color:'+badgeColor+';font-size:10px;font-weight:700;padding:2px 7px;border-radius:10px">'+badgeText+'</span></div>'+
+          '<div style="display:flex;align-items:center;gap:4px;font-size:11px;font-weight:700;color:'+ac(r._area)+';margin-bottom:4px">'+(r._scope==='area'&&r._subs&&r._subs.length>1?r._subs.map(function(sk){return subIcon(sk,r._area);}).join('')+areaSubLabel:subIcon(r._sub||r._area,r._area)+areaSubLabel)+'</div>'+
           (ped(opId)?'<div style="font-size:9px;color:var(--accent4);font-family:IBM Plex Mono,monospace;margin-bottom:4px">'+ped(opId)+'</div>':'')+
           (arts.length?'<div style="font-size:10px;font-weight:600;margin-bottom:4px">'+(arts[0]||'').slice(0,60)+'</div>':'')+
-          '<div style="display:flex;align-items:center;gap:4px;font-size:11px;font-weight:700;color:'+ac(r._area)+';margin-bottom:3px">'+(r._scope==='area'&&r._subs&&r._subs.length>1?r._subs.map(function(sk){return subIcon(sk,r._area);}).join('')+areaSubLabel:subIcon(r._sub||r._area,r._area)+areaSubLabel)+'</div>'+
           '<div style="font-size:10px;color:var(--muted)">'+pzasText+' \u00b7 '+((rparts[0]&&rparts[0].MAT)||ref.MAT||'--')+'</div>'+
           '</div>';
       }).join('')+'</div>';
@@ -941,21 +941,26 @@ function subSparklineHtml(weeks,tot,col,unit){
   var maxV=Math.max.apply(null,weeks.map(function(w){return w.val;}).concat([tot,1]));
   var bars=weeks.map(function(w){
     var h=Math.max(2,Math.round((w.val/maxV)*14));
-    var lbl=fmtWeekShort(w.ws)+'\u2013'+fmtWeekShort(w.we);
-    var valStr=fmtNum(w.val)+unit+' terminadas';
-    return '<div data-spark-label="'+lbl+'" data-spark-val="'+valStr+'" onmouseenter="showSparkTip(this)" onmouseleave="hideHmTip()" onmousemove="moveHmStripTip(event)" style="width:5px;height:'+h+'px;background:'+col+'75;border-radius:1px;cursor:default;"></div>';
+    return '<div style="width:5px;height:'+h+'px;background:'+col+'75;border-radius:1px;"></div>';
   }).join('');
   var hCur=Math.max(2,Math.round((tot/maxV)*14));
-  var curValStr='Pendiente actual: '+fmtNum(tot)+unit;
-  bars+='<div data-spark-label="" data-spark-val="'+curValStr+'" onmouseenter="showSparkTip(this)" onmouseleave="hideHmTip()" onmousemove="moveHmStripTip(event)" style="width:5px;height:'+hCur+'px;background:'+col+';border-radius:1px;cursor:default;"></div>';
+  bars+='<div style="width:5px;height:'+hCur+'px;background:'+col+';border-radius:1px;"></div>';
   var totLabel=tot>0?'<span style="font-size:9px;color:'+col+';font-family:\'IBM Plex Mono\',monospace;margin-left:4px;white-space:nowrap;">('+fmtNum(tot)+unit+')</span>':'';
-  return '<div style="display:flex;align-items:flex-end;gap:2px;height:14px;margin-top:3px;">'+bars+totLabel+'</div>';
+  var tableRows=weeks.map(function(w){
+    return {l:fmtWeekShort(w.ws)+'\u2013'+fmtWeekShort(w.we),v:fmtNum(w.val)+unit};
+  });
+  tableRows.push({l:'Pendiente actual',v:fmtNum(tot)+unit,cur:true});
+  var payload=encodeURIComponent(JSON.stringify(tableRows));
+  return '<div data-spark-table="'+payload+'" onmouseenter="showSparkTip(this)" onmouseleave="hideHmTip()" onmousemove="moveHmStripTip(event)" style="display:flex;align-items:flex-end;gap:2px;height:14px;margin-top:3px;cursor:default;">'+bars+totLabel+'</div>';
 }
 function showSparkTip(el){
   if(!_hmTT)_hmTT=document.getElementById('hm-tooltip');
   if(!_hmTT)return;
-  var lbl=el.getAttribute('data-spark-label'),val=el.getAttribute('data-spark-val');
-  _hmTT.innerHTML=(lbl?'<div style="color:var(--muted);font-size:10px;margin-bottom:3px">'+lbl+'</div>':'')+'<div style="color:var(--text);font-size:12px;font-weight:600">'+val+'</div>';
+  var data=JSON.parse(decodeURIComponent(el.getAttribute('data-spark-table')));
+  var rows=data.map(function(d){
+    return '<div style="display:flex;justify-content:space-between;gap:14px;font-size:10px;padding:2px 0;'+(d.cur?'border-top:1px solid var(--border);margin-top:3px;padding-top:5px;font-weight:700;color:var(--text)':'color:var(--muted)')+'"><span>'+d.l+'</span><span style="font-family:\'IBM Plex Mono\',monospace">'+d.v+'</span></div>';
+  }).join('');
+  _hmTT.innerHTML=rows;
   _hmTT.style.display='block';
   _hmTT.style.left='-9999px';_hmTT.style.top='-9999px';
 }
