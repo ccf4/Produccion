@@ -157,7 +157,7 @@ select{background:var(--surface2);border:1px solid var(--border);color:var(--tex
 </div>
 <main>
   <div class="view" id="view-semana">
-    <div class="st"><span class="dot" style="background:var(--danger)"></span>Reprogramadas y vencidas<span id="lc" style="font-size:11px;color:var(--muted);font-weight:400"></span></div>
+    <div class="st"><span class="dot" style="background:var(--danger)"></span>Reprogramadas y vencidas<span id="lc" style="font-size:11px;color:var(--muted);font-weight:400"></span><button onclick="enviarResumenCorreo()" style="margin-left:auto;background:var(--surface2);border:1px solid var(--border);color:var(--muted);border-radius:6px;padding:4px 10px;font-size:11px;cursor:pointer;font-weight:400">&#9993; Enviar resumen</button></div>
     <div class="card"><div class="card-body" id="lo" style="padding:12px"></div></div>
     <div class="wknav" style="margin-top:20px">
       <button class="nb" id="btnP" onclick="changeWeek(-1)">semana anterior</button>
@@ -403,6 +403,80 @@ function saveFechaEdit(op){
 
 // ===== Alta de OP rápida vía web (nueva OP + cierre inmediato) =====
 var RAPIDA_SUBS=['Arillos','Armar / puntear','Banda','Criba','Disco','Eliminador','Embolsados','Empaque','Malla','Manual','Nuevo','Oblongo','Oblongo / manual','Pack','Pack / dona','Pack / manual','Packs rectangulares','Placa filtrante','Puntear','Remallado','Riñon / manual','Rumba','Tiras','Tiras / manual','Tubular','Tubulares'];
+// ===== Envío de resumen por correo (vencidas + nueva fecha + cerradas recientes) =====
+var CORREO_DESTINATARIOS=[]; // pendiente: lista de correos a definir con Chato
+function buildResumenMailto(){
+  var T=today();
+  var src=activeData().filter(function(d){var fe=pd(d.FEMIT);return !fe||Math.floor((T-fe)/86400000)<=100;});
+  var seen1={};
+  var late=src.filter(function(d){var p=pd(d.Fprod||d.FProm);if(!p||p>=T)return false;if(seen1[d.OP])return false;seen1[d.OP]=true;return true;});
+  late.sort(function(a,b){var fa=pd(a.Fprod||a.FProm),fb=pd(b.Fprod||b.FProm);return (fa||new Date(0))-(fb||new Date(0));});
+  var seen2={};
+  var mnetWarn=src.filter(function(d){
+    if(seen1[d.OP]||seen2[d.OP])return false;
+    var fpr=pd(d.Fprod||d.FProm);if(!fpr||fpr<T)return false;
+    var fp0=pd(d.FProm);if(!fp0||fp0>=T)return false;
+    seen2[d.OP]=true;return true;
+  });
+  mnetWarn.sort(function(a,b){var fa=pd(a.Fprod||a.FProm),fb=pd(b.Fprod||b.FProm);return (fa||new Date(0))-(fb||new Date(0));});
+  var bizD=0,bizCur=new Date(T);
+  while(bizD<5){bizCur.setDate(bizCur.getDate()-1);var dow=bizCur.getDay();if(dow!==0&&dow!==6)bizD++;}
+  var cutoff=bizCur,seenClosed={},closedRecent=[];
+  TERM.forEach(function(r){
+    if(r.STATUS==='C')return;
+    var ft=pd(r.FTERM);
+    if(!ft||ft<cutoff||ft>T)return;
+    if(seenClosed[r.OP])return;
+    seenClosed[r.OP]=true;
+    closedRecent.push(r);
+  });
+  closedRecent.sort(function(a,b){return (pd(b.FTERM)||new Date(0))-(pd(a.FTERM)||new Date(0));});
+
+  function lineaOP(r,extra){
+    var parts=RAW.filter(function(x){return String(x.OP)===String(r.OP);});
+    var totalCant=parts.reduce(function(s,p){return s+(parseInt(p.CANT)||0);},0);
+    var subDisp=(r.AREA==='Aros'&&r.SUBAREA==='NUEVO')?'Aro nuevo':(normSub(r.SUBAREA)||r.SUBAREA);
+    return 'OP '+r.OP+' \u00b7 '+r.AREA+' / '+subDisp+' \u00b7 '+fmtNum(totalCant)+' pzas'+(extra?' \u00b7 '+extra:'');
+  }
+
+  var lines=[];
+  lines.push('RESUMEN DE PRODUCCI\u00d3N \u2014 '+fd(T));
+  lines.push('');
+  lines.push('VENCIDAS ('+late.length+')');
+  lines.push('------------------------');
+  if(!late.length)lines.push('Sin \u00f3rdenes vencidas.');
+  late.forEach(function(r){
+    var fp=pd(r.Fprod||r.FProm),daysLate=fp?daysDiff(fp,T):0;
+    lines.push(lineaOP(r,daysLate+' d\u00eda'+(daysLate!==1?'s':'')+' vencido, FProm: '+fd(fp)));
+  });
+  lines.push('');
+  lines.push('CON NUEVA FECHA DE ENTREGA ('+mnetWarn.length+')');
+  lines.push('------------------------');
+  if(!mnetWarn.length)lines.push('Sin \u00f3rdenes con cambio de fecha.');
+  mnetWarn.forEach(function(r){
+    var fp0=pd(r.FProm),fprod=pd(r.Fprod||r.FProm);
+    lines.push(lineaOP(r,'fecha original: '+fd(fp0)+', nueva fecha: '+fd(fprod)));
+  });
+  lines.push('');
+  lines.push('CERRADAS RECIENTEMENTE ('+closedRecent.length+')');
+  lines.push('------------------------');
+  if(!closedRecent.length)lines.push('Sin \u00f3rdenes cerradas recientemente.');
+  closedRecent.forEach(function(r){
+    lines.push(lineaOP(r,'entregado: '+fd(pd(r.FTERM))));
+  });
+  lines.push('');
+  lines.push('\u2014 Generado autom\u00e1ticamente desde el panel de producci\u00f3n.');
+
+  var subject='Resumen de producci\u00f3n \u2014 '+fd(T);
+  var body=lines.join('\n');
+  var to=CORREO_DESTINATARIOS.join(',');
+  return 'mailto:'+to+'?subject='+encodeURIComponent(subject)+'&body='+encodeURIComponent(body);
+}
+function enviarResumenCorreo(){
+  window.location.href=buildResumenMailto();
+}
+
+
 var _rapidaPartidas=[{cant:'',troquel:'',mesh:''}];
 function showRapidaForm(){
   _rapidaPartidas=[{cant:'',troquel:'',mesh:''}];
@@ -1238,14 +1312,19 @@ const HIST_2025_RAW={
   // Sin histórico 2025 real todavía — placeholder en cero para no romper el cálculo de cuellos/sparkline.
   // Cuando Chato pase las cifras reales, reemplazar estos arreglos.
   ARILLOS:   [0,0,0,0,0,0,0,0,0,0,0,0],
-  MANUAL:    [0,0,0,0,0,0,0,0,0,0,0,0]
+  EMPAQUE:   [0,0,0,0,0,0,0,0,0,0,0,0],
+  NUEVO:     [0,0,0,0,0,0,0,0,0,0,0,0],
+  ARMAR:     [0,0,0,0,0,0,0,0,0,0,0,0],
+  TIRAS:     [0,0,0,0,0,0,0,0,0,0,0,0],
+  MANUAL:    [0,0,0,0,0,0,0,0,0,0,0,0],
+  EMBOLSADOS:[0,0,0,0,0,0,0,0,0,0,0,0]
 };
 const PACKS_PIEZA_A_GOLPE=2.5;
 const HIST_2025=Object.keys(HIST_2025_RAW).reduce(function(acc,k){
   acc[k]=(k==='PACKS')?HIST_2025_RAW[k].map(function(v){return Math.round(v*PACKS_PIEZA_A_GOLPE);}):HIST_2025_RAW[k];
   return acc;
 },{});
-const HIST_LABELS=['DISCOS','PACKS','TUBULAR','OBLONGO','REMALLADO','CRIBA','ELIMINADOR','ARILLOS','MANUAL'];
+const HIST_LABELS=['DISCOS','PACKS','TUBULAR','OBLONGO','REMALLADO','CRIBA','ELIMINADOR','ARILLOS','EMPAQUE','NUEVO','ARMAR','TIRAS','MANUAL','EMBOLSADOS'];
 const CARGA_UMBRALES=[1,3,5];
 const MES_NAMES=['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
 const DIAS_LIMITE_TUBULAR=100; // OPs de Tubular abiertas más de N días = casos especiales (fuera de cálculo)
@@ -1261,11 +1340,16 @@ function mapSubToHist(sub){
   if(s.indexOf('pack')>=0)return 'PACKS';
   if(s.indexOf('tubul')>=0||s.indexOf('ftubo')>=0)return 'TUBULAR';
   if(s.indexOf('oblongo')>=0)return 'OBLONGO';
-  if(s.indexOf('remalla')>=0||s.indexOf('nuevo')>=0)return 'REMALLADO';
+  if(s.indexOf('remalla')>=0)return 'REMALLADO';
   if(s.indexOf('criba')>=0)return 'CRIBA';
   if(s.indexOf('elimin')>=0)return 'ELIMINADOR';
   if(s.indexOf('arillo')>=0)return 'ARILLOS';
+  if(s.indexOf('empaque')>=0)return 'EMPAQUE';
+  if(s.indexOf('nuevo')>=0)return 'NUEVO';
+  if(s.indexOf('armar')>=0||s.indexOf('puntear')>=0)return 'ARMAR';
+  if(s.indexOf('tiras')>=0)return 'TIRAS';
   if(s.indexOf('manual')>=0)return 'MANUAL';
+  if(s.indexOf('embolsado')>=0)return 'EMBOLSADOS';
   return null;
 }
 
