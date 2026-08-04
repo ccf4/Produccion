@@ -941,14 +941,23 @@ function subSparklineHtml(weeks,tot,col,unit){
   var maxV=Math.max.apply(null,weeks.map(function(w){return w.val;}).concat([tot,1]));
   var bars=weeks.map(function(w){
     var h=Math.max(2,Math.round((w.val/maxV)*14));
-    var ttl=fmtWeekShort(w.ws)+'\u2013'+fmtWeekShort(w.we)+': '+fmtNum(w.val)+unit+' terminadas';
-    return '<div title="'+ttl+'" style="width:5px;height:'+h+'px;background:'+col+'75;border-radius:1px;cursor:default;"></div>';
+    var lbl=fmtWeekShort(w.ws)+'\u2013'+fmtWeekShort(w.we);
+    var valStr=fmtNum(w.val)+unit+' terminadas';
+    return '<div data-spark-label="'+lbl+'" data-spark-val="'+valStr+'" onmouseenter="showSparkTip(this)" onmouseleave="hideHmTip()" onmousemove="moveHmStripTip(event)" style="width:5px;height:'+h+'px;background:'+col+'75;border-radius:1px;cursor:default;"></div>';
   }).join('');
   var hCur=Math.max(2,Math.round((tot/maxV)*14));
-  var ttlCur='Pendiente actual: '+fmtNum(tot)+unit;
-  bars+='<div title="'+ttlCur+'" style="width:5px;height:'+hCur+'px;background:'+col+';border-radius:1px;cursor:default;"></div>';
+  var curValStr='Pendiente actual: '+fmtNum(tot)+unit;
+  bars+='<div data-spark-label="" data-spark-val="'+curValStr+'" onmouseenter="showSparkTip(this)" onmouseleave="hideHmTip()" onmousemove="moveHmStripTip(event)" style="width:5px;height:'+hCur+'px;background:'+col+';border-radius:1px;cursor:default;"></div>';
   var totLabel=tot>0?'<span style="font-size:9px;color:'+col+';font-family:\'IBM Plex Mono\',monospace;margin-left:4px;white-space:nowrap;">('+fmtNum(tot)+unit+')</span>':'';
   return '<div style="display:flex;align-items:flex-end;gap:2px;height:14px;margin-top:3px;">'+bars+totLabel+'</div>';
+}
+function showSparkTip(el){
+  if(!_hmTT)_hmTT=document.getElementById('hm-tooltip');
+  if(!_hmTT)return;
+  var lbl=el.getAttribute('data-spark-label'),val=el.getAttribute('data-spark-val');
+  _hmTT.innerHTML=(lbl?'<div style="color:var(--muted);font-size:10px;margin-bottom:3px">'+lbl+'</div>':'')+'<div style="color:var(--text);font-size:12px;font-weight:600">'+val+'</div>';
+  _hmTT.style.display='block';
+  _hmTT.style.left='-9999px';_hmTT.style.top='-9999px';
 }
 function renderGantt(){
   var src=activeData().filter(function(r){var fe=pd(r.FEMIT);return !fe||daysDiff(fe,today())<=100;});
