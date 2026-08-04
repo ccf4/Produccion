@@ -407,7 +407,7 @@ function ac(a){return AC[a]||'#888';}
 function subIcon(sub,area){
   var s=normSub(sub)||sub||'';
   if(area==='Aros'&&(sub==='NUEVO'||s==='Nuevo'))s='Nuevo';
-  var aliases={'Tubulares':'Tubular','Ftubo':'Tubular','P.filtrante':'P.Filtrante','Placa filtrante':'P.Filtrante','Aro nuevo':'Nuevo','Armar':'Armar / Puntear','Armar / puntear':'Armar / Puntear','Puntear':'Armar / Puntear','ARILLOS':'Arillos','Arillos':'Arillos','MALLA':'Malla','Malla':'Malla','EMPAQUE':'Empaque','Empaque':'Empaque','BANDA':'Banda','Pack / Dona':'Pack','Pack / dona':'Pack','RUMBA':'Rumba'};
+  var aliases={'Tubulares':'Tubular','Ftubo':'Tubular','P.filtrante':'P.Filtrante','Placa filtrante':'P.Filtrante','Aro nuevo':'Nuevo','Armar':'Armar / Puntear','Armar / puntear':'Armar / Puntear','Puntear':'Armar / Puntear','ARILLOS':'Arillos','Arillos':'Arillos','MALLA':'Malla','Malla':'Malla','EMPAQUE':'Empaque','Empaque':'Empaque','BANDA':'Banda','Pack / Dona':'Pack','Pack / dona':'Pack','RUMBA':'Rumba','Packs rectangulares':'Manual'};
   var sUp=s.toUpperCase();
   var key=(s==='Remallado'&&area==='Varios')?'Remallado Varios':
     (sUp.includes('MANUAL')&&sUp!=='MANUAL')?'Manual':
