@@ -1238,19 +1238,14 @@ const HIST_2025_RAW={
   // Sin histórico 2025 real todavía — placeholder en cero para no romper el cálculo de cuellos/sparkline.
   // Cuando Chato pase las cifras reales, reemplazar estos arreglos.
   ARILLOS:   [0,0,0,0,0,0,0,0,0,0,0,0],
-  EMPAQUE:   [0,0,0,0,0,0,0,0,0,0,0,0],
-  NUEVO:     [0,0,0,0,0,0,0,0,0,0,0,0],
-  ARMAR:     [0,0,0,0,0,0,0,0,0,0,0,0],
-  TIRAS:     [0,0,0,0,0,0,0,0,0,0,0,0],
-  MANUAL:    [0,0,0,0,0,0,0,0,0,0,0,0],
-  EMBOLSADOS:[0,0,0,0,0,0,0,0,0,0,0,0]
+  MANUAL:    [0,0,0,0,0,0,0,0,0,0,0,0]
 };
 const PACKS_PIEZA_A_GOLPE=2.5;
 const HIST_2025=Object.keys(HIST_2025_RAW).reduce(function(acc,k){
   acc[k]=(k==='PACKS')?HIST_2025_RAW[k].map(function(v){return Math.round(v*PACKS_PIEZA_A_GOLPE);}):HIST_2025_RAW[k];
   return acc;
 },{});
-const HIST_LABELS=['DISCOS','PACKS','TUBULAR','OBLONGO','REMALLADO','CRIBA','ELIMINADOR','ARILLOS','EMPAQUE','NUEVO','ARMAR','TIRAS','MANUAL','EMBOLSADOS'];
+const HIST_LABELS=['DISCOS','PACKS','TUBULAR','OBLONGO','REMALLADO','CRIBA','ELIMINADOR','ARILLOS','MANUAL'];
 const CARGA_UMBRALES=[1,3,5];
 const MES_NAMES=['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
 const DIAS_LIMITE_TUBULAR=100; // OPs de Tubular abiertas más de N días = casos especiales (fuera de cálculo)
@@ -1266,16 +1261,11 @@ function mapSubToHist(sub){
   if(s.indexOf('pack')>=0)return 'PACKS';
   if(s.indexOf('tubul')>=0||s.indexOf('ftubo')>=0)return 'TUBULAR';
   if(s.indexOf('oblongo')>=0)return 'OBLONGO';
-  if(s.indexOf('remalla')>=0)return 'REMALLADO';
+  if(s.indexOf('remalla')>=0||s.indexOf('nuevo')>=0)return 'REMALLADO';
   if(s.indexOf('criba')>=0)return 'CRIBA';
   if(s.indexOf('elimin')>=0)return 'ELIMINADOR';
   if(s.indexOf('arillo')>=0)return 'ARILLOS';
-  if(s.indexOf('empaque')>=0)return 'EMPAQUE';
-  if(s.indexOf('nuevo')>=0)return 'NUEVO';
-  if(s.indexOf('armar')>=0||s.indexOf('puntear')>=0)return 'ARMAR';
-  if(s.indexOf('tiras')>=0)return 'TIRAS';
   if(s.indexOf('manual')>=0)return 'MANUAL';
-  if(s.indexOf('embolsado')>=0)return 'EMBOLSADOS';
   return null;
 }
 
