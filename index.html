@@ -470,10 +470,32 @@ function buildResumenMailto(){
   var subject='Resumen de producci\u00f3n \u2014 '+fd(T);
   var body=lines.join('\n');
   var to=CORREO_DESTINATARIOS.join(',');
-  return 'mailto:'+to+'?subject='+encodeURIComponent(subject)+'&body='+encodeURIComponent(body);
+  var mailto='mailto:'+to+'?subject='+encodeURIComponent(subject)+'&body='+encodeURIComponent(body);
+  return {subject:subject,body:body,mailto:mailto};
 }
 function enviarResumenCorreo(){
-  window.location.href=buildResumenMailto();
+  var r=buildResumenMailto();
+  document.getElementById('mt').textContent='Resumen de producci\u00f3n';
+  document.getElementById('mb').innerHTML=
+    '<div style="margin-bottom:8px;font-size:11px;color:var(--muted)">Copia este texto y p\u00e9galo en tu correo, o intenta abrirlo directo en tu cliente de correo (si tienes uno configurado).</div>'+
+    '<textarea id="resumenText" readonly style="width:100%;height:280px;background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:8px;font-family:\'IBM Plex Mono\',monospace;font-size:11px;resize:vertical;box-sizing:border-box">'+r.subject+'\n\n'+r.body+'</textarea>'+
+    '<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:10px">'+
+    '<a href="'+r.mailto+'" style="background:var(--surface2);border:1px solid var(--border);color:var(--muted);border-radius:6px;padding:6px 14px;font-size:12px;text-decoration:none">Abrir en cliente de correo</a>'+
+    '<button onclick="copiarResumenCorreo()" style="background:var(--accent3);color:#fff;border:none;border-radius:6px;padding:6px 14px;font-weight:600;cursor:pointer">Copiar texto</button>'+
+    '</div>'+
+    '<div id="resumenCopyMsg" style="font-size:11px;text-align:right;margin-top:6px;min-height:14px"></div>';
+  document.getElementById('modal').classList.add('open');
+}
+function copiarResumenCorreo(){
+  var ta=document.getElementById('resumenText');
+  var msg=document.getElementById('resumenCopyMsg');
+  ta.focus();ta.select();
+  var done=function(){msg.textContent='Copiado \u2713';msg.style.color='var(--accent3)';};
+  if(navigator.clipboard&&navigator.clipboard.writeText){
+    navigator.clipboard.writeText(ta.value).then(done).catch(function(){try{document.execCommand('copy');done();}catch(e){msg.textContent='No se pudo copiar, selecciona el texto manualmente.';msg.style.color='var(--danger)';}});
+  } else {
+    try{document.execCommand('copy');done();}catch(e){msg.textContent='No se pudo copiar, selecciona el texto manualmente.';msg.style.color='var(--danger)';}
+  }
 }
 
 
