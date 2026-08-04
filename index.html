@@ -640,7 +640,12 @@ function buildGrid(WS,gridId,countId,sumId){
       });
       var isGolpeSub=subarea==='Pack';
 var golpeLabel=isGolpeSub?fmtNum(totalGolpesSub)+' golpes':(totalGolpesSub!==totalCantSub?fmtNum(totalCantSub)+' pzas · '+fmtNum(totalGolpesSub)+' golpes':fmtNum(totalCantSub)+' pzas');
-var row='<div class="week-row"><div class="row-label" style="padding-left:10px;font-size:12px;font-weight:700;color:#b0c4de;display:flex;align-items:center;">'+subIcon(subarea,area)+normSub(subarea)+'<span style="font-size:10px;font-weight:600;opacity:.75;margin-left:5px;color:#7a9cc8">('+golpeLabel+')</span></div>';
+var _wkSubKey=normSub(subarea);
+var _wkLastVal=isGolpeSub?totalGolpesSub:totalCantSub;
+var _wkUnit=isGolpeSub?' gol.':' pzas';
+var _wkSums=weeklyTSums(area,_wkSubKey,isGolpeSub,5);
+var _wkSpark=subSparklineHtml(_wkSums,_wkLastVal,col,_wkUnit);
+var row='<div class="week-row"><div class="row-label" style="padding-left:10px;font-size:12px;font-weight:700;color:#b0c4de;"><div style="display:flex;flex-direction:column;gap:1px;overflow:hidden;width:100%;"><div style="display:flex;align-items:center;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+subIcon(subarea,area)+normSub(subarea)+'</div>'+_wkSpark+'</div></div>';
       days.forEach(function(dayD){
         var dk=dayD.toISOString().slice(0,10),isT=dayD.toDateString()===T.toDateString();
         var noWork=noWorkDays.indexOf(dk)>=0;
@@ -935,10 +940,10 @@ function subSparklineHtml(sums,tot,col,unit){
   var maxV=Math.max.apply(null,sums.concat([tot,1]));
   var bars=sums.map(function(v){
     var h=Math.max(2,Math.round((v/maxV)*14));
-    return '<div style="width:4px;height:'+h+'px;background:'+col+'55;border-radius:1px;"></div>';
+    return '<div style="width:5px;height:'+h+'px;background:'+col+'75;border-radius:1px;"></div>';
   }).join('');
   var hCur=Math.max(2,Math.round((tot/maxV)*14));
-  bars+='<div style="width:4px;height:'+hCur+'px;background:'+col+';border-radius:1px;"></div>';
+  bars+='<div style="width:5px;height:'+hCur+'px;background:'+col+';border-radius:1px;"></div>';
   var totLabel=tot>0?'<span style="font-size:9px;color:'+col+';font-family:\'IBM Plex Mono\',monospace;margin-left:4px;white-space:nowrap;">('+fmtNum(tot)+unit+')</span>':'';
   return '<div style="display:flex;align-items:flex-end;gap:2px;height:14px;margin-top:3px;">'+bars+totLabel+'</div>';
 }
