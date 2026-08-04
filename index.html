@@ -401,7 +401,74 @@ function saveFechaEdit(op){
   }).catch(function(){msgEl.textContent='Error de conexión.';msgEl.style.color='var(--danger)';});
 }
 
-var sflt='all',proxOff=0,sortCol=-1,sortDir=1;
+// ===== Alta de OP rápida vía web (nueva OP + cierre inmediato) =====
+var _rapidaPartidas=[{cant:'',troquel:'',mesh:''}];
+function showRapidaForm(){
+  _rapidaPartidas=[{cant:'',troquel:'',mesh:''}];
+  document.getElementById('mt').textContent='Agregar OP rápida (cerrada)';
+  renderRapidaForm();
+  document.getElementById('modal').classList.add('open');
+}
+function renderRapidaForm(){
+  var areas=Object.keys(AC);
+  var partidasHtml=_rapidaPartidas.map(function(p,i){
+    return '<div style="display:flex;gap:6px;margin-bottom:6px;align-items:center">'+
+      '<input type="number" placeholder="Cant" value="'+p.cant+'" oninput="_rapidaPartidas['+i+'].cant=this.value" style="width:64px;background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:4px 6px;font-family:inherit">'+
+      '<input type="text" placeholder="Troquel" value="'+p.troquel+'" oninput="_rapidaPartidas['+i+'].troquel=this.value" style="width:90px;background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:4px 6px;font-family:inherit">'+
+      '<input type="text" placeholder="Malla" value="'+p.mesh+'" oninput="_rapidaPartidas['+i+'].mesh=this.value" style="width:64px;background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:4px 6px;font-family:inherit">'+
+      (_rapidaPartidas.length>1?'<button onclick="_rapidaPartidas.splice('+i+',1);renderRapidaForm()" style="background:none;border:none;color:var(--danger);cursor:pointer;font-size:16px;padding:0 4px">\u2715</button>':'')+
+    '</div>';
+  }).join('');
+  document.getElementById('mb').innerHTML=
+    '<div class="dr"><span class="dk">OP</span><span><input type="text" id="rapOp" style="background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:4px 8px;font-family:inherit;width:120px"></span></div>'+
+    '<div class="dr"><span class="dk">\u00c1rea</span><span><select id="rapArea" style="background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:4px 8px;font-family:inherit">'+areas.map(function(a){return '<option value="'+a+'">'+a+'</option>';}).join('')+'</select></span></div>'+
+    '<div class="dr"><span class="dk">Subárea</span><span><input type="text" id="rapSub" style="background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:4px 8px;font-family:inherit;width:140px"></span></div>'+
+    '<div class="dr"><span class="dk">Material</span><span><input type="text" id="rapMat" style="background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:4px 8px;font-family:inherit;width:100px"></span></div>'+
+    '<div style="margin-top:10px;padding-top:10px;border-top:1px dashed var(--border);font-size:11px;color:var(--muted);margin-bottom:6px">Partidas</div>'+
+    partidasHtml+
+    '<button onclick="_rapidaPartidas.push({cant:\'\',troquel:\'\',mesh:\'\'});renderRapidaForm()" style="background:none;border:1px dashed var(--border);color:var(--muted);border-radius:6px;padding:4px 10px;cursor:pointer;font-size:11px;margin-bottom:10px">+ agregar partida</button>'+
+    '<div class="dr"><span class="dk">Fecha de cierre</span><span><input type="date" id="rapFecha" value="'+todayIso()+'" style="background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:4px 8px;font-family:inherit"></span></div>'+
+    '<div class="dr"><span class="dk">Contrase\u00f1a</span><span><input type="password" id="rapPass" style="background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:4px 8px;font-family:inherit;width:120px"></span></div>'+
+    '<div style="display:flex;justify-content:flex-end;margin-top:8px"><button onclick="submitRapida()" style="background:var(--accent3);color:#fff;border:none;border-radius:6px;padding:6px 14px;font-weight:600;cursor:pointer">Crear y cerrar</button></div>'+
+    '<div id="rapMsg" style="font-size:11px;text-align:right;margin-top:4px;min-height:14px"></div>';
+}
+function submitRapida(){
+  var op=document.getElementById('rapOp').value.trim();
+  var area=document.getElementById('rapArea').value;
+  var sub=document.getElementById('rapSub').value.trim();
+  var mat=document.getElementById('rapMat').value.trim();
+  var iso=document.getElementById('rapFecha').value;
+  var pass=document.getElementById('rapPass').value;
+  var msgEl=document.getElementById('rapMsg');
+  if(!op){msgEl.textContent='Falta el n\u00famero de OP.';msgEl.style.color='var(--danger)';return;}
+  if(!sub){msgEl.textContent='Falta la sub\u00e1rea.';msgEl.style.color='var(--danger)';return;}
+  if(!iso){msgEl.textContent='Selecciona una fecha.';msgEl.style.color='var(--danger)';return;}
+  var validPartidas=_rapidaPartidas.filter(function(p){return p.cant&&parseInt(p.cant)>0;});
+  if(!validPartidas.length){msgEl.textContent='Agrega al menos una partida con cantidad.';msgEl.style.color='var(--danger)';return;}
+  var n=validPartidas.length;
+  var partidas=validPartidas.map(function(p,i){return {part:(i+1)+'/'+n,cant:parseInt(p.cant),troquel:p.troquel||'',mesh:p.mesh||''};});
+  var cierreFecha=mdyFromIso(iso);
+  msgEl.textContent='Guardando...';msgEl.style.color='var(--muted)';
+  fetch(EDIT_WORKER_URL,{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({op:op,isNew:true,area:area,subarea:sub,mat:mat,cierreFecha:cierreFecha,password:pass,partidas:partidas})
+  }).then(function(r){return r.text().then(function(t){return {ok:r.ok,text:t};});})
+  .then(function(res){
+    if(!res.ok){msgEl.textContent='Error: '+res.text;msgEl.style.color='var(--danger)';return;}
+    partidas.forEach(function(p){
+      var row={OP:op,STATUS:'T',XSTATUS:'',FEMIT:cierreFecha,FVALE:cierreFecha,FProm:cierreFecha,Fprod:cierreFecha,FTERM:cierreFecha,AREA:area,SUBAREA:sub,CANT:String(p.cant),PART:p.part,TRAB:'',MESH:p.mesh,MAT:mat,VENDEDOR:'',GOLPE:String(p.cant),TROQUEL1:p.troquel};
+      RAW.push(row);
+      if(!tmap[op]){tmap[op]=row;TERM.push(row);}
+    });
+    msgEl.textContent='OP creada y cerrada.';msgEl.style.color='var(--accent3)';
+    updateEntregasHeader();
+    if(document.getElementById('ganttScroll'))renderGantt();
+    renderSemana(today());
+    setTimeout(function(){document.getElementById('modal').classList.remove('open');},1000);
+  }).catch(function(){msgEl.textContent='Error de conexi\u00f3n.';msgEl.style.color='var(--danger)';});
+}
+
 
 function ac(a){return AC[a]||'#888';}
 function subIcon(sub,area){
@@ -1605,5 +1672,5 @@ function init(){
   loadCierres();
 }
 init();
-</script><div id="op-tooltip"></div><div id="hm-tooltip"></div>
+</script><div id="op-tooltip"></div><div id="hm-tooltip"></div><button onclick="showRapidaForm()" title="Agregar OP rápida" style="position:fixed;bottom:20px;right:20px;width:52px;height:52px;border-radius:50%;background:var(--accent3);color:#0d1523;border:none;font-size:26px;font-weight:700;box-shadow:0 4px 14px rgba(0,0,0,.5);cursor:pointer;z-index:200;line-height:1">+</button>
 </body></html>
