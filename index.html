@@ -939,12 +939,12 @@ function weeklyTSums(area,subKey,isPack,numWeeks){
 function fmtWeekShort(d){return d.getDate()+' '+MES_NAMES[d.getMonth()];}
 function subSparklineHtml(weeks,tot,col,unit){
   var maxV=Math.max.apply(null,weeks.map(function(w){return w.val;}).concat([tot,1]));
+  function barH(v){return v>0?Math.max(4,Math.round((v/maxV)*14)):1;}
+  function barOp(v){return v>0?'75':'30';}
   var bars=weeks.map(function(w){
-    var h=Math.max(2,Math.round((w.val/maxV)*14));
-    return '<div style="width:5px;height:'+h+'px;background:'+col+'75;border-radius:1px;"></div>';
+    return '<div style="width:5px;height:'+barH(w.val)+'px;background:'+col+barOp(w.val)+';border-radius:1px;align-self:flex-end;"></div>';
   }).join('');
-  var hCur=Math.max(2,Math.round((tot/maxV)*14));
-  bars+='<div style="width:5px;height:'+hCur+'px;background:'+col+';border-radius:1px;"></div>';
+  bars+='<div style="width:5px;height:'+barH(tot)+'px;background:'+(tot>0?col:col+'30')+';border-radius:1px;align-self:flex-end;"></div>';
   var totLabel=tot>0?'<span style="font-size:9px;color:'+col+';font-family:\'IBM Plex Mono\',monospace;margin-left:4px;white-space:nowrap;">('+fmtNum(tot)+unit+')</span>':'';
   var tableRows=weeks.map(function(w){
     return {l:fmtWeekShort(w.ws)+'\u2013'+fmtWeekShort(w.we),v:fmtNum(w.val)+unit};
