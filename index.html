@@ -1035,7 +1035,7 @@ function showSparkTip(el){
   _hmTT.style.left='-9999px';_hmTT.style.top='-9999px';
 }
 function renderGantt(){
-  var src=activeData().filter(function(r){var fe=pd(r.FEMIT);return !fe||daysDiff(fe,today())<=100;});
+  var src=activeData();
   var _activeOPs=new Set(src.map(function(r){return String(r.OP);}));
   var container=document.getElementById('ganttChart');
   if(!src.length){container.innerHTML='<div style="color:var(--muted);padding:20px">Sin datos.</div>';return;}
