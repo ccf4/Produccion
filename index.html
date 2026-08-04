@@ -916,6 +916,32 @@ function scrollGanttToday(){
   if(!el)return;
   el.scrollTo({left:Math.max(0,(window._ganttTodayOffset-7)*window._ganttDayW),behavior:'smooth'});
 }
+function weeklyTSums(area,subKey,isPack,numWeeks){
+  var T=today(),sums=[];
+  for(var w=numWeeks;w>=1;w--){
+    var ws=wkS(T,-w),we=wkE(ws),s=0;
+    RAW.forEach(function(r){
+      if((r.STATUS||'').trim().toUpperCase()!=='T')return;
+      if(r.AREA!==area||normSub(r.SUBAREA)!==subKey)return;
+      var ft=pd(r.FTERM);
+      if(!ft||ft<ws||ft>we)return;
+      s+=isPack?(parseInt(r.GOLPE)||0):(parseInt(r.CANT)||0);
+    });
+    sums.push(s);
+  }
+  return sums;
+}
+function subSparklineHtml(sums,tot,col,unit){
+  var maxV=Math.max.apply(null,sums.concat([tot,1]));
+  var bars=sums.map(function(v){
+    var h=Math.max(2,Math.round((v/maxV)*14));
+    return '<div style="width:4px;height:'+h+'px;background:'+col+'55;border-radius:1px;"></div>';
+  }).join('');
+  var hCur=Math.max(2,Math.round((tot/maxV)*14));
+  bars+='<div style="width:4px;height:'+hCur+'px;background:'+col+';border-radius:1px;"></div>';
+  var totLabel=tot>0?'<span style="font-size:9px;color:'+col+';font-family:\'IBM Plex Mono\',monospace;margin-left:4px;white-space:nowrap;">('+fmtNum(tot)+unit+')</span>':'';
+  return '<div style="display:flex;align-items:flex-end;gap:2px;height:14px;margin-top:3px;">'+bars+totLabel+'</div>';
+}
 function renderGantt(){
   var src=activeData().filter(function(r){var fe=pd(r.FEMIT);return !fe||daysDiff(fe,today())<=100;});
   var _activeOPs=new Set(src.map(function(r){return String(r.OP);}));
@@ -930,7 +956,7 @@ function renderGantt(){
   minD.setDate(minD.getDate()-2);maxD.setDate(maxD.getDate()+5);
   var totalDays=Math.round((maxD-minD)/(1000*60*60*24))+1;
   var _mobileGantt=window.innerWidth<700;
-  var dayW=_mobileGantt?22:32,LABEL_W=_mobileGantt?110:180,ROW_H=30,AREA_H=28,SUB_H=22,H1=26,H2=22;
+  var dayW=_mobileGantt?22:32,LABEL_W=_mobileGantt?110:180,ROW_H=30,AREA_H=28,SUB_H=34,H1=26,H2=22;
   var days=[];
   for(var i=0;i<totalDays;i++){var d=new Date(minD);d.setDate(d.getDate()+i);days.push(d);}
   var todayOffset=daysDiff(minD,T);
@@ -984,8 +1010,9 @@ function renderGantt(){
         return tot+_opR.reduce(function(s,r){return s+(_isPack?(parseInt(r.GOLPE)||0):(parseInt(r.CANT)||0));},0);
       },0);
       var _unit=_isPack?' gol.':' pzas';
-      var _totStr=_tot>0?' <span style="font-weight:600;opacity:.75;font-size:11px;color:var(--muted)">('+fmtNum(_tot)+_unit+')</span>':'';
-      rows.push({h:SUB_H,pad:'0 10px 0 20px',flex:true,labelStyle:'font-size:11px;font-weight:600;color:var(--muted);',border:'rgba(255,255,255,.04)',bg:'rgba(255,255,255,.01)',label:subIcon(se[0],area)+sub+_totStr,content:wkBands()+todayLine()});
+      var _weekSums=weeklyTSums(area,se[0],_isPack,5);
+      var _spark=subSparklineHtml(_weekSums,_tot,col,_unit);
+      rows.push({h:SUB_H,pad:'0 10px 0 20px',flex:true,labelStyle:'font-size:11px;font-weight:600;color:var(--muted);',border:'rgba(255,255,255,.04)',bg:'rgba(255,255,255,.01)',label:'<div style="display:flex;flex-direction:column;gap:1px;overflow:hidden;width:100%;"><div style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">'+subIcon(se[0],area)+sub+'</div>'+_spark+'</div>',content:wkBands()+todayLine()});
       ops.forEach(function(r){
         var fe=pd(r.FVALE),fp=pd(r.Fprod||r.FProm);
         var startDay=fe?Math.max(0,daysDiff(minD,fe)):0;
