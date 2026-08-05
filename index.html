@@ -134,7 +134,6 @@ select{background:var(--surface2);border:1px solid var(--border);color:var(--tex
 .trab-pill .trab-cnt{color:var(--muted);font-weight:400;text-transform:none;letter-spacing:0;font-size:10.5px;}
 .trab-children{margin:6px 0 0 24px;border-left:1px solid rgba(var(--crgb),.32);}
 #hm-tooltip{position:fixed;z-index:9999;display:none;background:#0d1523;border:1px solid #1e3050;border-radius:8px;padding:10px 14px;min-width:260px;max-width:320px;font-family:'IBM Plex Sans',sans-serif;line-height:1.4;pointer-events:none;box-shadow:0 6px 20px rgba(0,0,0,.6);color:#b0c4de;}</style>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 </head>
 <body>
 <header>
@@ -406,7 +405,7 @@ function saveFechaEdit(op){
 var RAPIDA_SUBS=['Arillos','Armar / puntear','Banda','Criba','Disco','Eliminador','Embolsados','Empaque','Malla','Manual','Nuevo','Oblongo','Oblongo / manual','Pack','Pack / dona','Pack / manual','Packs rectangulares','Placa filtrante','Puntear','Remallado','Riñon / manual','Rumba','Tiras','Tiras / manual','Tubular','Tubulares'];
 // ===== Envío de resumen por correo (vencidas + nueva fecha + cerradas recientes) =====
 var CORREO_DESTINATARIOS=[]; // pendiente: lista de correos a definir con Chato
-function buildResumenMailto(){
+function getResumenData(){
   var T=today();
   var src=activeData().filter(function(d){var fe=pd(d.FEMIT);return !fe||Math.floor((T-fe)/86400000)<=100;});
   var seen1={};
@@ -420,53 +419,58 @@ function buildResumenMailto(){
     seen2[d.OP]=true;return true;
   });
   mnetWarn.sort(function(a,b){var fa=pd(a.Fprod||a.FProm),fb=pd(b.Fprod||b.FProm);return (fa||new Date(0))-(fb||new Date(0));});
-  var bizD=0,bizCur=new Date(T);
-  while(bizD<5){bizCur.setDate(bizCur.getDate()-1);var dow=bizCur.getDay();if(dow!==0&&dow!==6)bizD++;}
-  var cutoff=bizCur,seenClosed={},closedRecent=[];
+  // Cerradas: rango de calendario fijo — hoy y ayer (2 dias)
+  var cutoff2=new Date(T);cutoff2.setDate(cutoff2.getDate()-1);
+  var seenClosed={},closedRecent=[];
   TERM.forEach(function(r){
     if(r.STATUS==='C')return;
     var ft=pd(r.FTERM);
-    if(!ft||ft<cutoff||ft>T)return;
+    if(!ft||ft<cutoff2||ft>T)return;
     if(seenClosed[r.OP])return;
     seenClosed[r.OP]=true;
     closedRecent.push(r);
   });
   closedRecent.sort(function(a,b){return (pd(b.FTERM)||new Date(0))-(pd(a.FTERM)||new Date(0));});
-
-  function lineaOP(r,extra){
-    var parts=RAW.filter(function(x){return String(x.OP)===String(r.OP);});
-    var totalCant=parts.reduce(function(s,p){return s+(parseInt(p.CANT)||0);},0);
-    var subDisp=(r.AREA==='Aros'&&r.SUBAREA==='NUEVO')?'Aro nuevo':(normSub(r.SUBAREA)||r.SUBAREA);
-    return 'OP '+r.OP+' \u00b7 '+r.AREA+' / '+subDisp+' \u00b7 '+fmtNum(totalCant)+' pzas'+(extra?' \u00b7 '+extra:'');
-  }
-
+  var ultimos2Dias=[0,1];
+  return {T:T,late:late,mnetWarn:mnetWarn,closedRecent:closedRecent,diasCerradas:ultimos2Dias.length};
+}
+function lineaOP(r,extra){
+  var parts=RAW.filter(function(x){return String(x.OP)===String(r.OP);});
+  var totalCant=parts.reduce(function(s,p){return s+(parseInt(p.CANT)||0);},0);
+  var subDisp=(r.AREA==='Aros'&&r.SUBAREA==='NUEVO')?'Aro nuevo':(normSub(r.SUBAREA)||r.SUBAREA);
+  var pedStr=ped(r.OP);
+  return 'OP '+r.OP+(pedStr?' \u00b7 '+pedStr:'')+' \u00b7 '+r.AREA+' / '+subDisp+' \u00b7 '+fmtNum(totalCant)+' pzas'+(extra?' \u00b7 '+extra:'');
+}
+function buildResumenMailto(){
+  var d=getResumenData(),T=d.T;
   var lines=[];
   lines.push('RESUMEN DE PRODUCCI\u00d3N \u2014 '+fd(T));
   lines.push('');
-  lines.push('VENCIDAS ('+late.length+')');
+  lines.push('VENCIDAS ('+d.late.length+')');
   lines.push('------------------------');
-  if(!late.length)lines.push('Sin \u00f3rdenes vencidas.');
-  late.forEach(function(r){
+  if(!d.late.length)lines.push('Sin \u00f3rdenes vencidas.');
+  d.late.forEach(function(r){
     var fp=pd(r.Fprod||r.FProm),daysLate=fp?daysDiff(fp,T):0;
-    lines.push(lineaOP(r,daysLate+' d\u00eda'+(daysLate!==1?'s':'')+' vencido, FProm: '+fd(fp)));
+    lines.push(lineaOP(r,daysLate+' d\u00eda'+(daysLate!==1?'s':'')+' vencido, Fecha programada de entrega: '+fd(fp)));
   });
   lines.push('');
-  lines.push('CON NUEVA FECHA DE ENTREGA ('+mnetWarn.length+')');
+  lines.push('CON NUEVA FECHA DE ENTREGA ('+d.mnetWarn.length+')');
   lines.push('------------------------');
-  if(!mnetWarn.length)lines.push('Sin \u00f3rdenes con cambio de fecha.');
-  mnetWarn.forEach(function(r){
+  if(!d.mnetWarn.length)lines.push('Sin \u00f3rdenes con cambio de fecha.');
+  d.mnetWarn.forEach(function(r){
     var fp0=pd(r.FProm),fprod=pd(r.Fprod||r.FProm);
     lines.push(lineaOP(r,'fecha original: '+fd(fp0)+', nueva fecha: '+fd(fprod)));
   });
   lines.push('');
-  lines.push('CERRADAS RECIENTEMENTE ('+closedRecent.length+')');
+  lines.push('CERRADAS \u00daLTIMOS '+d.diasCerradas+' D\u00cdAS ('+d.closedRecent.length+')');
   lines.push('------------------------');
-  if(!closedRecent.length)lines.push('Sin \u00f3rdenes cerradas recientemente.');
-  closedRecent.forEach(function(r){
+  if(!d.closedRecent.length)lines.push('Sin \u00f3rdenes cerradas recientemente.');
+  d.closedRecent.forEach(function(r){
     lines.push(lineaOP(r,'entregado: '+fd(pd(r.FTERM))));
   });
   lines.push('');
-  lines.push('\u2014 Generado autom\u00e1ticamente desde el panel de producci\u00f3n.');
+  lines.push('Generado desde el panel de producci\u00f3n');
+  lines.push('Panel de consulta: https://ccf4.github.io/consulta_produccion/matex');
 
   var subject='Resumen de producci\u00f3n \u2014 '+fd(T);
   var body=lines.join('\n');
@@ -479,63 +483,110 @@ function enviarResumenCorreo(){
   var r=buildResumenMailto();
   document.getElementById('mt').textContent='Resumen de producci\u00f3n';
   document.getElementById('mb').innerHTML=
-    '<div style="margin-bottom:8px;font-size:11px;color:var(--muted)">1) Abre el borrador en Gmail. 2) Descarga la captura de las tarjetas y arr\u00e1strala al correo (los navegadores no permiten adjuntarla autom\u00e1ticamente).</div>'+
+    '<div style="margin-bottom:8px;font-size:11px;color:var(--muted)">1) Abre el borrador en Gmail. 2) Descarga la captura y arr\u00e1strala al correo (los navegadores no permiten adjuntarla autom\u00e1ticamente).</div>'+
     '<textarea id="resumenText" readonly style="width:100%;height:220px;background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:8px;font-family:\'IBM Plex Mono\',monospace;font-size:11px;resize:vertical;box-sizing:border-box">'+r.subject+'\n\n'+r.body+'</textarea>'+
     '<div style="display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap;margin-top:10px">'+
-    '<button onclick="descargarCapturaResumen()" id="btnCaptura" style="background:var(--surface2);border:1px solid var(--border);color:var(--muted);border-radius:6px;padding:6px 14px;font-size:12px;cursor:pointer">Descargar captura de tarjetas</button>'+
+    '<button onclick="descargarCapturaResumen()" id="btnCaptura" style="background:var(--surface2);border:1px solid var(--border);color:var(--muted);border-radius:6px;padding:6px 14px;font-size:12px;cursor:pointer">Descargar captura</button>'+
     '<button onclick="copiarResumenCorreo()" style="background:var(--surface2);border:1px solid var(--border);color:var(--muted);border-radius:6px;padding:6px 14px;font-size:12px;cursor:pointer">Copiar texto</button>'+
     '<a href="'+r.gmail+'" target="_blank" style="background:var(--accent3);color:#fff;border:none;border-radius:6px;padding:6px 14px;font-weight:600;font-size:12px;text-decoration:none">Abrir en Gmail</a>'+
     '</div>'+
     '<div id="resumenCopyMsg" style="font-size:11px;text-align:right;margin-top:6px;min-height:14px"></div>';
   document.getElementById('modal').classList.add('open');
 }
-function extraerPrimerDiaCerradas(){
-  var cl=document.getElementById('cl');
-  if(!cl)return '';
-  var out=document.createElement('div');
-  var headerCount=0;
-  for(var i=0;i<cl.children.length;i++){
-    var child=cl.children[i];
-    var st=child.getAttribute('style')||'';
-    var isHeader=st.indexOf('text-transform:uppercase')>=0;
-    if(isHeader)headerCount++;
-    if(headerCount>1)break;
-    out.appendChild(child.cloneNode(true));
-  }
-  return out.innerHTML;
+function truncTxt(ctx,text,maxW){
+  if(ctx.measureText(text).width<=maxW)return text;
+  var t=text;
+  while(t.length>1&&ctx.measureText(t+'\u2026').width>maxW){t=t.slice(0,-1);}
+  return t+'\u2026';
 }
 function descargarCapturaResumen(){
   var btn=document.getElementById('btnCaptura');
   var msg=document.getElementById('resumenCopyMsg');
-  if(typeof html2canvas==='undefined'){
-    msg.textContent='Cargando herramienta de captura, intenta de nuevo en un momento...';msg.style.color='var(--muted)';
-    return;
-  }
   btn.textContent='Generando...';btn.disabled=true;
-  var container=document.createElement('div');
-  container.style.cssText='position:fixed;left:-9999px;top:0;width:640px;background:var(--bg);padding:20px;font-family:\'IBM Plex Sans\',sans-serif;color:var(--text)';
-  container.innerHTML=
-    '<div style="font-size:15px;font-weight:700;margin-bottom:12px;color:var(--danger)">Reprogramadas y vencidas</div>'+
-    (document.getElementById('lo')?document.getElementById('lo').innerHTML:'')+
-    '<div style="font-size:15px;font-weight:700;margin:20px 0 12px;color:var(--accent3)">Cerradas recientemente</div>'+
-    extraerPrimerDiaCerradas();
-  document.body.appendChild(container);
-  html2canvas(container,{backgroundColor:getComputedStyle(document.body).getPropertyValue('--bg')||'#0d1523',scale:2}).then(function(canvas){
-    document.body.removeChild(container);
+  try {
+    var d=getResumenData(),T=d.T;
+    var W=760,pad=22,rowH=24,headerH=30,sectionGap=16;
+
+    function opRows(list,extraFn){
+      return list.map(function(r){
+        var parts=RAW.filter(function(x){return String(x.OP)===String(r.OP);});
+        var totalCant=parts.reduce(function(s,p){return s+(parseInt(p.CANT)||0);},0);
+        var subDisp=(r.AREA==='Aros'&&r.SUBAREA==='NUEVO')?'Aro nuevo':(normSub(r.SUBAREA)||r.SUBAREA);
+        return {op:r.OP,ped:ped(r.OP),area:r.AREA,sub:subDisp,cant:totalCant,extra:extraFn(r)};
+      });
+    }
+    var lateRows=opRows(d.late,function(r){var fp=pd(r.Fprod||r.FProm),dl=fp?daysDiff(fp,T):0;return dl+'d vencido';});
+    var mnetRows=opRows(d.mnetWarn,function(r){return '\u2192 '+fd(pd(r.Fprod||r.FProm));});
+    var closedRows=opRows(d.closedRecent,function(r){return fd(pd(r.FTERM));});
+
+    var totalRows=lateRows.length+mnetRows.length+closedRows.length;
+    var emptyCount=(lateRows.length?0:1)+(mnetRows.length?0:1)+(closedRows.length?0:1);
+    var H=pad*2+36+ (headerH+sectionGap)*3 + totalRows*rowH + emptyCount*rowH + 30;
+
+    var canvas=document.createElement('canvas');
+    var scale=2;
+    canvas.width=W*scale;canvas.height=H*scale;
+    var ctx=canvas.getContext('2d');
+    ctx.scale(scale,scale);
+    ctx.fillStyle='#0d1523';ctx.fillRect(0,0,W,H);
+
+    var y=pad;
+    ctx.fillStyle='#e2e8f0';
+    ctx.font='bold 16px "IBM Plex Sans",Arial,sans-serif';
+    ctx.fillText('Resumen de producci\u00f3n \u2014 '+fd(T),pad,y+14);
+    y+=36;
+
+    function drawSection(title,color,rows,emptyText){
+      ctx.fillStyle=color;
+      ctx.font='bold 12px "IBM Plex Sans",Arial,sans-serif';
+      ctx.fillText(title,pad,y+12);
+      y+=headerH;
+      if(!rows.length){
+        ctx.fillStyle='#94a3b8';
+        ctx.font='12px "IBM Plex Sans",Arial,sans-serif';
+        ctx.fillText(emptyText,pad+8,y+11);
+        y+=rowH;
+      } else {
+        rows.forEach(function(r){
+          ctx.fillStyle=color;
+          ctx.fillRect(pad,y+2,3,rowH-9);
+          ctx.font='bold 11px "IBM Plex Mono",monospace';
+          ctx.fillStyle='#e2e8f0';
+          var opTxt='OP '+r.op;
+          ctx.fillText(opTxt,pad+9,y+12);
+          var opW=ctx.measureText(opTxt).width;
+          ctx.font='11px "IBM Plex Sans",Arial,sans-serif';
+          ctx.fillStyle='#94a3b8';
+          var rest=(r.ped?r.ped+' \u00b7 ':'')+r.area+'/'+r.sub+' \u00b7 '+fmtNum(r.cant)+'p \u00b7 '+r.extra;
+          ctx.fillText(truncTxt(ctx,rest,W-pad-9-opW-16),pad+9+opW+8,y+12);
+          y+=rowH;
+        });
+      }
+      y+=sectionGap;
+    }
+
+    drawSection('VENCIDAS ('+lateRows.length+')','#ef4444',lateRows,'Sin \u00f3rdenes vencidas.');
+    drawSection('CON NUEVA FECHA DE ENTREGA ('+mnetRows.length+')','#f97316',mnetRows,'Sin \u00f3rdenes con cambio de fecha.');
+    drawSection('CERRADAS \u00daLTIMOS '+d.diasCerradas+' D\u00cdAS ('+closedRows.length+')','#10b981',closedRows,'Sin \u00f3rdenes cerradas recientemente.');
+
     canvas.toBlob(function(blob){
+      if(!blob){
+        btn.textContent='Descargar captura';btn.disabled=false;
+        msg.textContent='No se pudo generar la captura.';msg.style.color='var(--danger)';
+        return;
+      }
       var url=URL.createObjectURL(blob);
       var a=document.createElement('a');
       a.href=url;a.download='resumen_produccion_'+todayIso()+'.png';
       document.body.appendChild(a);a.click();document.body.removeChild(a);
       setTimeout(function(){URL.revokeObjectURL(url);},3000);
-      btn.textContent='Descargar captura de tarjetas';btn.disabled=false;
+      btn.textContent='Descargar captura';btn.disabled=false;
       msg.textContent='Captura descargada \u2713 \u2014 arr\u00e1strala al correo';msg.style.color='var(--accent3)';
     });
-  }).catch(function(e){
-    document.body.removeChild(container);
-    btn.textContent='Descargar captura de tarjetas';btn.disabled=false;
+  } catch(e){
+    btn.textContent='Descargar captura';btn.disabled=false;
     msg.textContent='No se pudo generar la captura.';msg.style.color='var(--danger)';
-  });
+  }
 }
 function copiarResumenCorreo(){
   var ta=document.getElementById('resumenText');
