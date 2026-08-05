@@ -464,7 +464,7 @@ function enviarResumenCorreo(){
     '<textarea id="resumenText" readonly style="width:100%;height:70px;background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:8px;font-family:\'IBM Plex Mono\',monospace;font-size:11px;resize:vertical;box-sizing:border-box">'+r.subject+'\n\n'+r.body+'</textarea>'+
     '<div style="display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap;margin-top:10px">'+
     '<button onclick="generarCapturaResumen(false)" id="btnCaptura" style="background:var(--surface2);border:1px solid var(--border);color:var(--muted);border-radius:6px;padding:6px 14px;font-size:12px;cursor:pointer">Ver imagen</button>'+
-    '<button onclick="toggleTemaCaptura()" id="btnTema" style="background:var(--surface2);border:1px solid var(--border);color:var(--muted);border-radius:6px;padding:6px 14px;font-size:12px;cursor:pointer">Fondo: oscuro</button>'+
+    '<button onclick="toggleTemaCaptura()" id="btnTema" style="background:var(--surface2);border:1px solid var(--border);color:var(--muted);border-radius:6px;padding:6px 14px;font-size:12px;cursor:pointer">Fondo: claro</button>'+
     '<button onclick="copiarResumenCorreo()" style="background:var(--surface2);border:1px solid var(--border);color:var(--muted);border-radius:6px;padding:6px 14px;font-size:12px;cursor:pointer">Copiar texto</button>'+
     '<a href="'+r.gmail+'" target="_blank" style="background:var(--accent3);color:#fff;border:none;border-radius:6px;padding:6px 14px;font-weight:600;font-size:12px;text-decoration:none">Abrir en Gmail</a>'+
     '</div>'+
@@ -481,7 +481,7 @@ function truncTxt(ctx,text,maxW){
 function descargarCapturaResumen(){
   generarCapturaResumen(true);
 }
-var _capturaTemaClaro=false;
+var _capturaTemaClaro=true;
 function toggleTemaCaptura(){
   _capturaTemaClaro=!_capturaTemaClaro;
   var btnT=document.getElementById('btnTema');
