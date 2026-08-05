@@ -444,36 +444,11 @@ function lineaOP(r,extra){
   return (pedStr?pedStr+' \u00b7 ':'')+'OP '+r.OP+(vend?' \u00b7 Vend: '+vend:'')+' \u00b7 '+fmtNum(totalCant)+' pzas'+(artStr?' \u00b7 '+artStr:'')+(extra?' \u00b7 '+extra:'');
 }
 function buildResumenMailto(){
-  var d=getResumenData(),T=d.T;
+  var T=today();
+  var subject='Estatus de pedidos \u2014 '+fd(T);
   var lines=[];
-  lines.push('CERRADAS \u00daLTIMOS '+d.diasCerradas+' D\u00cdAS ('+d.closedRecent.length+')');
-  lines.push('------------------------');
-  if(!d.closedRecent.length)lines.push('Sin \u00f3rdenes cerradas recientemente.');
-  d.closedRecent.forEach(function(r){
-    lines.push(lineaOP(r,'entregado: '+fd(pd(r.FTERM))));
-  });
-  lines.push('');
-  lines.push('CON NUEVA FECHA DE ENTREGA ('+d.mnetWarn.length+')');
-  lines.push('------------------------');
-  if(!d.mnetWarn.length)lines.push('Sin \u00f3rdenes con cambio de fecha.');
-  d.mnetWarn.forEach(function(r){
-    var fp0=pd(r.FProm),fprod=pd(r.Fprod||r.FProm);
-    lines.push(lineaOP(r,'fecha original: '+fd(fp0)+', nueva fecha: '+fd(fprod)));
-  });
-  lines.push('');
-  lines.push('VENCIDAS ('+d.late.length+')');
-  lines.push('------------------------');
-  if(!d.late.length)lines.push('Sin \u00f3rdenes vencidas.');
-  d.late.forEach(function(r){
-    var fp=pd(r.Fprod||r.FProm),daysLate=fp?daysDiff(fp,T):0;
-    lines.push(lineaOP(r,daysLate+' d\u00eda'+(daysLate!==1?'s':'')+' vencido, Fecha programada de entrega: '+fd(fp)));
-  });
-  lines.push('');
-  lines.push('Generado desde el panel de producci\u00f3n');
   lines.push('Panel de consulta:');
   lines.push('https://ccf4.github.io/consulta_produccion/matex');
-
-  var subject='Estatus de pedidos \u2014 '+fd(T);
   var body=lines.join('\n');
   var to=CORREO_DESTINATARIOS.join(',');
   var mailto='mailto:'+to+'?subject='+encodeURIComponent(subject)+'&body='+encodeURIComponent(body);
