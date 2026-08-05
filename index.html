@@ -134,6 +134,7 @@ select{background:var(--surface2);border:1px solid var(--border);color:var(--tex
 .trab-pill .trab-cnt{color:var(--muted);font-weight:400;text-transform:none;letter-spacing:0;font-size:10.5px;}
 .trab-children{margin:6px 0 0 24px;border-left:1px solid rgba(var(--crgb),.32);}
 #hm-tooltip{position:fixed;z-index:9999;display:none;background:#0d1523;border:1px solid #1e3050;border-radius:8px;padding:10px 14px;min-width:260px;max-width:320px;font-family:'IBM Plex Sans',sans-serif;line-height:1.4;pointer-events:none;box-shadow:0 6px 20px rgba(0,0,0,.6);color:#b0c4de;}</style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 </head>
 <body>
 <header>
@@ -471,20 +472,70 @@ function buildResumenMailto(){
   var body=lines.join('\n');
   var to=CORREO_DESTINATARIOS.join(',');
   var mailto='mailto:'+to+'?subject='+encodeURIComponent(subject)+'&body='+encodeURIComponent(body);
-  return {subject:subject,body:body,mailto:mailto};
+  var gmail='https://mail.google.com/mail/?view=cm&fs=1&to='+encodeURIComponent(to)+'&su='+encodeURIComponent(subject)+'&body='+encodeURIComponent(body);
+  return {subject:subject,body:body,mailto:mailto,gmail:gmail};
 }
 function enviarResumenCorreo(){
   var r=buildResumenMailto();
   document.getElementById('mt').textContent='Resumen de producci\u00f3n';
   document.getElementById('mb').innerHTML=
-    '<div style="margin-bottom:8px;font-size:11px;color:var(--muted)">Copia este texto y p\u00e9galo en tu correo, o intenta abrirlo directo en tu cliente de correo (si tienes uno configurado).</div>'+
-    '<textarea id="resumenText" readonly style="width:100%;height:280px;background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:8px;font-family:\'IBM Plex Mono\',monospace;font-size:11px;resize:vertical;box-sizing:border-box">'+r.subject+'\n\n'+r.body+'</textarea>'+
-    '<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:10px">'+
-    '<a href="'+r.mailto+'" style="background:var(--surface2);border:1px solid var(--border);color:var(--muted);border-radius:6px;padding:6px 14px;font-size:12px;text-decoration:none">Abrir en cliente de correo</a>'+
-    '<button onclick="copiarResumenCorreo()" style="background:var(--accent3);color:#fff;border:none;border-radius:6px;padding:6px 14px;font-weight:600;cursor:pointer">Copiar texto</button>'+
+    '<div style="margin-bottom:8px;font-size:11px;color:var(--muted)">1) Abre el borrador en Gmail. 2) Descarga la captura de las tarjetas y arr\u00e1strala al correo (los navegadores no permiten adjuntarla autom\u00e1ticamente).</div>'+
+    '<textarea id="resumenText" readonly style="width:100%;height:220px;background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:8px;font-family:\'IBM Plex Mono\',monospace;font-size:11px;resize:vertical;box-sizing:border-box">'+r.subject+'\n\n'+r.body+'</textarea>'+
+    '<div style="display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap;margin-top:10px">'+
+    '<button onclick="descargarCapturaResumen()" id="btnCaptura" style="background:var(--surface2);border:1px solid var(--border);color:var(--muted);border-radius:6px;padding:6px 14px;font-size:12px;cursor:pointer">Descargar captura de tarjetas</button>'+
+    '<button onclick="copiarResumenCorreo()" style="background:var(--surface2);border:1px solid var(--border);color:var(--muted);border-radius:6px;padding:6px 14px;font-size:12px;cursor:pointer">Copiar texto</button>'+
+    '<a href="'+r.gmail+'" target="_blank" style="background:var(--accent3);color:#fff;border:none;border-radius:6px;padding:6px 14px;font-weight:600;font-size:12px;text-decoration:none">Abrir en Gmail</a>'+
     '</div>'+
     '<div id="resumenCopyMsg" style="font-size:11px;text-align:right;margin-top:6px;min-height:14px"></div>';
   document.getElementById('modal').classList.add('open');
+}
+function extraerPrimerDiaCerradas(){
+  var cl=document.getElementById('cl');
+  if(!cl)return '';
+  var out=document.createElement('div');
+  var headerCount=0;
+  for(var i=0;i<cl.children.length;i++){
+    var child=cl.children[i];
+    var st=child.getAttribute('style')||'';
+    var isHeader=st.indexOf('text-transform:uppercase')>=0;
+    if(isHeader)headerCount++;
+    if(headerCount>1)break;
+    out.appendChild(child.cloneNode(true));
+  }
+  return out.innerHTML;
+}
+function descargarCapturaResumen(){
+  var btn=document.getElementById('btnCaptura');
+  var msg=document.getElementById('resumenCopyMsg');
+  if(typeof html2canvas==='undefined'){
+    msg.textContent='Cargando herramienta de captura, intenta de nuevo en un momento...';msg.style.color='var(--muted)';
+    return;
+  }
+  btn.textContent='Generando...';btn.disabled=true;
+  var container=document.createElement('div');
+  container.style.cssText='position:fixed;left:-9999px;top:0;width:640px;background:var(--bg);padding:20px;font-family:\'IBM Plex Sans\',sans-serif;color:var(--text)';
+  container.innerHTML=
+    '<div style="font-size:15px;font-weight:700;margin-bottom:12px;color:var(--danger)">Reprogramadas y vencidas</div>'+
+    (document.getElementById('lo')?document.getElementById('lo').innerHTML:'')+
+    '<div style="font-size:15px;font-weight:700;margin:20px 0 12px;color:var(--accent3)">Cerradas recientemente</div>'+
+    extraerPrimerDiaCerradas();
+  document.body.appendChild(container);
+  html2canvas(container,{backgroundColor:getComputedStyle(document.body).getPropertyValue('--bg')||'#0d1523',scale:2}).then(function(canvas){
+    document.body.removeChild(container);
+    canvas.toBlob(function(blob){
+      var url=URL.createObjectURL(blob);
+      var a=document.createElement('a');
+      a.href=url;a.download='resumen_produccion_'+todayIso()+'.png';
+      document.body.appendChild(a);a.click();document.body.removeChild(a);
+      setTimeout(function(){URL.revokeObjectURL(url);},3000);
+      btn.textContent='Descargar captura de tarjetas';btn.disabled=false;
+      msg.textContent='Captura descargada \u2713 \u2014 arr\u00e1strala al correo';msg.style.color='var(--accent3)';
+    });
+  }).catch(function(e){
+    document.body.removeChild(container);
+    btn.textContent='Descargar captura de tarjetas';btn.disabled=false;
+    msg.textContent='No se pudo generar la captura.';msg.style.color='var(--danger)';
+  });
 }
 function copiarResumenCorreo(){
   var ta=document.getElementById('resumenText');
