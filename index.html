@@ -437,9 +437,11 @@ function getResumenData(){
 function lineaOP(r,extra){
   var parts=RAW.filter(function(x){return String(x.OP)===String(r.OP);});
   var totalCant=parts.reduce(function(s,p){return s+(parseInt(p.CANT)||0);},0);
-  var subDisp=(r.AREA==='Aros'&&r.SUBAREA==='NUEVO')?'Aro nuevo':(normSub(r.SUBAREA)||r.SUBAREA);
   var pedStr=ped(r.OP);
-  return (pedStr?pedStr+' \u00b7 ':'')+'OP '+r.OP+' \u00b7 '+r.AREA+' / '+subDisp+' \u00b7 '+fmtNum(totalCant)+' pzas'+(extra?' \u00b7 '+extra:'');
+  var vend=(r.VENDEDOR||'').trim();
+  var arts=getArts(r.OP);
+  var artStr=(arts&&arts.length)?(arts[0]||'').slice(0,60):'';
+  return (pedStr?pedStr+' \u00b7 ':'')+'OP '+r.OP+(vend?' \u00b7 Vend: '+vend:'')+' \u00b7 '+fmtNum(totalCant)+' pzas'+(artStr?' \u00b7 '+artStr:'')+(extra?' \u00b7 '+extra:'');
 }
 function buildResumenMailto(){
   var d=getResumenData(),T=d.T;
@@ -471,7 +473,7 @@ function buildResumenMailto(){
   lines.push('Panel de consulta:');
   lines.push('https://ccf4.github.io/consulta_produccion/matex');
 
-  var subject='Resumen de producci\u00f3n \u2014 '+fd(T);
+  var subject='Estatus de pedidos \u2014 '+fd(T);
   var body=lines.join('\n');
   var to=CORREO_DESTINATARIOS.join(',');
   var mailto='mailto:'+to+'?subject='+encodeURIComponent(subject)+'&body='+encodeURIComponent(body);
@@ -480,7 +482,7 @@ function buildResumenMailto(){
 }
 function enviarResumenCorreo(){
   var r=buildResumenMailto();
-  document.getElementById('mt').textContent='Resumen de producci\u00f3n';
+  document.getElementById('mt').textContent='Estatus de pedidos';
   document.getElementById('mb').innerHTML=
     '<div style="margin-bottom:8px;font-size:11px;color:var(--muted)">1) Abre el borrador en Gmail. 2) Descarga la captura y arr\u00e1strala al correo (los navegadores no permiten adjuntarla autom\u00e1ticamente).</div>'+
     '<textarea id="resumenText" readonly style="width:100%;height:220px;background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:8px;font-family:\'IBM Plex Mono\',monospace;font-size:11px;resize:vertical;box-sizing:border-box">'+r.subject+'\n\n'+r.body+'</textarea>'+
@@ -504,31 +506,24 @@ function descargarCapturaResumen(){
   btn.textContent='Generando...';btn.disabled=true;
   try {
     var d=getResumenData(),T=d.T;
-    var W=800,pad=22,rowH=24,headerH=30,sectionGap=16,kpiH=58;
+    var W=800,pad=22,rowH=26,headerH=30,sectionGap=16;
 
     function opRows(list,extraFn){
       return list.map(function(r){
         var parts=RAW.filter(function(x){return String(x.OP)===String(r.OP);});
         var totalCant=parts.reduce(function(s,p){return s+(parseInt(p.CANT)||0);},0);
-        var subDisp=(r.AREA==='Aros'&&r.SUBAREA==='NUEVO')?'Aro nuevo':(normSub(r.SUBAREA)||r.SUBAREA);
-        return {op:r.OP,ped:ped(r.OP),area:r.AREA,sub:subDisp,cant:totalCant,extra:extraFn(r),days:null};
+        var arts=getArts(r.OP);
+        var artStr=(arts&&arts.length)?(arts[0]||''):'';
+        return {op:r.OP,ped:ped(r.OP),vend:(r.VENDEDOR||'').trim(),cant:totalCant,art:artStr,extra:extraFn(r)};
       });
     }
     var closedRows=opRows(d.closedRecent,function(r){return fd(pd(r.FTERM));});
     var mnetRows=opRows(d.mnetWarn,function(r){return '\u2192 '+fd(pd(r.Fprod||r.FProm));});
     var lateRows=opRows(d.late,function(r){var fp=pd(r.Fprod||r.FProm),dl=fp?daysDiff(fp,T):0;return dl+'d vencido';});
-    lateRows.forEach(function(row,i){row.days=d.late[i]?(function(){var fp=pd(d.late[i].Fprod||d.late[i].FProm);return fp?daysDiff(fp,T):0;})():0;});
-
-    function sumPzas(rows){return rows.reduce(function(s,r){return s+r.cant;},0);}
-    var kpis=[
-      {label:'CERRADAS ('+d.diasCerradas+'d)',count:closedRows.length,pzas:sumPzas(closedRows),color:'#10b981'},
-      {label:'NUEVA FECHA',count:mnetRows.length,pzas:sumPzas(mnetRows),color:'#f97316'},
-      {label:'VENCIDAS',count:lateRows.length,pzas:sumPzas(lateRows),color:'#ef4444'}
-    ];
 
     var totalRows=lateRows.length+mnetRows.length+closedRows.length;
     var emptyCount=(lateRows.length?0:1)+(mnetRows.length?0:1)+(closedRows.length?0:1);
-    var H=pad*2+36+kpiH+16+ (headerH+sectionGap)*3 + totalRows*rowH + emptyCount*rowH + 30;
+    var H=pad*2+36+ (headerH+sectionGap)*3 + totalRows*rowH + emptyCount*rowH + 30;
 
     var canvas=document.createElement('canvas');
     var scale=2;
@@ -540,34 +535,13 @@ function descargarCapturaResumen(){
     var y=pad;
     ctx.fillStyle='#e2e8f0';
     ctx.font='bold 16px "IBM Plex Sans",Arial,sans-serif';
-    ctx.fillText('Resumen de producci\u00f3n \u2014 '+fd(T),pad,y+14);
+    ctx.fillText('Estatus de pedidos \u2014 '+fd(T),pad,y+14);
     y+=36;
 
-    // KPI strip
-    var kpiW=(W-pad*2-16)/3;
-    kpis.forEach(function(k,i){
-      var kx=pad+i*(kpiW+8);
-      ctx.fillStyle='rgba(255,255,255,.03)';
-      ctx.fillRect(kx,y,kpiW,kpiH);
-      ctx.fillStyle=k.color;
-      ctx.fillRect(kx,y,kpiW,3);
-      ctx.font='bold 20px "IBM Plex Mono",monospace';
-      ctx.fillStyle='#e2e8f0';
-      ctx.fillText(k.count,kx+12,y+30);
-      var cw=ctx.measureText(String(k.count)).width;
-      ctx.font='11px "IBM Plex Sans",Arial,sans-serif';
-      ctx.fillStyle='#94a3b8';
-      ctx.fillText(fmtNum(k.pzas)+' pzas',kx+16+cw,y+29);
-      ctx.font='bold 9px "IBM Plex Sans",Arial,sans-serif';
-      ctx.fillStyle=k.color;
-      ctx.fillText(k.label,kx+12,y+46);
-    });
-    y+=kpiH+16;
-
     var x0=pad+9;
-    var colPed={x:x0,w:90},colOp={x:x0+96,w:65},colArea={x:x0+167,w:140},colCant={x:x0+313,w:45},colExtra={x:x0+364,w:290},colSev={x:x0+660,w:W-pad-9-660};
+    var colPed={x:x0,w:82},colOp={x:x0+88,w:62},colVend={x:x0+156,w:48},colCant={x:x0+210,w:48},colArt={x:x0+264,w:290},colExtra={x:x0+562,w:W-pad-9-562};
 
-    function drawSection(title,color,rows,emptyText,showSeverity){
+    function drawSection(title,color,rows,emptyText){
       ctx.fillStyle=color;
       ctx.font='bold 12px "IBM Plex Sans",Arial,sans-serif';
       ctx.fillText(title,pad,y+12);
@@ -579,9 +553,8 @@ function descargarCapturaResumen(){
         y+=rowH;
       } else {
         rows.forEach(function(r){
-          var areaColor=ac(r.area)||color;
-          ctx.fillStyle=areaColor;
-          ctx.fillRect(pad,y+2,3,rowH-9);
+          ctx.fillStyle=color;
+          ctx.fillRect(pad,y+2,3,rowH-10);
           ctx.font='11px "IBM Plex Mono",monospace';
           ctx.fillStyle='#94a3b8';
           ctx.fillText(truncTxt(ctx,r.ped||'\u2014',colPed.w),colPed.x,y+12);
@@ -589,27 +562,23 @@ function descargarCapturaResumen(){
           ctx.fillStyle='#e2e8f0';
           ctx.fillText('OP '+r.op,colOp.x,y+12);
           ctx.font='11px "IBM Plex Sans",Arial,sans-serif';
-          ctx.fillStyle=areaColor;
-          ctx.fillText(truncTxt(ctx,r.area+'/'+r.sub,colArea.w),colArea.x,y+12);
           ctx.fillStyle='#94a3b8';
+          ctx.fillText(truncTxt(ctx,r.vend||'\u2014',colVend.w),colVend.x,y+12);
           ctx.fillText(fmtNum(r.cant)+'p',colCant.x,y+12);
+          ctx.font='11px "IBM Plex Sans",Arial,sans-serif';
+          ctx.fillStyle='#c3cad6';
+          ctx.fillText(truncTxt(ctx,r.art||'\u2014',colArt.w),colArt.x,y+12);
+          ctx.fillStyle='#94a3b8';
           ctx.fillText(truncTxt(ctx,r.extra,colExtra.w),colExtra.x,y+12);
-          if(showSeverity&&r.days!==null){
-            var maxBar=colSev.w-4,barW=Math.min(maxBar,r.days*5);
-            ctx.fillStyle='rgba(255,255,255,.08)';
-            ctx.fillRect(colSev.x,y+9,maxBar,6);
-            ctx.fillStyle='#ef4444';
-            ctx.fillRect(colSev.x,y+9,barW,6);
-          }
           y+=rowH;
         });
       }
       y+=sectionGap;
     }
 
-    drawSection('CERRADAS \u00daLTIMOS '+d.diasCerradas+' D\u00cdAS ('+closedRows.length+')','#10b981',closedRows,'Sin \u00f3rdenes cerradas recientemente.',false);
-    drawSection('CON NUEVA FECHA DE ENTREGA ('+mnetRows.length+')','#f97316',mnetRows,'Sin \u00f3rdenes con cambio de fecha.',false);
-    drawSection('VENCIDAS ('+lateRows.length+')','#ef4444',lateRows,'Sin \u00f3rdenes vencidas.',true);
+    drawSection('CERRADAS \u00daLTIMOS '+d.diasCerradas+' D\u00cdAS ('+closedRows.length+')','#10b981',closedRows,'Sin \u00f3rdenes cerradas recientemente.');
+    drawSection('CON NUEVA FECHA DE ENTREGA ('+mnetRows.length+')','#f97316',mnetRows,'Sin \u00f3rdenes con cambio de fecha.');
+    drawSection('VENCIDAS ('+lateRows.length+')','#ef4444',lateRows,'Sin \u00f3rdenes vencidas.');
 
     var dataUrl=canvas.toDataURL('image/png');
     var a=document.createElement('a');
