@@ -464,6 +464,7 @@ function enviarResumenCorreo(){
     '<textarea id="resumenText" readonly style="width:100%;height:70px;background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:8px;font-family:\'IBM Plex Mono\',monospace;font-size:11px;resize:vertical;box-sizing:border-box">'+r.subject+'\n\n'+r.body+'</textarea>'+
     '<div style="display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap;margin-top:10px">'+
     '<button onclick="generarCapturaResumen(false)" id="btnCaptura" style="background:var(--surface2);border:1px solid var(--border);color:var(--muted);border-radius:6px;padding:6px 14px;font-size:12px;cursor:pointer">Ver imagen</button>'+
+    '<button onclick="toggleTemaCaptura()" id="btnTema" style="background:var(--surface2);border:1px solid var(--border);color:var(--muted);border-radius:6px;padding:6px 14px;font-size:12px;cursor:pointer">Fondo: oscuro</button>'+
     '<button onclick="copiarResumenCorreo()" style="background:var(--surface2);border:1px solid var(--border);color:var(--muted);border-radius:6px;padding:6px 14px;font-size:12px;cursor:pointer">Copiar texto</button>'+
     '<a href="'+r.gmail+'" target="_blank" style="background:var(--accent3);color:#fff;border:none;border-radius:6px;padding:6px 14px;font-weight:600;font-size:12px;text-decoration:none">Abrir en Gmail</a>'+
     '</div>'+
@@ -480,6 +481,13 @@ function truncTxt(ctx,text,maxW){
 function descargarCapturaResumen(){
   generarCapturaResumen(true);
 }
+var _capturaTemaClaro=false;
+function toggleTemaCaptura(){
+  _capturaTemaClaro=!_capturaTemaClaro;
+  var btnT=document.getElementById('btnTema');
+  if(btnT)btnT.textContent='Fondo: '+(_capturaTemaClaro?'claro':'oscuro');
+  generarCapturaResumen(false);
+}
 function generarCapturaResumen(forceDownload){
   var btn=document.getElementById('btnCaptura');
   var msg=document.getElementById('resumenCopyMsg');
@@ -488,6 +496,9 @@ function generarCapturaResumen(forceDownload){
   try {
     var d=getResumenData(),T=d.T;
     var W=800,pad=22,rowH=26,headerH=30,sectionGap=16;
+    var pal=_capturaTemaClaro?
+      {bg:'#ffffff',title:'#1e293b',muted:'#64748b',art:'#334155',op:'#0f172a',border:'#e2e8f0'}:
+      {bg:'#0d1523',title:'#e2e8f0',muted:'#94a3b8',art:'#c3cad6',op:'#e2e8f0',border:'#334155'};
 
     function opRows(list,extraFn){
       return list.map(function(r){
@@ -511,10 +522,10 @@ function generarCapturaResumen(forceDownload){
     canvas.width=W*scale;canvas.height=H*scale;
     var ctx=canvas.getContext('2d');
     ctx.scale(scale,scale);
-    ctx.fillStyle='#0d1523';ctx.fillRect(0,0,W,H);
+    ctx.fillStyle=pal.bg;ctx.fillRect(0,0,W,H);
 
     var y=pad;
-    ctx.fillStyle='#e2e8f0';
+    ctx.fillStyle=pal.title;
     ctx.font='bold 16px "IBM Plex Sans",Arial,sans-serif';
     ctx.fillText('Estatus de pedidos en producci\u00f3n \u2014 '+fd(T),pad,y+14);
     y+=36;
@@ -528,7 +539,7 @@ function generarCapturaResumen(forceDownload){
       ctx.fillText(title,pad,y+12);
       y+=headerH;
       if(!rows.length){
-        ctx.fillStyle='#94a3b8';
+        ctx.fillStyle=pal.muted;
         ctx.font='12px "IBM Plex Sans",Arial,sans-serif';
         ctx.fillText(emptyText,pad+8,y+11);
         y+=rowH;
@@ -537,19 +548,19 @@ function generarCapturaResumen(forceDownload){
           ctx.fillStyle=color;
           ctx.fillRect(pad,y+2,3,rowH-10);
           ctx.font='11px "IBM Plex Mono",monospace';
-          ctx.fillStyle='#94a3b8';
+          ctx.fillStyle=pal.muted;
           ctx.fillText(truncTxt(ctx,r.ped||'\u2014',colPed.w),colPed.x,y+12);
           ctx.font='bold 11px "IBM Plex Mono",monospace';
-          ctx.fillStyle='#e2e8f0';
+          ctx.fillStyle=pal.op;
           ctx.fillText('OP '+r.op,colOp.x,y+12);
           ctx.font='11px "IBM Plex Sans",Arial,sans-serif';
-          ctx.fillStyle='#94a3b8';
+          ctx.fillStyle=pal.muted;
           ctx.fillText(truncTxt(ctx,r.vend||'\u2014',colVend.w),colVend.x,y+12);
           ctx.fillText(fmtNum(r.cant)+'p',colCant.x,y+12);
           ctx.font='11px "IBM Plex Sans",Arial,sans-serif';
-          ctx.fillStyle='#c3cad6';
+          ctx.fillStyle=pal.art;
           ctx.fillText(truncTxt(ctx,r.art||'\u2014',colArt.w),colArt.x,y+12);
-          ctx.fillStyle='#94a3b8';
+          ctx.fillStyle=pal.muted;
           ctx.fillText(truncTxt(ctx,r.extra,colExtra.w),colExtra.x,y+12);
           y+=rowH;
         });
