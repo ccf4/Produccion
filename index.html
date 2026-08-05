@@ -439,13 +439,11 @@ function lineaOP(r,extra){
   var totalCant=parts.reduce(function(s,p){return s+(parseInt(p.CANT)||0);},0);
   var subDisp=(r.AREA==='Aros'&&r.SUBAREA==='NUEVO')?'Aro nuevo':(normSub(r.SUBAREA)||r.SUBAREA);
   var pedStr=ped(r.OP);
-  return 'OP '+r.OP+(pedStr?' \u00b7 '+pedStr:'')+' \u00b7 '+r.AREA+' / '+subDisp+' \u00b7 '+fmtNum(totalCant)+' pzas'+(extra?' \u00b7 '+extra:'');
+  return (pedStr?pedStr+' \u00b7 ':'')+'OP '+r.OP+' \u00b7 '+r.AREA+' / '+subDisp+' \u00b7 '+fmtNum(totalCant)+' pzas'+(extra?' \u00b7 '+extra:'');
 }
 function buildResumenMailto(){
   var d=getResumenData(),T=d.T;
   var lines=[];
-  lines.push('RESUMEN DE PRODUCCI\u00d3N \u2014 '+fd(T));
-  lines.push('');
   lines.push('VENCIDAS ('+d.late.length+')');
   lines.push('------------------------');
   if(!d.late.length)lines.push('Sin \u00f3rdenes vencidas.');
@@ -505,7 +503,7 @@ function descargarCapturaResumen(){
   btn.textContent='Generando...';btn.disabled=true;
   try {
     var d=getResumenData(),T=d.T;
-    var W=760,pad=22,rowH=24,headerH=30,sectionGap=16;
+    var W=800,pad=22,rowH=24,headerH=30,sectionGap=16;
 
     function opRows(list,extraFn){
       return list.map(function(r){
@@ -547,18 +545,22 @@ function descargarCapturaResumen(){
         ctx.fillText(emptyText,pad+8,y+11);
         y+=rowH;
       } else {
+        var x0=pad+9;
+        var colPed={x:x0,w:98},colOp={x:x0+104,w:70},colArea={x:x0+180,w:150},colCant={x:x0+336,w:56},colExtra={x:x0+398,w:W-pad-9-398};
         rows.forEach(function(r){
           ctx.fillStyle=color;
           ctx.fillRect(pad,y+2,3,rowH-9);
+          ctx.font='11px "IBM Plex Mono",monospace';
+          ctx.fillStyle='#94a3b8';
+          ctx.fillText(truncTxt(ctx,r.ped||'\u2014',colPed.w),colPed.x,y+12);
           ctx.font='bold 11px "IBM Plex Mono",monospace';
           ctx.fillStyle='#e2e8f0';
-          var opTxt='OP '+r.op;
-          ctx.fillText(opTxt,pad+9,y+12);
-          var opW=ctx.measureText(opTxt).width;
+          ctx.fillText('OP '+r.op,colOp.x,y+12);
           ctx.font='11px "IBM Plex Sans",Arial,sans-serif';
           ctx.fillStyle='#94a3b8';
-          var rest=(r.ped?r.ped+' \u00b7 ':'')+r.area+'/'+r.sub+' \u00b7 '+fmtNum(r.cant)+'p \u00b7 '+r.extra;
-          ctx.fillText(truncTxt(ctx,rest,W-pad-9-opW-16),pad+9+opW+8,y+12);
+          ctx.fillText(truncTxt(ctx,r.area+'/'+r.sub,colArea.w),colArea.x,y+12);
+          ctx.fillText(fmtNum(r.cant)+'p',colCant.x,y+12);
+          ctx.fillText(truncTxt(ctx,r.extra,colExtra.w),colExtra.x,y+12);
           y+=rowH;
         });
       }
@@ -569,20 +571,12 @@ function descargarCapturaResumen(){
     drawSection('CON NUEVA FECHA DE ENTREGA ('+mnetRows.length+')','#f97316',mnetRows,'Sin \u00f3rdenes con cambio de fecha.');
     drawSection('CERRADAS \u00daLTIMOS '+d.diasCerradas+' D\u00cdAS ('+closedRows.length+')','#10b981',closedRows,'Sin \u00f3rdenes cerradas recientemente.');
 
-    canvas.toBlob(function(blob){
-      if(!blob){
-        btn.textContent='Descargar captura';btn.disabled=false;
-        msg.textContent='No se pudo generar la captura.';msg.style.color='var(--danger)';
-        return;
-      }
-      var url=URL.createObjectURL(blob);
-      var a=document.createElement('a');
-      a.href=url;a.download='resumen_produccion_'+todayIso()+'.png';
-      document.body.appendChild(a);a.click();document.body.removeChild(a);
-      setTimeout(function(){URL.revokeObjectURL(url);},3000);
-      btn.textContent='Descargar captura';btn.disabled=false;
-      msg.textContent='Captura descargada \u2713 \u2014 arr\u00e1strala al correo';msg.style.color='var(--accent3)';
-    });
+    var dataUrl=canvas.toDataURL('image/png');
+    var a=document.createElement('a');
+    a.href=dataUrl;a.download='resumen_produccion_'+todayIso()+'.png';
+    document.body.appendChild(a);a.click();document.body.removeChild(a);
+    btn.textContent='Descargar captura';btn.disabled=false;
+    msg.textContent='Captura descargada \u2713 \u2014 arr\u00e1strala al correo';msg.style.color='var(--accent3)';
   } catch(e){
     btn.textContent='Descargar captura';btn.disabled=false;
     msg.textContent='No se pudo generar la captura.';msg.style.color='var(--danger)';
