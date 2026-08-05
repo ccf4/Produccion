@@ -420,7 +420,7 @@ function getResumenData(){
   });
   mnetWarn.sort(function(a,b){var fa=pd(a.Fprod||a.FProm),fb=pd(b.Fprod||b.FProm);return (fa||new Date(0))-(fb||new Date(0));});
   // Cerradas: hoy + 2 dias hacia atras (3 dias de calendario en total)
-  var cutoff2=new Date(T);cutoff2.setDate(cutoff2.getDate()-2);
+  var cutoff2=new Date(T);cutoff2.setDate(cutoff2.getDate()-1);
   var seenClosed={},closedRecent=[];
   TERM.forEach(function(r){
     if(r.STATUS==='C')return;
@@ -431,7 +431,7 @@ function getResumenData(){
     closedRecent.push(r);
   });
   closedRecent.sort(function(a,b){return (pd(b.FTERM)||new Date(0))-(pd(a.FTERM)||new Date(0));});
-  var diasCerradasVentana=3;
+  var diasCerradasVentana=2;
   return {T:T,late:late,mnetWarn:mnetWarn,closedRecent:closedRecent,diasCerradas:diasCerradasVentana};
 }
 function lineaOP(r,extra){
