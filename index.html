@@ -459,8 +459,9 @@ function enviarResumenCorreo(){
   var r=buildResumenMailto();
   document.getElementById('mt').textContent='Estatus de pedidos en producci\u00f3n';
   document.getElementById('mb').innerHTML=
-    '<div style="margin-bottom:8px;font-size:11px;color:var(--muted)">1) Abre el borrador en Gmail. 2) Descarga la captura y arr\u00e1strala al correo (los navegadores no permiten adjuntarla autom\u00e1ticamente).</div>'+
-    '<textarea id="resumenText" readonly style="width:100%;height:220px;background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:8px;font-family:\'IBM Plex Mono\',monospace;font-size:11px;resize:vertical;box-sizing:border-box">'+r.subject+'\n\n'+r.body+'</textarea>'+
+    '<div style="margin-bottom:8px;font-size:11px;color:var(--muted)">Clic derecho sobre la imagen \u2192 Copiar imagen, y p\u00e9gala directo en el correo. Abajo tambi\u00e9n tienes el bot\u00f3n de Gmail con el link ya listo.</div>'+
+    '<div id="capturaPreview" style="text-align:center;padding:10px 0"></div>'+
+    '<textarea id="resumenText" readonly style="width:100%;height:70px;background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:8px;font-family:\'IBM Plex Mono\',monospace;font-size:11px;resize:vertical;box-sizing:border-box">'+r.subject+'\n\n'+r.body+'</textarea>'+
     '<div style="display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap;margin-top:10px">'+
     '<button onclick="descargarCapturaResumen()" id="btnCaptura" style="background:var(--surface2);border:1px solid var(--border);color:var(--muted);border-radius:6px;padding:6px 14px;font-size:12px;cursor:pointer">Descargar captura</button>'+
     '<button onclick="copiarResumenCorreo()" style="background:var(--surface2);border:1px solid var(--border);color:var(--muted);border-radius:6px;padding:6px 14px;font-size:12px;cursor:pointer">Copiar texto</button>'+
@@ -468,6 +469,7 @@ function enviarResumenCorreo(){
     '</div>'+
     '<div id="resumenCopyMsg" style="font-size:11px;text-align:right;margin-top:6px;min-height:14px"></div>';
   document.getElementById('modal').classList.add('open');
+  generarCapturaResumen(false);
 }
 function truncTxt(ctx,text,maxW){
   if(ctx.measureText(text).width<=maxW)return text;
@@ -476,9 +478,13 @@ function truncTxt(ctx,text,maxW){
   return t+'\u2026';
 }
 function descargarCapturaResumen(){
+  generarCapturaResumen(true);
+}
+function generarCapturaResumen(forceDownload){
   var btn=document.getElementById('btnCaptura');
   var msg=document.getElementById('resumenCopyMsg');
-  btn.textContent='Generando...';btn.disabled=true;
+  var prevBtnTxt=btn?btn.textContent:'';
+  if(btn){btn.textContent='Generando...';btn.disabled=true;}
   try {
     var d=getResumenData(),T=d.T;
     var W=800,pad=22,rowH=26,headerH=30,sectionGap=16;
@@ -556,24 +562,27 @@ function descargarCapturaResumen(){
     drawSection('VENCIDAS ('+lateRows.length+')','#ef4444',lateRows,'Sin \u00f3rdenes vencidas.');
 
     var dataUrl=canvas.toDataURL('image/png');
-    var a=document.createElement('a');
-    a.href=dataUrl;a.download='resumen_produccion_'+todayIso()+'.png';
-    document.body.appendChild(a);a.click();document.body.removeChild(a);
 
     var preview=document.getElementById('capturaPreview');
     if(!preview){
       preview=document.createElement('div');
       preview.id='capturaPreview';
-      preview.style.cssText='margin-top:10px;text-align:center;border-top:1px dashed var(--border);padding-top:10px';
-      document.getElementById('mb').appendChild(preview);
+      preview.style.cssText='text-align:center;padding:10px 0';
+      document.getElementById('mb').insertBefore(preview,document.getElementById('resumenText'));
     }
-    preview.innerHTML='<img src="'+dataUrl+'" style="max-width:100%;border-radius:6px;display:block;margin:0 auto"><div style="font-size:10px;color:var(--muted);margin-top:6px">Si no se descarg\u00f3 sola: clic derecho sobre la imagen \u2192 Guardar imagen como...</div>';
+    preview.innerHTML='<img src="'+dataUrl+'" style="max-width:100%;border-radius:6px;display:block;margin:0 auto;border:1px solid var(--border)">';
 
-    btn.textContent='Descargar captura';btn.disabled=false;
-    msg.textContent='Captura generada \u2713 \u2014 v\u00e9la abajo';msg.style.color='var(--accent3)';
+    if(forceDownload){
+      var a=document.createElement('a');
+      a.href=dataUrl;a.download='resumen_produccion_'+todayIso()+'.png';
+      document.body.appendChild(a);a.click();document.body.removeChild(a);
+      if(msg){msg.textContent='Captura descargada \u2713';msg.style.color='var(--accent3)';}
+    }
+
+    if(btn){btn.textContent=prevBtnTxt||'Descargar captura';btn.disabled=false;}
   } catch(e){
-    btn.textContent='Descargar captura';btn.disabled=false;
-    msg.textContent='No se pudo generar la captura: '+e.message;msg.style.color='var(--danger)';
+    if(btn){btn.textContent=prevBtnTxt||'Descargar captura';btn.disabled=false;}
+    if(msg){msg.textContent='No se pudo generar la captura: '+e.message;msg.style.color='var(--danger)';}
   }
 }
 function copiarResumenCorreo(){
