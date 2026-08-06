@@ -601,7 +601,7 @@ function generarCapturaResumen(forceDownload){
       y+=sectionGap;
     }
 
-    var colArtWide={x:colArt.x,w:(W-pad-9)-colArt.x};
+    var colArtWide={x:colArt.x,w:(colExtra.x-colArt.x)+100};
     function drawSubSection(title,color,rows,emptyText){
       ctx.fillStyle=color;
       ctx.font='bold 11px "IBM Plex Sans",Arial,sans-serif';
