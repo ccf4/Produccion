@@ -1406,7 +1406,7 @@ function renderGantt(){
         var barLabelText='OP '+r.OP+(ps?' '+ps:'')+' \u00b7 '+fmtNum(totalCant)+' pzas \u00b7 '+subLabel+(_editedOp?' \u00b7 FECHA EDITADA':'');
         var calIcon='<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="#ffd166" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;vertical-align:-2px;margin-right:4px"><rect x="3" y="5" width="18" height="16" rx="2"/><line x1="3" y1="10" x2="21" y2="10"/><line x1="8" y1="3" x2="8" y2="7"/><line x1="16" y1="3" x2="16" y2="7"/></svg>';
         var editedDot=_editedOp?'<span style="position:absolute;top:-3px;right:-3px;width:8px;height:8px;border-radius:50%;background:#ffd166;z-index:2"></span>':'';
-        var barHtml='<div class="gantt-bar-wrap" data-start="'+(startDay*dayW)+'" data-w="'+barW+'" data-op="'+r.OP+'" onclick="showDetail(\''+r.OP+'\')" style="position:absolute;left:'+(startDay*dayW)+'px;width:'+barW+'px;top:4px;bottom:4px;border-radius:4px;background:'+barCol+';opacity:.88;cursor:pointer;z-index:1;transition:opacity .15s;'+lateStyle+'" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=.88" title="'+barLabelText+'">'+editedDot+
+        var barHtml='<div class="gantt-bar-wrap" data-start="'+(startDay*dayW)+'" data-w="'+barW+'" data-op="'+r.OP+'" onclick="showDetail(\''+r.OP+'\')" style="position:absolute;left:'+(startDay*dayW)+'px;width:'+barW+'px;top:4px;bottom:4px;border-radius:4px;background:'+barCol+';opacity:.88;cursor:pointer;z-index:1;transition:opacity .15s;'+lateStyle+'" onmouseenter="this.style.opacity=1;showGanttTip(this,\''+r.OP+'\')" onmouseleave="this.style.opacity=.88;hideOpTip()">'+editedDot+
           '<div class="gantt-bar-label" style="position:absolute;left:8px;top:0;right:0;font-size:11px;font-family:IBM Plex Mono,monospace;font-weight:600;color:#fff;white-space:nowrap;line-height:'+(ROW_H-8)+'px;pointer-events:none;overflow:hidden;text-overflow:ellipsis">'+(_editedOp?calIcon:'')+barLabelText+'</div></div>';
         rows.push({h:ROW_H,pad:'0',flex:false,labelStyle:'',border:'rgba(255,255,255,.03)',bg:'transparent',label:'',content:wkBands()+todayLine()+barHtml});
       });
@@ -1466,6 +1466,31 @@ function renderGantt(){
   },50);
 }
 
+function showGanttTip(el,opId){
+  var d=TOOLTIP_DATA[String(opId)]||{};
+  var rows=RAW.filter(function(r){return String(r.OP)===String(opId)&&r.STATUS!=='T'&&r.STATUS!=='C';});
+  var totalCant=rows.reduce(function(s,r){return s+(parseInt(r.CANT)||0);},0);
+  var femit=rows.length?pd(rows[0].FEMIT):null;
+  var fprom=rows.length?pd(rows[0].FProm):null;
+  var fprod=rows.length?pd(rows[0].Fprod||rows[0].FProm):null;
+  var diasAbierta=femit?daysDiff(femit,today()):null;
+  var pedStr=ped(opId);
+  var troquel=d.tq||'',mesh=d.ms||'',mat=d.mt||'';
+  _opTTsub=d.sub||'';
+  if(!_opTT){_opTT=document.getElementById('op-tooltip');}
+  var tqLabel=(_opTTsub==='Pack'||_opTTsub==='Disco')?'Troquel':'Tama\u00f1o';
+  var html='';
+  if(diasAbierta!==null)html+='<div class="op-tt-row"><span class="op-tt-lbl">D\u00edas abierta</span><span class="op-tt-val">'+diasAbierta+' d\u00eda'+(diasAbierta!==1?'s':'')+'</span></div>';
+  if(pedStr)html+='<div class="op-tt-row"><span class="op-tt-lbl">Pedido</span><span class="op-tt-val">'+pedStr+'</span></div>';
+  html+='<div class="op-tt-row"><span class="op-tt-lbl">Cant</span><span class="op-tt-val">'+fmtNum(totalCant)+'</span></div>';
+  if(troquel)html+='<div class="op-tt-row"><span class="op-tt-lbl">'+tqLabel+'</span><span class="op-tt-val">'+troquel+'</span></div>';
+  if(mesh)html+='<div class="op-tt-row"><span class="op-tt-lbl">Malla</span><span class="op-tt-val">'+mesh+'</span></div>';
+  if(mat)html+='<div class="op-tt-row"><span class="op-tt-lbl">Mat</span><span class="op-tt-val">'+mat+'</span></div>';
+  if(fprom&&fprod&&fd(fprom)!==fd(fprod))html+='<div class="op-tt-row"><span class="op-tt-lbl">Reprogramada</span><span class="op-tt-val">'+fd(fprom)+' \u2192 '+fd(fprod)+'</span></div>';
+  if(!html){hideOpTip();return;}
+  _opTT.innerHTML=html;
+  _opTT.style.display='block';
+}
 var _opTT=document.getElementById('op-tooltip')||null;
 var _opTTsub='';
 function showOpTip(el,opId){
