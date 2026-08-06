@@ -564,8 +564,8 @@ function generarCapturaResumen(forceDownload){
     var x0=pad+9;
     var colPed={x:x0,w:82},colOp={x:x0+88,w:62},colVend={x:x0+156,w:48},colCant={x:x0+210,w:48},colArt={x:x0+264,w:290},colExtra={x:x0+562,w:W-pad-9-562};
 
-    function drawSection(title,color,rows,emptyText){
-      ctx.fillStyle=color;
+    function drawSection(title,color,rows,emptyText,titleColor){
+      ctx.fillStyle=titleColor||color;
       ctx.font='bold 12px "IBM Plex Sans",Arial,sans-serif';
       ctx.fillText(title,pad,y+12);
       y+=headerH;
@@ -634,15 +634,15 @@ function generarCapturaResumen(forceDownload){
 
     ctx.fillStyle=pal.title;
     ctx.font='bold 12px "IBM Plex Sans",Arial,sans-serif';
-    ctx.fillText('PR\u00d3XIMAS',pad,y+12);
+    ctx.fillText('PR\u00d3XIMAS ENTREGAS',pad,y+12);
     y+=headerH;
     proxDays.forEach(function(dia){
-      drawSubSection(dia.label+' \u2014 '+fd(dia.fecha)+' ('+dia.rows.length+')','#3b82f6',dia.rows,'Sin \u00f3rdenes programadas.');
+      drawSubSection(dia.label+' \u2014 '+fd(dia.fecha),'#3b82f6',dia.rows,'Sin \u00f3rdenes programadas.');
     });
 
-    drawSection('CERRADAS \u00daLTIMOS '+d.diasCerradas+' D\u00cdAS ('+closedRows.length+')','#10b981',closedRows,'Sin \u00f3rdenes cerradas recientemente.');
-    drawSection('CON NUEVA FECHA DE ENTREGA ('+mnetRows.length+')','#f97316',mnetRows,'Sin \u00f3rdenes con cambio de fecha.');
-    drawSection('VENCIDAS ('+lateRows.length+')','#ef4444',lateRows,'Sin \u00f3rdenes vencidas.');
+    drawSection('CERRADAS \u00daLTIMOS '+d.diasCerradas+' D\u00cdAS','#10b981',closedRows,'Sin \u00f3rdenes cerradas recientemente.',pal.title);
+    drawSection('CON NUEVA FECHA DE ENTREGA','#f97316',mnetRows,'Sin \u00f3rdenes con cambio de fecha.');
+    drawSection('VENCIDAS','#ef4444',lateRows,'Sin \u00f3rdenes vencidas.');
 
     var dataUrl=canvas.toDataURL('image/png');
 
