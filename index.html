@@ -632,6 +632,9 @@ function generarCapturaResumen(forceDownload){
       y+=sectionGap;
     }
 
+    drawSection('VENCIDAS','#ef4444',lateRows,'Sin \u00f3rdenes vencidas.');
+    drawSection('CON NUEVA FECHA DE ENTREGA','#f97316',mnetRows,'Sin \u00f3rdenes con cambio de fecha.');
+
     ctx.fillStyle=pal.title;
     ctx.font='bold 12px "IBM Plex Sans",Arial,sans-serif';
     ctx.fillText('PR\u00d3XIMAS ENTREGAS',pad,y+12);
@@ -641,8 +644,6 @@ function generarCapturaResumen(forceDownload){
     });
 
     drawSection('CERRADAS \u00daLTIMOS '+d.diasCerradas+' D\u00cdAS','#10b981',closedRows,'Sin \u00f3rdenes cerradas recientemente.',pal.title);
-    drawSection('CON NUEVA FECHA DE ENTREGA','#f97316',mnetRows,'Sin \u00f3rdenes con cambio de fecha.');
-    drawSection('VENCIDAS','#ef4444',lateRows,'Sin \u00f3rdenes vencidas.');
 
     var dataUrl=canvas.toDataURL('image/png');
 
