@@ -432,7 +432,25 @@ function getResumenData(){
   });
   closedRecent.sort(function(a,b){return (pd(b.FTERM)||new Date(0))-(pd(a.FTERM)||new Date(0));});
   var diasCerradasVentana=2;
-  return {T:T,late:late,mnetWarn:mnetWarn,closedRecent:closedRecent,diasCerradas:diasCerradasVentana};
+
+  // Proximas: segun _proximasModo ('hoy_manana' o 'manana_pasado')
+  var offsets=_proximasModo==='manana_pasado'?[1,2]:[0,1];
+  var diaLabels=_proximasModo==='manana_pasado'?['MA\u00d1ANA','PASADO MA\u00d1ANA']:['HOY','MA\u00d1ANA'];
+  var diaFechas=offsets.map(function(off){var d=new Date(T);d.setDate(d.getDate()+off);return d;});
+  var seenProx={};
+  var proximas=diaFechas.map(function(fecha,i){
+    var rows=src.filter(function(d){
+      if(seen1[d.OP]||seen2[d.OP]||seenProx[d.OP])return false;
+      var fp=pd(d.Fprod||d.FProm);
+      if(!fp)return false;
+      if(fp.getFullYear()!==fecha.getFullYear()||fp.getMonth()!==fecha.getMonth()||fp.getDate()!==fecha.getDate())return false;
+      seenProx[d.OP]=true;
+      return true;
+    });
+    return {label:diaLabels[i],fecha:fecha,rows:rows};
+  });
+
+  return {T:T,late:late,mnetWarn:mnetWarn,closedRecent:closedRecent,diasCerradas:diasCerradasVentana,proximas:proximas};
 }
 function lineaOP(r,extra){
   var parts=RAW.filter(function(x){return String(x.OP)===String(r.OP);});
@@ -465,6 +483,7 @@ function enviarResumenCorreo(){
     '<div style="display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap;margin-top:10px">'+
     '<button onclick="generarCapturaResumen(false)" id="btnCaptura" style="background:var(--surface2);border:1px solid var(--border);color:var(--muted);border-radius:6px;padding:6px 14px;font-size:12px;cursor:pointer">Ver imagen</button>'+
     '<button onclick="toggleTemaCaptura()" id="btnTema" style="background:var(--surface2);border:1px solid var(--border);color:var(--muted);border-radius:6px;padding:6px 14px;font-size:12px;cursor:pointer">Fondo: claro</button>'+
+    '<button onclick="toggleRangoProximas()" id="btnRango" style="background:var(--surface2);border:1px solid var(--border);color:var(--muted);border-radius:6px;padding:6px 14px;font-size:12px;cursor:pointer">Rango: hoy y ma\u00f1ana</button>'+
     '<button onclick="copiarResumenCorreo()" style="background:var(--surface2);border:1px solid var(--border);color:var(--muted);border-radius:6px;padding:6px 14px;font-size:12px;cursor:pointer">Copiar texto</button>'+
     '<a href="'+r.gmail+'" target="_blank" style="background:var(--accent3);color:#fff;border:none;border-radius:6px;padding:6px 14px;font-weight:600;font-size:12px;text-decoration:none">Abrir en Gmail</a>'+
     '</div>'+
@@ -482,6 +501,13 @@ function descargarCapturaResumen(){
   generarCapturaResumen(true);
 }
 var _capturaTemaClaro=true;
+var _proximasModo='hoy_manana';
+function toggleRangoProximas(){
+  _proximasModo=_proximasModo==='hoy_manana'?'manana_pasado':'hoy_manana';
+  var btnR=document.getElementById('btnRango');
+  if(btnR)btnR.textContent='Rango: '+(_proximasModo==='hoy_manana'?'hoy y ma\u00f1ana':'ma\u00f1ana y pasado');
+  generarCapturaResumen(false);
+}
 function toggleTemaCaptura(){
   _capturaTemaClaro=!_capturaTemaClaro;
   var btnT=document.getElementById('btnTema');
@@ -512,10 +538,15 @@ function generarCapturaResumen(forceDownload){
     var closedRows=opRows(d.closedRecent,function(r){return fd(pd(r.FTERM));});
     var mnetRows=opRows(d.mnetWarn,function(r){return '\u2192 '+fd(pd(r.Fprod||r.FProm));});
     var lateRows=opRows(d.late,function(r){var fp=pd(r.Fprod||r.FProm),dl=fp?daysDiff(fp,T):0;return dl+'d vencido';});
+    var proxDays=d.proximas.map(function(dia){
+      return {label:dia.label,fecha:dia.fecha,rows:opRows(dia.rows,function(r){return fd(pd(r.Fprod||r.FProm));})};
+    });
 
     var totalRows=lateRows.length+mnetRows.length+closedRows.length;
     var emptyCount=(lateRows.length?0:1)+(mnetRows.length?0:1)+(closedRows.length?0:1);
-    var H=pad*2+36+ (headerH+sectionGap)*3 + totalRows*rowH + emptyCount*rowH + 30;
+    var proxRowsTotal=proxDays.reduce(function(s,dia){return s+(dia.rows.length||1);},0);
+    var H=pad*2+36+ (headerH+sectionGap)*3 + totalRows*rowH + emptyCount*rowH + 30
+      + headerH + proxDays.length*(headerH-8+sectionGap) + proxRowsTotal*rowH + 20;
 
     var canvas=document.createElement('canvas');
     var scale=2;
@@ -568,9 +599,50 @@ function generarCapturaResumen(forceDownload){
       y+=sectionGap;
     }
 
+    function drawSubSection(title,color,rows,emptyText){
+      ctx.fillStyle=color;
+      ctx.font='bold 11px "IBM Plex Sans",Arial,sans-serif';
+      ctx.fillText(title,pad,y+10);
+      y+=headerH-8;
+      if(!rows.length){
+        ctx.fillStyle=pal.muted;
+        ctx.font='12px "IBM Plex Sans",Arial,sans-serif';
+        ctx.fillText(emptyText,pad+8,y+11);
+        y+=rowH;
+      } else {
+        rows.forEach(function(r){
+          ctx.fillStyle=color;
+          ctx.fillRect(pad,y+2,3,rowH-10);
+          ctx.font='11px "IBM Plex Mono",monospace';
+          ctx.fillStyle=pal.muted;
+          ctx.fillText(truncTxt(ctx,r.ped||'\u2014',colPed.w),colPed.x,y+12);
+          ctx.font='bold 11px "IBM Plex Mono",monospace';
+          ctx.fillStyle=pal.op;
+          ctx.fillText('OP '+r.op,colOp.x,y+12);
+          ctx.font='11px "IBM Plex Sans",Arial,sans-serif';
+          ctx.fillStyle=pal.muted;
+          ctx.fillText(truncTxt(ctx,r.vend||'\u2014',colVend.w),colVend.x,y+12);
+          ctx.fillText(fmtNum(r.cant)+'p',colCant.x,y+12);
+          ctx.font='11px "IBM Plex Sans",Arial,sans-serif';
+          ctx.fillStyle=pal.art;
+          ctx.fillText(truncTxt(ctx,r.art||'\u2014',colArt.w),colArt.x,y+12);
+          y+=rowH;
+        });
+      }
+      y+=sectionGap;
+    }
+
     drawSection('CERRADAS \u00daLTIMOS '+d.diasCerradas+' D\u00cdAS ('+closedRows.length+')','#10b981',closedRows,'Sin \u00f3rdenes cerradas recientemente.');
     drawSection('CON NUEVA FECHA DE ENTREGA ('+mnetRows.length+')','#f97316',mnetRows,'Sin \u00f3rdenes con cambio de fecha.');
     drawSection('VENCIDAS ('+lateRows.length+')','#ef4444',lateRows,'Sin \u00f3rdenes vencidas.');
+
+    ctx.fillStyle=pal.title;
+    ctx.font='bold 12px "IBM Plex Sans",Arial,sans-serif';
+    ctx.fillText('PR\u00d3XIMAS',pad,y+12);
+    y+=headerH;
+    proxDays.forEach(function(dia){
+      drawSubSection(dia.label+' \u2014 '+fd(dia.fecha)+' ('+dia.rows.length+')','#3b82f6',dia.rows,'Sin \u00f3rdenes programadas.');
+    });
 
     var dataUrl=canvas.toDataURL('image/png');
 
