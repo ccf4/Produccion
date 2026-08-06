@@ -632,8 +632,6 @@ function generarCapturaResumen(forceDownload){
       y+=sectionGap;
     }
 
-    drawSection('CERRADAS \u00daLTIMOS '+d.diasCerradas+' D\u00cdAS ('+closedRows.length+')','#10b981',closedRows,'Sin \u00f3rdenes cerradas recientemente.');
-
     ctx.fillStyle=pal.title;
     ctx.font='bold 12px "IBM Plex Sans",Arial,sans-serif';
     ctx.fillText('PR\u00d3XIMAS',pad,y+12);
@@ -642,6 +640,7 @@ function generarCapturaResumen(forceDownload){
       drawSubSection(dia.label+' \u2014 '+fd(dia.fecha)+' ('+dia.rows.length+')','#3b82f6',dia.rows,'Sin \u00f3rdenes programadas.');
     });
 
+    drawSection('CERRADAS \u00daLTIMOS '+d.diasCerradas+' D\u00cdAS ('+closedRows.length+')','#10b981',closedRows,'Sin \u00f3rdenes cerradas recientemente.');
     drawSection('CON NUEVA FECHA DE ENTREGA ('+mnetRows.length+')','#f97316',mnetRows,'Sin \u00f3rdenes con cambio de fecha.');
     drawSection('VENCIDAS ('+lateRows.length+')','#ef4444',lateRows,'Sin \u00f3rdenes vencidas.');
 
