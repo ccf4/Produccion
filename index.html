@@ -867,7 +867,7 @@ function switchTab(t){
   var ids=['areas','carga','semana','todas'];
   document.querySelectorAll('.tab').forEach(function(e){e.classList.toggle('active',e.getAttribute('onclick').indexOf("'"+t+"'")>-1);});
   document.querySelectorAll('.view').forEach(function(e){e.classList.toggle('active',e.id==='view-'+t);});
-  if(t==='areas'&&!document.getElementById('ganttScroll'))renderGantt();
+  if(t==='areas'){if(!document.getElementById('ganttScroll'))renderGantt();else scrollGanttToday();}
   if(t==='carga')renderCarga();
 }
 function filterAll(s,btn){sflt=s;document.querySelectorAll('#view-todas .fb').forEach(function(b){b.classList.remove('active');});btn.classList.add('active');renderTable();}
