@@ -1087,7 +1087,7 @@ function renderSemana(T){
       mnetWarn.sort(function(a,b){var fa=pd(a.Fprod||a.FProm),fb=pd(b.Fprod||b.FProm);return (fa||new Date(0))-(fb||new Date(0));});
       lhtml+='<div style="font-size:11px;font-weight:700;color:var(--accent4);text-transform:uppercase;letter-spacing:1px;margin:'+(late.length?'16px':'8px')+' 0 10px;'+(late.length?'padding-top:14px;border-top:1px solid var(--border)':'')+'">Retrasadas \u2014 con nueva fecha de entrega</div>';
       lhtml+='<div class="late-grid">'+mnetWarn.map(function(r){
-        var fp0=pd(r.FProm),fprod=pd(r.Fprod||r.FProm),daysL=fp0?daysDiff(fp0,T):0;
+        var fp0=pd(r.FProm),fprod=pd(r.Fprod||r.FProm),daysL=(fp0&&fprod)?daysDiff(fp0,fprod):0;
         var parts=RAW.filter(function(x){return String(x.OP)===String(r.OP);});
         var totalCant=parts.reduce(function(s,p){return s+(parseInt(p.CANT)||0);},0);
         var arts=getArts(r.OP);
