@@ -415,7 +415,8 @@ function getResumenData(){
   var mnetWarn=src.filter(function(d){
     if(seen1[d.OP]||seen2[d.OP])return false;
     var fpr=pd(d.Fprod||d.FProm);if(!fpr||fpr<T)return false;
-    var fp0=pd(d.FProm);if(!fp0||fp0>=T)return false;
+    var fp0=pd(d.FProm);if(!fp0)return false;
+    if(fd(fp0)===fd(fpr))return false;
     seen2[d.OP]=true;return true;
   });
   mnetWarn.sort(function(a,b){var fa=pd(a.Fprod||a.FProm),fb=pd(b.Fprod||b.FProm);return (fa||new Date(0))-(fb||new Date(0));});
@@ -1058,7 +1059,8 @@ function renderSemana(T){
   var mnetWarn=src.filter(function(d){
     if(seen1[d.OP]||seen2[d.OP])return false;
     var fpr=pd(d.Fprod||d.FProm);if(!fpr||fpr<T)return false;
-    var fp0=pd(d.FProm);if(!fp0||fp0>=T)return false;
+    var fp0=pd(d.FProm);if(!fp0)return false;
+    if(fd(fp0)===fd(fpr))return false;
     seen2[d.OP]=true;return true;
   });
   document.getElementById('lc').textContent=' - '+late.length+' vencidas'+(mnetWarn.length?' + '+mnetWarn.length+' cambio fecha':'');
