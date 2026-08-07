@@ -435,9 +435,36 @@ function getResumenData(){
   var diasCerradasVentana=2;
 
   // Proximas: segun _proximasModo ('hoy_manana' o 'manana_pasado')
-  var offsets=_proximasModo==='manana_pasado'?[1,2]:[0,1];
-  var diaLabels=_proximasModo==='manana_pasado'?['MA\u00d1ANA','PASADO MA\u00d1ANA']:['HOY','MA\u00d1ANA'];
+  // Salta domingo siempre, y sabado si no tiene entregas programadas (cae al lunes u otro dia util)
+  var DIAS_SEM=['DOMINGO','LUNES','MARTES','MI\u00c9RCOLES','JUEVES','VIERNES','S\u00c1BADO'];
+  function _hasDataOnDate(fecha){
+    return src.some(function(x){
+      if(seen1[x.OP]||seen2[x.OP])return false;
+      var fp=pd(x.Fprod||x.FProm);
+      return fp&&fp.getFullYear()===fecha.getFullYear()&&fp.getMonth()===fecha.getMonth()&&fp.getDate()===fecha.getDate();
+    });
+  }
+  function _nextUsefulOffsets(startOff,count){
+    var result=[],off=startOff,guard=0;
+    while(result.length<count&&guard<21){
+      var d=new Date(T);d.setDate(d.getDate()+off);
+      var dow=d.getDay();
+      if(dow===0){off++;guard++;continue;}
+      if(dow===6&&!_hasDataOnDate(d)){off++;guard++;continue;}
+      result.push(off);off++;guard++;
+    }
+    return result;
+  }
+  var _startOff=_proximasModo==='manana_pasado'?1:0;
+  var offsets=_nextUsefulOffsets(_startOff,2);
   var diaFechas=offsets.map(function(off){var d=new Date(T);d.setDate(d.getDate()+off);return d;});
+  var diaLabels=diaFechas.map(function(fecha,idx){
+    var off=offsets[idx];
+    if(off===0)return 'HOY';
+    if(off===1)return 'MA\u00d1ANA';
+    if(off===2)return 'PASADO MA\u00d1ANA';
+    return DIAS_SEM[fecha.getDay()];
+  });
   var seenProx={};
   var proximas=diaFechas.map(function(fecha,i){
     var rows=src.filter(function(d){
