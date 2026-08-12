@@ -963,11 +963,12 @@ function buildGrid(WS,gridId,countId,sumId){
   RAW.forEach(function(r){
     if(!weekOpSet.has(String(r.OP)))return;
     if(!r.AREA||!r.SUBAREA)return;
+    var _ns=normSub(r.SUBAREA);
     if(!areaSubMap[r.AREA])areaSubMap[r.AREA]={};
-    if(!areaSubMap[r.AREA][r.SUBAREA])areaSubMap[r.AREA][r.SUBAREA]={cant:0,golpe:0,opSet:new Set()};
-    areaSubMap[r.AREA][r.SUBAREA].cant+=(parseInt(r.CANT)||0);
-    areaSubMap[r.AREA][r.SUBAREA].golpe+=(parseInt(r.GOLPE)||parseInt(r.CANT)||0);
-    areaSubMap[r.AREA][r.SUBAREA].opSet.add(String(r.OP));
+    if(!areaSubMap[r.AREA][_ns])areaSubMap[r.AREA][_ns]={cant:0,golpe:0,opSet:new Set()};
+    areaSubMap[r.AREA][_ns].cant+=(parseInt(r.CANT)||0);
+    areaSubMap[r.AREA][_ns].golpe+=(parseInt(r.GOLPE)||parseInt(r.CANT)||0);
+    areaSubMap[r.AREA][_ns].opSet.add(String(r.OP));
   });
   var areaSet=new Set(Object.keys(areaSubMap));
   var areas=areaOrder.filter(function(a){return areaSet.has(a);}).concat([...areaSet].filter(function(a){return areaOrder.indexOf(a)===-1;}));
@@ -992,7 +993,7 @@ function buildGrid(WS,gridId,countId,sumId){
       var _subRows=_subOpIds.reduce(function(acc,opId){
         var opRows=RAW.filter(function(r){return String(r.OP)===opId&&r.STATUS!=='T'&&r.STATUS!=='C';});
         var isCross=opRows.some(function(r){return r.AREA!==area;});
-        return acc.concat(isCross?opRows:opRows.filter(function(r){return r.SUBAREA===subarea;}));
+        return acc.concat(isCross?opRows:opRows.filter(function(r){return normSub(r.SUBAREA)===subarea;}));
       },[]);
       var totalCantSub=_subRows.reduce(function(s,r){return s+(parseInt(r.CANT)||0);},0);
       var totalGolpesSub=_subRows.reduce(function(s,r){return s+(parseInt(r.GOLPE)||0);},0);
@@ -1014,7 +1015,7 @@ function buildGrid(WS,gridId,countId,sumId){
       // Also include OPs from subOpSet not yet covered (e.g. cross-area OPs)
       Array.from(subOpSet).forEach(function(opId){
         if(!seenOp[opId]){
-          var base=ops.find(function(o){return String(o.OP)===opId;})||RAW.find(function(r){return String(r.OP)===opId&&r.AREA===area&&r.SUBAREA===subarea&&r.STATUS!=='T'&&r.STATUS!=='C';});
+          var base=ops.find(function(o){return String(o.OP)===opId;})||RAW.find(function(r){return String(r.OP)===opId&&r.AREA===area&&normSub(r.SUBAREA)===subarea&&r.STATUS!=='T'&&r.STATUS!=='C';});
           if(base){var clone=Object.assign({},base,{SUBAREA:subarea,AREA:area});subOps.push(clone);}
         }
       });
@@ -1034,7 +1035,7 @@ var row='<div class="week-row"><div class="row-label" style="padding-left:10px;f
           var fp=pd(op.Fprod||op.FProm),cls=fp&&fp<T?'late-op':fp&&fp.toDateString()===T.toDateString()?'today-op':'';
           var allParts=RAW.filter(function(r){return String(r.OP)===String(op.OP);});
           var _isCrossOp=allParts.some(function(r){return r.AREA!==op.AREA;});
-          var _cRows=(_isCrossOp?allParts:allParts.filter(function(r){return r.SUBAREA===subarea&&r.STATUS!=='T'&&r.STATUS!=='C';}));
+          var _cRows=(_isCrossOp?allParts:allParts.filter(function(r){return normSub(r.SUBAREA)===subarea&&r.STATUS!=='T'&&r.STATUS!=='C';}));
           var totalCant=_cRows.reduce(function(s,r){return s+(parseInt(r.CANT)||0);},0);
           var totalGolpe=_cRows.reduce(function(s,r){return s+(parseInt(r.GOLPE)||0);},0);
           var cantStr=fmtNum(totalCant)+' pzas';
