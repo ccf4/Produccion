@@ -145,7 +145,7 @@ select{background:var(--surface2);border:1px solid var(--border);color:var(--tex
     <div style="display:grid;grid-template-columns:auto auto auto;gap:2px 6px;font-size:10px;color:var(--muted);font-family:'IBM Plex Mono',monospace">
       <div style="grid-column:1/-1;font-size:9px;letter-spacing:.6px;opacity:.6;text-transform:uppercase;margin-bottom:2px;text-align:center">Última actualización</div>
       <span style="opacity:.75">Datos:</span><span style="text-align:right">05/ago/26</span><span></span>
-      <span style="opacity:.75" class="entregas-row">Entregas:</span><span style="text-align:right" class="entregas-row">06/ago/26</span><span class="entregas-row">17:05</span>
+      <span style="opacity:.75" class="entregas-row">Entregas:</span><span style="text-align:right" class="entregas-row">11/ago/26</span><span class="entregas-row">17:00</span>
     </div>
   </div>
 </header>
@@ -558,7 +558,7 @@ function generarCapturaResumen(forceDownload){
     function opRows(list,extraFn){
       return list.map(function(r){
         var parts=RAW.filter(function(x){return String(x.OP)===String(r.OP);});
-        var totalCant=parts.reduce(function(s,p){return s+(parseInt(p.CANT)||0);},0);
+        var totalCant=parts.filter(function(p){return p.STATUS==='V';}).reduce(function(s,p){return s+(parseInt(p.CANT)||0);},0);
         var arts=getArts(r.OP);
         var fallback=(r.SUBAREA||'')+(r.MESH?' '+r.MESH:'');
         var artStr=(arts&&arts.length&&arts[0])?arts[0]:fallback;
@@ -1101,7 +1101,7 @@ function renderSemana(T){
       lhtml+='<div class="late-grid">'+late.map(function(r){
         var fp=pd(r.Fprod||r.FProm),fe=pd(r.FVALE),daysLate=fp?daysDiff(fp,T):0;
         var parts=RAW.filter(function(x){return String(x.OP)===String(r.OP);});
-        var totalCant=parts.reduce(function(s,p){return s+(parseInt(p.CANT)||0);},0);
+        var totalCant=parts.filter(function(p){return p.STATUS==='V';}).reduce(function(s,p){return s+(parseInt(p.CANT)||0);},0);
         var meshList=[...new Set(parts.map(function(p){return p.MESH||'';}).filter(Boolean))].join(' \u00b7 ');
         return '<div class="late-card" style="background:rgba(239,68,68,.06);border:1px solid rgba(239,68,68,.2);border-left:4px solid var(--danger)" onclick="showDetail(\''+r.OP+'\')">'+
           '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px"><span style="font-family:IBM Plex Mono,monospace;font-weight:700;font-size:13px">OP '+r.OP+'</span><span style="background:rgba(239,68,68,.15);color:var(--danger);font-size:10px;font-weight:700;padding:2px 7px;border-radius:10px">'+daysLate+' d\u00eda'+(daysLate!==1?'s':'')+' vencido</span></div>'+
@@ -1117,7 +1117,7 @@ function renderSemana(T){
       lhtml+='<div class="late-grid">'+mnetWarn.map(function(r){
         var fp0=pd(r.FProm),fprod=pd(r.Fprod||r.FProm),daysL=(fp0&&fprod)?daysDiff(fp0,fprod):0;
         var parts=RAW.filter(function(x){return String(x.OP)===String(r.OP);});
-        var totalCant=parts.reduce(function(s,p){return s+(parseInt(p.CANT)||0);},0);
+        var totalCant=parts.filter(function(p){return p.STATUS==='V';}).reduce(function(s,p){return s+(parseInt(p.CANT)||0);},0);
         var arts=getArts(r.OP);
         return '<div class="late-card" style="background:rgba(249,115,22,.05);border:1px solid rgba(249,115,22,.2);border-left:4px solid var(--warn)" onclick="showDetail(\''+r.OP+'\')">'+
           '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">'+
@@ -1220,7 +1220,7 @@ function renderSemana(T){
       var fe=pd(r.FEMIT),fp=pd(r.FProm),ft=pd(r.FTERM),daysOpen=fe?daysDiff(fe,T):0;
       var isVeryOld=daysOpen>180,borderCol=isVeryOld?'var(--danger)':'#ff9500';
       var parts=RAW.filter(function(x){return String(x.OP)===String(r.OP);});
-      var totalCant=parts.reduce(function(s,p){return s+(parseInt(p.CANT)||0);},0);
+      var totalCant=parts.filter(function(p){return p.STATUS==='V';}).reduce(function(s,p){return s+(parseInt(p.CANT)||0);},0);
       return '<div class="late-card" style="background:'+(isVeryOld?'rgba(239,68,68,.06)':'rgba(255,149,0,.06)')+';border:1px solid '+(isVeryOld?'rgba(239,68,68,.2)':'rgba(255,149,0,.2)')+';border-left:4px solid '+borderCol+'" onclick="showDetail(\''+r.OP+'\')">'+
         '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px"><span style="font-family:IBM Plex Mono,monospace;font-weight:700;font-size:13px">OP '+r.OP+'</span><span style="background:'+(isVeryOld?'rgba(239,68,68,.15)':'rgba(255,149,0,.15)')+';color:'+borderCol+';font-size:10px;font-weight:700;padding:2px 7px;border-radius:10px">'+daysOpen+' d\u00edas abierta</span></div>'+
         (ped(r.OP)?'<div style="font-size:9px;color:var(--accent4);font-family:IBM Plex Mono,monospace;margin-bottom:4px">'+ped(r.OP)+'</div>':'')+
