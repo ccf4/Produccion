@@ -152,6 +152,7 @@ select{background:var(--surface2);border:1px solid var(--border);color:var(--tex
   <div class="tab active" onclick="switchTab('areas')">Area / Subarea</div>
   <div class="tab" onclick="switchTab('carga')">Carga</div>
   <div class="tab" onclick="switchTab('semana')">Semanal</div>
+  <div class="tab" onclick="switchTab('historico')">Histórico</div>
   <div class="tab" onclick="switchTab('todas')">Todas OP Abiertas</div>
 </div>
 <main>
@@ -177,6 +178,10 @@ select{background:var(--surface2);border:1px solid var(--border);color:var(--tex
   <div class="view active" id="view-areas">
   <div id="ganttChart"></div>
 </div>
+  <div class="view" id="view-historico">
+    <div style="padding:10px 14px 0 14px;font-size:10px;color:var(--muted)">Carga pendiente e histórico de entregas cerradas (T) por subárea, últimas <span id="histWeeksLabel">12</span> semanas.</div>
+    <div id="histCharts" style="padding:14px"></div>
+  </div>
   <div class="view" id="view-todas">
     <div style="display:flex;gap:7px;flex-wrap:wrap;margin-bottom:16px;align-items:center;">
       <span class="fl">Estado:</span>
@@ -864,11 +869,12 @@ function activeData(){return DATA.filter(function(d){return matchSearch(d.OP,ped
 function activeMissing(){return MISSING.filter(function(m){return matchSearch(m.OP,m.PEDIDO);});}
 
 function switchTab(t){
-  var ids=['areas','carga','semana','todas'];
+  var ids=['areas','carga','semana','historico','todas'];
   document.querySelectorAll('.tab').forEach(function(e){e.classList.toggle('active',e.getAttribute('onclick').indexOf("'"+t+"'")>-1);});
   document.querySelectorAll('.view').forEach(function(e){e.classList.toggle('active',e.id==='view-'+t);});
   if(t==='areas'){if(!document.getElementById('ganttScroll'))renderGantt();else scrollGanttToday();}
   if(t==='carga')renderCarga();
+  if(t==='historico')renderHistorico();
 }
 function filterAll(s,btn){sflt=s;document.querySelectorAll('#view-todas .fb').forEach(function(b){b.classList.remove('active');});btn.classList.add('active');renderTable();}
 function maxWeekOff(T){
@@ -1334,6 +1340,80 @@ function subSparklineHtml(weeks,tot,col,unit){
   tableRows.push({l:'Pendiente actual',v:fmtNum(tot)+unit,cur:true});
   var payload=encodeURIComponent(JSON.stringify(tableRows));
   return '<div data-spark-table="'+payload+'" onmouseenter="showSparkTip(this)" onmouseleave="hideHmTip()" onmousemove="moveHmStripTip(event)" style="display:flex;align-items:flex-end;gap:2px;height:14px;margin-top:3px;cursor:default;">'+bars+totLabel+'</div>';
+}
+function bigSparkHtml(weeks,tot,col,unit,title,iconHtml){
+  var maxV=Math.max.apply(null,weeks.map(function(w){return w.val;}).concat([tot,1]));
+  var barW=18,gap=4,maxH=90;
+  function barH(v){return v>0?Math.max(2,Math.round((v/maxV)*maxH)):1;}
+  var bars=weeks.map(function(w){
+    var h=barH(w.val);
+    return '<div style="display:flex;flex-direction:column;align-items:center;gap:4px;flex-shrink:0">'
+      +'<div style="width:'+barW+'px;height:'+maxH+'px;display:flex;align-items:flex-end">'
+      +'<div style="width:100%;height:'+h+'px;background:'+col+(w.val>0?'aa':'22')+';border-radius:2px 2px 0 0"></div>'
+      +'</div>'
+      +'<div style="font-size:9px;color:var(--muted);font-family:\'IBM Plex Mono\',monospace;white-space:nowrap;transform:rotate(-40deg);transform-origin:top center;margin-top:2px;width:0">'+fmtWeekShort(w.ws)+'</div>'
+      +'</div>';
+  }).join('');
+  var totH=barH(tot);
+  var totBar='<div style="display:flex;flex-direction:column;align-items:center;gap:4px;flex-shrink:0;margin-left:6px;padding-left:6px;border-left:1px dashed var(--border)">'
+    +'<div style="width:'+(barW+4)+'px;height:'+maxH+'px;display:flex;align-items:flex-end">'
+    +'<div style="width:100%;height:'+totH+'px;background:'+(tot>0?col:col+'33')+';border-radius:2px 2px 0 0;box-shadow:0 0 0 1px '+col+'"></div>'
+    +'</div>'
+    +'<div style="font-size:9px;color:'+col+';font-weight:700;font-family:\'IBM Plex Mono\',monospace;white-space:nowrap">Hoy</div>'
+    +'</div>';
+  var tableRows=weeks.map(function(w){return {l:fmtWeekShort(w.ws)+'\u2013'+fmtWeekShort(w.we),v:fmtNum(w.val)+unit};});
+  tableRows.push({l:'Pendiente actual',v:fmtNum(tot)+unit,cur:true});
+  var payload=encodeURIComponent(JSON.stringify(tableRows));
+  return '<div class="card" style="padding:14px 14px 22px 14px" data-spark-table="'+payload+'" onmouseenter="showSparkTip(this)" onmouseleave="hideHmTip()" onmousemove="moveHmStripTip(event)">'
+    +'<div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:12px">'
+    +'<div style="font-size:13px;font-weight:700;color:var(--text);display:flex;align-items:center">'+(iconHtml||'')+title+'</div>'
+    +'<div style="font-size:12px;font-family:\'IBM Plex Mono\',monospace;color:'+col+';font-weight:700">'+fmtNum(tot)+unit+' pendiente</div>'
+    +'</div>'
+    +'<div style="display:flex;align-items:flex-end;gap:'+gap+'px;overflow-x:auto;padding-bottom:4px">'+bars+totBar+'</div>'
+    +'</div>';
+}
+function renderHistorico(){
+  var numWeeks=12;
+  document.getElementById('histWeeksLabel').textContent=numWeeks;
+  var src=activeData();
+  var areaMap={};
+  src.forEach(function(r){
+    if(!r.AREA)return;
+    var _sk=normSub(r.SUBAREA);
+    if(!areaMap[r.AREA])areaMap[r.AREA]={};
+    if(!areaMap[r.AREA][_sk])areaMap[r.AREA][_sk]=[];
+    if(!areaMap[r.AREA][_sk].find(function(x){return x.OP===r.OP;}))
+      areaMap[r.AREA][_sk].push(r);
+  });
+  var _aOrder=['Disco','Aros','Telar','Varios','ALMC'];
+  var _sortedAreas=_aOrder.filter(function(a){return areaMap[a];}).concat(Object.keys(areaMap).filter(function(a){return _aOrder.indexOf(a)===-1&&areaMap[a];}));
+  var _subOrder=['Disco','Pack','Manual','Oblongo/Manual','Riñon','Riñon/Manual','Oblongo','Pack Rect / Manual','Tiras','Tapas','Armar','Tubular','Tubulares','Remallado','Criba','Eliminador','Placa filtrante','Embolsados','Nuevo'];
+  var html='';
+  if(!_sortedAreas.length){
+    document.getElementById('histCharts').innerHTML='<div style="color:var(--muted);padding:20px">Sin datos.</div>';
+    return;
+  }
+  _sortedAreas.forEach(function(area){
+    var subs=areaMap[area],col=ac(area);
+    html+='<div style="display:flex;align-items:center;gap:6px;margin:18px 0 10px 0"><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:'+col+'"></span><span style="font-size:14px;font-weight:700;color:'+col+'">'+area+'</span></div>';
+    var _subsKeys=_subOrder.filter(function(s){return subs[s];}).concat(Object.keys(subs).filter(function(s){return _subOrder.indexOf(s)===-1&&subs[s];}));
+    html+='<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px">';
+    _subsKeys.forEach(function(subKey){
+      var ops=subs[subKey];
+      var _isPack=subKey==='Pack';
+      var _tot=Object.keys(umap).reduce(function(tot,opId){
+        var _ur=umap[opId];
+        if(_ur.AREA!==area||normSub(_ur.SUBAREA)!==subKey)return tot;
+        var _opR=RAW.filter(function(r){return String(r.OP)===opId&&r.AREA===area&&r.STATUS!=='T'&&r.STATUS!=='C';});
+        return tot+_opR.reduce(function(s,r){return s+(_isPack?(parseInt(r.GOLPE)||0):(parseInt(r.CANT)||0));},0);
+      },0);
+      var _unit=_isPack?' gol.':' pzas';
+      var _weeks=weeklyTSums(area,subKey,_isPack,numWeeks);
+      html+=bigSparkHtml(_weeks,_tot,col,_unit,subKey.toUpperCase(),subIcon(subKey,area));
+    });
+    html+='</div>';
+  });
+  document.getElementById('histCharts').innerHTML=html;
 }
 function showSparkTip(el){
   if(!_hmTT)_hmTT=document.getElementById('hm-tooltip');
