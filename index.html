@@ -1348,39 +1348,30 @@ function bigSparkHtml(weeks,tot,col,unit,title,iconHtml){
   function barH(v){return v>0?Math.max(2,Math.round((v/maxV)*maxH)):1;}
   var mutedCol='rgba(255,255,255,.16)';
   var avg=histVals.length?histVals.reduce(function(s,v){return s+v;},0)/histVals.length:0;
-  var avgH=barH(avg);
   var bars=weeks.map(function(w){
     var h=barH(w.val);
-    var lbl=fmtWeekShort(w.ws)+'\u2013'+fmtWeekShort(w.we);
-    return '<div class="hist-bar" data-lbl="'+lbl.replace(/"/g,'&quot;')+'" data-val="'+fmtNum(w.val)+unit+'" onmouseenter="showBarTip(this)" onmousemove="moveHmStripTip(event)" onmouseleave="hideHmTip()" style="width:'+barW+'px;height:'+maxH+'px;display:flex;align-items:flex-end;flex-shrink:0;cursor:default">'
+    return '<div style="width:'+barW+'px;height:'+maxH+'px;display:flex;align-items:flex-end;flex-shrink:0">'
       +'<div style="width:100%;height:'+h+'px;background:'+(w.val>0?col:mutedCol)+';opacity:'+(w.val>0?'.45':'.3')+';border-radius:2px 2px 0 0"></div>'
       +'</div>';
   }).join('');
   var totH=barH(tot);
-  var totLbl='Pendiente actual';
-  var totBar='<div class="hist-bar" data-lbl="'+totLbl+'" data-val="'+fmtNum(tot)+unit+'" onmouseenter="showBarTip(this)" onmousemove="moveHmStripTip(event)" onmouseleave="hideHmTip()" style="width:'+barW+'px;height:'+maxH+'px;display:flex;align-items:flex-end;flex-shrink:0;margin-left:8px;padding-left:8px;border-left:1px dashed var(--border);cursor:default">'
+  var divider='<div style="width:0;align-self:stretch;border-left:1px dashed var(--border);margin:0 6px;flex-shrink:0"></div>';
+  var totBar='<div style="width:'+barW+'px;height:'+maxH+'px;display:flex;align-items:flex-end;flex-shrink:0">'
     +'<div style="width:100%;height:'+totH+'px;background:'+col+';border-radius:2px 2px 0 0"></div>'
     +'</div>';
-  var avgLine=avg>0?'<div style="position:absolute;left:0;right:0;bottom:'+avgH+'px;border-top:1px dashed rgba(255,255,255,.35);pointer-events:none"><span style="position:absolute;right:0;top:-13px;font-size:8px;color:var(--muted);background:var(--surface);padding:0 3px">prom. '+fmtNum(Math.round(avg))+'</span></div>':'';
   var axisCaption='<div style="display:flex;justify-content:space-between;font-size:9px;color:var(--muted);font-family:\'IBM Plex Mono\',monospace;margin-top:6px"><span>'+fmtWeekShort(weeks[0].ws)+'</span><span style="color:'+col+';font-weight:700">Hoy</span></div>';
-  return '<div class="card" style="padding:14px">'
+  var tableRows=weeks.map(function(w){return {l:fmtWeekShort(w.ws)+'\u2013'+fmtWeekShort(w.we),v:fmtNum(w.val)+unit};});
+  tableRows.push({l:'Promedio entregado',v:fmtNum(Math.round(avg))+unit,avg:true});
+  tableRows.push({l:'Pendiente actual',v:fmtNum(tot)+unit,cur:true});
+  var payload=encodeURIComponent(JSON.stringify(tableRows));
+  return '<div class="card" data-spark-table="'+payload+'" onmouseenter="showSparkTip(this)" onmouseleave="hideHmTip()" onmousemove="moveHmStripTip(event)" style="padding:14px;width:380px;flex:0 0 380px;cursor:default">'
     +'<div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:12px">'
     +'<div style="font-size:13px;font-weight:700;color:var(--text);display:flex;align-items:center">'+(iconHtml||'')+title+'</div>'
     +'<div style="font-size:12px;font-family:\'IBM Plex Mono\',monospace;color:'+col+';font-weight:700">'+fmtNum(tot)+unit+' pend.</div>'
     +'</div>'
-    +'<div style="position:relative;padding-top:14px">'+avgLine
-    +'<div style="display:flex;align-items:flex-end;gap:'+gap+'px;overflow-x:auto">'+bars+totBar+'</div>'
-    +'</div>'
+    +'<div style="display:flex;align-items:flex-end;gap:'+gap+'px;overflow-x:auto">'+bars+divider+totBar+'</div>'
     +axisCaption
     +'</div>';
-}
-function showBarTip(el){
-  if(!_hmTT)_hmTT=document.getElementById('hm-tooltip');
-  if(!_hmTT)return;
-  var lbl=el.getAttribute('data-lbl'),val=el.getAttribute('data-val');
-  _hmTT.innerHTML='<div style="font-size:10px;color:var(--muted);margin-bottom:2px">'+lbl+'</div><div style="font-size:12px;font-weight:700;color:var(--text);font-family:\'IBM Plex Mono\',monospace">'+val+'</div>';
-  _hmTT.style.display='block';
-  _hmTT.style.left='-9999px';_hmTT.style.top='-9999px';
 }
 function weeksSinceEarliestT(){
   var T=today(),minFt=null;
@@ -1426,27 +1417,28 @@ function renderHistorico(){
     var _weeks=weeklyTSums(area,subKey,_isPack,numWeeks);
     return bigSparkHtml(_weeks,_tot,col,_unit,subKey.toUpperCase(),subIcon(subKey,area));
   }
+  var breakDiv='<div style="flex-basis:100%;height:0"></div>';
+  // Nombres canonicos via normSub() para no fallar por mayus/minus (ej. "Pack / Manual" -> "Pack / manual")
+  var PACK_MANUAL=normSub('Pack / Manual');
   _sortedAreas.forEach(function(area){
     var subs=areaMap[area],col=ac(area);
     html+='<div style="display:flex;align-items:center;gap:6px;margin:18px 0 10px 0"><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:'+col+'"></span><span style="font-size:14px;font-weight:700;color:'+col+'">'+area+'</span></div>';
+    html+='<div style="display:flex;flex-wrap:wrap;gap:12px">';
     if(area==='Disco'){
-      var rowsDisco=[['Disco','Pack'],['Oblongo','Manual','Pack / Manual','Tiras'],['Tubulares']];
+      var rowsDisco=[['Disco','Pack'],['Oblongo','Manual',PACK_MANUAL,'Tiras'],['Tubulares']];
       var covered=[].concat.apply([],rowsDisco);
       var leftover=Object.keys(subs).filter(function(s){return covered.indexOf(s)===-1;});
       if(leftover.length)rowsDisco.push(leftover);
-      rowsDisco.forEach(function(rowKeys){
+      rowsDisco.forEach(function(rowKeys,idx){
         var keysPresent=rowKeys.filter(function(k){return subs[k];});
-        if(!keysPresent.length)return;
-        html+='<div style="display:grid;grid-template-columns:repeat('+keysPresent.length+',minmax(240px,1fr));gap:12px;margin-bottom:12px">';
         keysPresent.forEach(function(subKey){html+=cardFor(area,subKey,col);});
-        html+='</div>';
+        if(keysPresent.length&&idx<rowsDisco.length-1)html+=breakDiv;
       });
     } else {
       var _subsKeys=_subOrder.filter(function(s){return subs[s];}).concat(Object.keys(subs).filter(function(s){return _subOrder.indexOf(s)===-1&&subs[s];}));
-      html+='<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px">';
       _subsKeys.forEach(function(subKey){html+=cardFor(area,subKey,col);});
-      html+='</div>';
     }
+    html+='</div>';
   });
   document.getElementById('histCharts').innerHTML=html;
 }
@@ -1455,7 +1447,10 @@ function showSparkTip(el){
   if(!_hmTT)return;
   var data=JSON.parse(decodeURIComponent(el.getAttribute('data-spark-table')));
   var rows=data.map(function(d){
-    return '<div style="display:flex;justify-content:space-between;gap:14px;font-size:10px;padding:2px 0;'+(d.cur?'border-top:1px solid var(--border);margin-top:3px;padding-top:5px;font-weight:700;color:var(--text)':'color:var(--muted)')+'"><span>'+d.l+'</span><span style="font-family:\'IBM Plex Mono\',monospace">'+d.v+'</span></div>';
+    var style=d.cur?'border-top:1px solid var(--border);margin-top:3px;padding-top:5px;font-weight:700;color:var(--text)':
+      d.avg?'color:var(--muted);font-style:italic;border-top:1px dashed var(--border);margin-top:2px;padding-top:5px':
+      'color:var(--muted)';
+    return '<div style="display:flex;justify-content:space-between;gap:14px;font-size:10px;padding:2px 0;'+style+'"><span>'+d.l+'</span><span style="font-family:\'IBM Plex Mono\',monospace">'+d.v+'</span></div>';
   }).join('');
   _hmTT.innerHTML=rows;
   _hmTT.style.display='block';
@@ -1716,6 +1711,16 @@ function computeHist2026(){
   return acc;
 }
 const HIST_2026=computeHist2026();
+var HIST_LABEL_ICON={DISCOS:['Disco','Disco'],PACKS:['Pack','Disco'],TUBULAR:['Tubular','Varios'],OBLONGO:['Oblongo','Disco'],REMALLADO:['Remallado','Aros'],CRIBA:['Criba','Telar'],ELIMINADOR:['Eliminador','Varios'],ARILLOS:['Arillos','Aros'],EMPAQUE:['Empaque','Aros'],NUEVO:['Nuevo','Aros'],ARMAR:['Armar / Puntear','Disco'],TIRAS:['Tiras','Disco'],MANUAL:['Manual','Disco'],EMBOLSADOS:['Embolsados','Varios']};
+function iconParaLabel(label){var info=HIST_LABEL_ICON[label];return info?subIcon(info[0],info[1]):'';}
+// Si el label no tiene histórico 2025 real (todo en cero), usar 2026 (real, calculado del RAW) para no mostrar el heatmap vacío
+function mesesParaLabel(label){
+  var m2025=HIST_2025[label]||[];
+  var tiene2025=m2025.some(function(v){return v>0;});
+  if(tiene2025)return {meses:m2025,year:'2025'};
+  var m2026=HIST_2026[label]||new Array(12).fill(0);
+  return {meses:m2026,year:'2026'};
+}
 const CARGA_UMBRALES=[1,3,5];
 const MES_NAMES=['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
 const DIAS_LIMITE_TUBULAR=100; // OPs de Tubular abiertas más de N días = casos especiales (fuera de cálculo)
@@ -1968,9 +1973,12 @@ function renderCargaColaOps(label,opSet,opsEspeciales){
 }
 
 // Render de una fila completa (subárea o agregada)
+function weeksElapsedInYear(year){var start=new Date(year,0,1);var d=Math.max(1,Math.round((today()-start)/(1000*3600*24)));return Math.max(1,Math.round(d/7));}
 function rowCarga(label,pend,opSet,opsEspeciales,extraNombre,cuellos){
-  var meses=HIST_2025[label],mx=Math.max.apply(null,meses);
-  var total=meses.reduce(function(s,v){return s+v;},0),base=total/52;
+  var mp=mesesParaLabel(label),meses=mp.meses,mx=Math.max.apply(null,meses.concat([1]));
+  var total=meses.reduce(function(s,v){return s+v;},0);
+  var divisor=mp.year==='2026'?weeksElapsedInYear(2026):52;
+  var base=total/divisor;
   var semanas=base>0?pend/base:0,color=semaforoColor(semanas);
   var pct=Math.min(100,(semanas/8)*100);
   var unit=(label==='PACKS')?'g':'p';
@@ -1982,7 +1990,8 @@ function rowCarga(label,pend,opSet,opsEspeciales,extraNombre,cuellos){
   if(cuellos&&cuellos[label]){
     cuelloIcon=' <span title="Sobrecargado · holgura disponible en: '+cuellos[label].join(', ')+'" style="color:var(--warn);cursor:help;font-size:11px">⚠</span>';
   }
-  var nombre='<div style="font-weight:600">'+label+cuelloIcon+'</div>';
+  var yearTag=mp.year==='2026'?' <span style="font-size:9px;color:var(--accent3);font-weight:700;vertical-align:1px">\'26</span>':'';
+  var nombre='<div style="font-weight:600;display:flex;align-items:center">'+iconParaLabel(label)+label+yearTag+cuelloIcon+'</div>';
   var lineaMetricas='<div style="font-size:11.5px;color:var(--muted);margin-top:3px;font-family:IBM Plex Mono,monospace">'
     +'Ritmo: '+varHtml
     +(pend>0?' · termina ~'+fmtFechaCorta(fin):'')
@@ -2006,8 +2015,10 @@ function rowCarga(label,pend,opSet,opsEspeciales,extraNombre,cuellos){
 // Variante para modo Por Trabajador: usa labelMostrado (incluye nombre de SUBAREA cruda entre paréntesis si aplica)
 function rowCargaTrab(item,cuellos){
   var label=item.label;
-  var meses=HIST_2025[label],mx=Math.max.apply(null,meses);
-  var total=meses.reduce(function(s,v){return s+v;},0),base=total/52;
+  var mp=mesesParaLabel(label),meses=mp.meses,mx=Math.max.apply(null,meses.concat([1]));
+  var total=meses.reduce(function(s,v){return s+v;},0);
+  var divisor=mp.year==='2026'?weeksElapsedInYear(2026):52;
+  var base=total/divisor;
   var pend=item.pend,semanas=base>0?pend/base:0,color=semaforoColor(semanas);
   var pct=Math.min(100,(semanas/8)*100);
   var unit=(label==='PACKS')?'g':'p';
@@ -2021,7 +2032,8 @@ function rowCargaTrab(item,cuellos){
   if(cuellos&&cuellos[label]){
     cuelloIcon=' <span title="Sobrecargado · holgura disponible en: '+cuellos[label].join(', ')+'" style="color:var(--warn);cursor:help;font-size:11px">⚠</span>';
   }
-  var nombre='<div style="font-weight:600">'+(item.labelMostrado||label)+cuelloIcon+'</div>';
+  var yearTag=mp.year==='2026'?' <span style="font-size:9px;color:var(--accent3);font-weight:700;vertical-align:1px">\'26</span>':'';
+  var nombre='<div style="font-weight:600;display:flex;align-items:center">'+iconParaLabel(label)+(item.labelMostrado||label)+yearTag+cuelloIcon+'</div>';
   var subInfo='<div style="font-size:10.5px;color:var(--muted);margin-top:3px;font-family:IBM Plex Mono,monospace">'
     +'Ritmo: '+varHtml
     +(pend>0?' · termina ~'+fmtFechaCorta(fin):'')
