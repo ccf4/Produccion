@@ -1341,22 +1341,22 @@ function subSparklineHtml(weeks,tot,col,unit){
   var payload=encodeURIComponent(JSON.stringify(tableRows));
   return '<div data-spark-table="'+payload+'" onmouseenter="showSparkTip(this)" onmouseleave="hideHmTip()" onmousemove="moveHmStripTip(event)" style="display:flex;align-items:flex-end;gap:2px;height:14px;margin-top:3px;cursor:default;">'+bars+totLabel+'</div>';
 }
-function bigSparkHtml(weeks,tot,col,unit,title,iconHtml){
+function bigSparkHtml(weeks,tot,col,unit,title,iconHtml,cardW){
+  cardW=cardW||460;
   var histVals=weeks.map(function(w){return w.val;});
   var maxV=Math.max.apply(null,histVals.concat([tot,1]));
-  var barW=16,gap=5,maxH=84;
+  var maxH=84;
   function barH(v){return v>0?Math.max(2,Math.round((v/maxV)*maxH)):1;}
   var mutedCol='rgba(255,255,255,.16)';
   var avg=histVals.length?histVals.reduce(function(s,v){return s+v;},0)/histVals.length:0;
   var bars=weeks.map(function(w){
     var h=barH(w.val);
-    return '<div style="width:'+barW+'px;height:'+maxH+'px;display:flex;align-items:flex-end;flex-shrink:0">'
+    return '<div style="flex:1 1 0;min-width:2px;height:'+maxH+'px;display:flex;align-items:flex-end">'
       +'<div style="width:100%;height:'+h+'px;background:'+(w.val>0?col:mutedCol)+';opacity:'+(w.val>0?'.45':'.3')+';border-radius:2px 2px 0 0"></div>'
       +'</div>';
   }).join('');
   var totH=barH(tot);
-  var divider='<div style="width:0;align-self:stretch;border-left:1px dashed var(--border);margin:0 6px;flex-shrink:0"></div>';
-  var totBar='<div style="width:'+barW+'px;height:'+maxH+'px;display:flex;align-items:flex-end;flex-shrink:0">'
+  var totBar='<div style="flex:1.3 1 0;min-width:2px;height:'+maxH+'px;display:flex;align-items:flex-end;margin-left:8px">'
     +'<div style="width:100%;height:'+totH+'px;background:'+col+';border-radius:2px 2px 0 0"></div>'
     +'</div>';
   var axisCaption='<div style="display:flex;justify-content:space-between;font-size:9px;color:var(--muted);font-family:\'IBM Plex Mono\',monospace;margin-top:6px"><span>'+fmtWeekShort(weeks[0].ws)+'</span><span style="color:'+col+';font-weight:700">Hoy</span></div>';
@@ -1364,12 +1364,12 @@ function bigSparkHtml(weeks,tot,col,unit,title,iconHtml){
   tableRows.push({l:'Promedio entregado',v:fmtNum(Math.round(avg))+unit,avg:true});
   tableRows.push({l:'Pendiente actual',v:fmtNum(tot)+unit,cur:true});
   var payload=encodeURIComponent(JSON.stringify(tableRows));
-  return '<div class="card" data-spark-table="'+payload+'" onmouseenter="showSparkTip(this)" onmouseleave="hideHmTip()" onmousemove="moveHmStripTip(event)" style="padding:14px;width:380px;flex:0 0 380px;cursor:default">'
+  return '<div class="card" data-spark-table="'+payload+'" onmouseenter="showSparkTip(this)" onmouseleave="hideHmTip()" onmousemove="moveHmStripTip(event)" style="padding:14px;box-sizing:border-box;flex:0 1 '+cardW+'px;max-width:'+cardW+'px;cursor:default">'
     +'<div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:12px">'
     +'<div style="font-size:13px;font-weight:700;color:var(--text);display:flex;align-items:center">'+(iconHtml||'')+title+'</div>'
     +'<div style="font-size:12px;font-family:\'IBM Plex Mono\',monospace;color:'+col+';font-weight:700">'+fmtNum(tot)+unit+' pend.</div>'
     +'</div>'
-    +'<div style="display:flex;align-items:flex-end;gap:'+gap+'px;overflow-x:auto">'+bars+divider+totBar+'</div>'
+    +'<div style="display:flex;align-items:flex-end;gap:2px">'+bars+totBar+'</div>'
     +axisCaption
     +'</div>';
 }
@@ -1385,17 +1385,18 @@ function weeksSinceEarliestT(){
   return Math.max(4,Math.min(n,104));
 }
 function renderHistorico(){
-  var numWeeks=weeksSinceEarliestT();
-  document.getElementById('histWeeksLabel').textContent=numWeeks;
-  var src=activeData();
+  var CARD_W=460;
+  var weeks=weeksSinceEarliestT();
+  document.getElementById('histWeeksLabel').textContent=weeks;
+  // Usar RAW completo (no solo OPs abiertas) para que aparezcan todas las areas/subareas
+  // que existen historicamente, aunque hoy no tengan pendiente (ej. Telar/Criba, ALMC).
+  var src=RAW;
   var areaMap={};
   src.forEach(function(r){
     if(!r.AREA)return;
     var _sk=normSub(r.SUBAREA);
     if(!areaMap[r.AREA])areaMap[r.AREA]={};
-    if(!areaMap[r.AREA][_sk])areaMap[r.AREA][_sk]=[];
-    if(!areaMap[r.AREA][_sk].find(function(x){return x.OP===r.OP;}))
-      areaMap[r.AREA][_sk].push(r);
+    if(!areaMap[r.AREA][_sk])areaMap[r.AREA][_sk]=true;
   });
   var _aOrder=['Disco','Aros','Telar','Varios','ALMC'];
   var _sortedAreas=_aOrder.filter(function(a){return areaMap[a];}).concat(Object.keys(areaMap).filter(function(a){return _aOrder.indexOf(a)===-1&&areaMap[a];}));
@@ -1414,8 +1415,8 @@ function renderHistorico(){
       return tot+_opR.reduce(function(s,r){return s+(_isPack?(parseInt(r.GOLPE)||0):(parseInt(r.CANT)||0));},0);
     },0);
     var _unit=_isPack?' gol.':' pzas';
-    var _weeks=weeklyTSums(area,subKey,_isPack,numWeeks);
-    return bigSparkHtml(_weeks,_tot,col,_unit,subKey.toUpperCase(),subIcon(subKey,area));
+    var _weeks=weeklyTSums(area,subKey,_isPack,weeks);
+    return bigSparkHtml(_weeks,_tot,col,_unit,subKey.toUpperCase(),subIcon(subKey,area),CARD_W);
   }
   var breakDiv='<div style="flex-basis:100%;height:0"></div>';
   // Nombres canonicos via normSub() para no fallar por mayus/minus (ej. "Pack / Manual" -> "Pack / manual")
