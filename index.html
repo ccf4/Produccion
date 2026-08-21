@@ -1360,7 +1360,7 @@ function bigSparkHtml(weeks,tot,col,unit,title,iconHtml,cardW){
     +'<div style="width:100%;height:'+totH+'px;background:'+col+';border-radius:2px 2px 0 0"></div>'
     +'</div>';
   var axisCaption='<div style="display:flex;justify-content:space-between;font-size:9px;color:var(--muted);font-family:\'IBM Plex Mono\',monospace;margin-top:6px"><span>'+fmtWeekShort(weeks[0].ws)+'</span><span style="color:'+col+';font-weight:700">Hoy</span></div>';
-  var tableRows=weeks.map(function(w){return {l:fmtWeekShort(w.ws)+'\u2013'+fmtWeekShort(w.we),v:fmtNum(w.val)+unit};});
+  var tableRows=[{l:'Entregas semanales',v:'',head:true}].concat(weeks.map(function(w){return {l:fmtWeekShort(w.ws)+'\u2013'+fmtWeekShort(w.we),v:fmtNum(w.val)+unit};}));
   tableRows.push({l:'Promedio entregado',v:fmtNum(Math.round(avg))+unit,avg:true});
   tableRows.push({l:'Pendiente actual',v:fmtNum(tot)+unit,cur:true});
   var payload=encodeURIComponent(JSON.stringify(tableRows));
@@ -1436,6 +1436,18 @@ function stackedBarHtml(weekData,pendData,areas,weeksLabel){
   var pendRows=[{l:'Pendiente actual',v:fmtNum(pendTotal),head:true}].concat(areas.map(function(a){return {l:a,v:fmtNum(pendData[a])+(a==='Disco'?' gol.':' pzas'),dot:ac(a)};}));
   var pendPayload=encodeURIComponent(JSON.stringify(pendRows));
   var pendBar='<div data-spark-table="'+pendPayload+'" onmouseenter="showSparkTip(this)" onmouseleave="hideHmTip()" onmousemove="moveHmStripTip(event)" style="flex:1 1 0;min-width:2px;margin-left:10px;cursor:default">'+segsHtml(pendData,pendTotal)+'</div>';
+  var labelCols=weekData.map(function(w,i){
+    var esMesNuevo=i===0||w.ws.getMonth()!==weekData[i-1].ws.getMonth();
+    var mesLbl=esMesNuevo?MES_NAMES[w.ws.getMonth()]:'';
+    return '<div style="flex:1 1 0;min-width:2px;text-align:center;overflow:visible">'
+      +'<div style="font-size:8px;color:var(--text);font-weight:700;white-space:nowrap;height:11px">'+mesLbl+'</div>'
+      +'<div style="font-size:8px;color:var(--muted);font-family:\'IBM Plex Mono\',monospace">'+w.ws.getDate()+'</div>'
+      +'</div>';
+  }).join('');
+  var pendLabelCol='<div style="flex:1 1 0;min-width:2px;margin-left:10px;text-align:center">'
+    +'<div style="font-size:8px;height:11px">&nbsp;</div>'
+    +'<div style="font-size:8px;color:var(--text);font-weight:700">Hoy</div>'
+    +'</div>';
   var legend=areas.map(function(a){return '<div style="display:flex;align-items:center;gap:5px"><span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:'+ac(a)+'"></span><span style="font-size:11px;color:var(--muted)">'+a+'</span></div>';}).join('');
   return '<div class="card" style="padding:18px;margin-bottom:20px">'
     +'<div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:4px">'
@@ -1444,7 +1456,7 @@ function stackedBarHtml(weekData,pendData,areas,weeksLabel){
     +'</div>'
     +'<div style="font-size:10.5px;color:var(--muted);margin-bottom:12px">Entregas (T) por semana, \u00faltimas '+weeksLabel+' semanas \u00b7 pasa el mouse por cada barra</div>'
     +'<div style="display:flex;align-items:flex-end;gap:2px">'+bars+pendBar+'</div>'
-    +'<div style="display:flex;justify-content:space-between;font-size:9px;color:var(--muted);font-family:\'IBM Plex Mono\',monospace;margin-top:6px"><span>'+fmtWeekShort(weekData[0].ws)+'</span><span style="font-weight:700">Hoy</span></div>'
+    +'<div style="display:flex;gap:2px;margin-top:4px">'+labelCols+pendLabelCol+'</div>'
     +'<div style="display:flex;flex-wrap:wrap;gap:14px;margin-top:14px;padding-top:12px;border-top:1px solid var(--border)">'+legend+'</div>'
     +'</div>';
 }
@@ -1786,13 +1798,18 @@ function computeHist2026(){
 const HIST_2026=computeHist2026();
 var HIST_LABEL_ICON={DISCOS:['Disco','Disco'],PACKS:['Pack','Disco'],TUBULAR:['Tubular','Varios'],OBLONGO:['Oblongo','Disco'],REMALLADO:['Remallado','Aros'],CRIBA:['Criba','Telar'],ELIMINADOR:['Eliminador','Varios'],ARILLOS:['Arillos','Aros'],EMPAQUE:['Empaque','Aros'],NUEVO:['Nuevo','Aros'],ARMAR:['Armar / Puntear','Disco'],TIRAS:['Tiras','Disco'],MANUAL:['Manual','Disco'],EMBOLSADOS:['Embolsados','Varios']};
 function iconParaLabel(label){var info=HIST_LABEL_ICON[label];return info?subIcon(info[0],info[1]):'';}
-// Si el label no tiene histórico 2025 real (todo en cero), usar 2026 (real, calculado del RAW) para no mostrar el heatmap vacío
-function mesesParaLabel(label){
-  var m2025=HIST_2025[label]||[];
-  var tiene2025=m2025.some(function(v){return v>0;});
-  if(tiene2025)return {meses:m2025,year:'2025'};
-  var m2026=HIST_2026[label]||new Array(12).fill(0);
-  return {meses:m2026,year:'2026'};
+// Ventana móvil de 12 meses terminando en el mes actual (ej. hoy ago/2026 -> sep/2025..ago/2026),
+// mezclando HIST_2025 (año fijo, histórico curado) y HIST_2026 (calculado en vivo del RAW) según corresponda.
+// Reemplaza el criterio anterior de "año completo 2025 O fallback 2026" por una sola ventana consistente para todas las subareas.
+function rolling12(label){
+  var T=today(),y=T.getFullYear(),m=T.getMonth(),arr=[];
+  for(var i=11;i>=0;i--){
+    var mm=m-i,yy=y;
+    while(mm<0){mm+=12;yy--;}
+    var src=(yy===2025?HIST_2025[label]:(yy===2026?HIST_2026[label]:null));
+    arr.push(src?(src[mm]||0):0);
+  }
+  return arr;
 }
 const CARGA_UMBRALES=[1,3,5];
 const MES_NAMES=['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
@@ -2046,19 +2063,25 @@ function renderCargaColaOps(label,opSet,opsEspeciales){
 }
 
 // Render de una fila completa (subárea o agregada)
-function weeksElapsedInYear(year){var start=new Date(year,0,1);var d=Math.max(1,Math.round((today()-start)/(1000*3600*24)));return Math.max(1,Math.round(d/7));}
-function rowCarga(label,pend,opSet,opsEspeciales,extraNombre,cuellos){
-  var mp=mesesParaLabel(label),meses=mp.meses,mx=Math.max.apply(null,meses.concat([1]));
+// Antes se promediaba el total entre TODAS las semanas transcurridas del año, lo que diluye
+// mucho el ritmo real de subareas con actividad esporádica (ej. un solo mes con movimiento
+// y el resto en cero) y produce predicciones de cola absurdas. Ahora se promedia solo entre
+// los meses que sí tuvieron actividad (dentro de la ventana móvil de 12 meses).
+function baseSemanalActivo(meses){
   var total=meses.reduce(function(s,v){return s+v;},0);
-  var divisor=mp.year==='2026'?weeksElapsedInYear(2026):52;
-  var base=total/divisor;
+  var mesesActivos=meses.filter(function(v){return v>0;}).length;
+  if(!mesesActivos)return 0;
+  var semanasActivas=mesesActivos*(52/12);
+  return total/semanasActivas;
+}
+function rowCarga(label,pend,opSet,opsEspeciales,extraNombre,cuellos){
+  var meses=rolling12(label),mx=Math.max.apply(null,meses.concat([1]));
+  var base=baseSemanalActivo(meses);
   var semanas=base>0?pend/base:0,color=semaforoColor(semanas);
   var pct=Math.min(100,(semanas/8)*100);
   var unit=(label==='PACKS')?'g':'p';
-  var mesesTranscurridos=today().getMonth()+1;
-  var hmCells=meses.map(function(v,idx){
-    var vDisp=(mp.year==='2025'&&idx>=mesesTranscurridos)?0:v;
-    return '<div class="hm-cell-mini" style="background:'+heatColor(vDisp,mx)+'"></div>';
+  var hmCells=meses.map(function(v){
+    return '<div class="hm-cell-mini" style="background:'+heatColor(v,mx)+'"></div>';
   }).join('');
   var isExp=cargaExpanded===label;
   var fin=fechaFinCola(semanas);
@@ -2067,8 +2090,7 @@ function rowCarga(label,pend,opSet,opsEspeciales,extraNombre,cuellos){
   if(cuellos&&cuellos[label]){
     cuelloIcon=' <span title="Sobrecargado · holgura disponible en: '+cuellos[label].join(', ')+'" style="color:var(--warn);cursor:help;font-size:11px">⚠</span>';
   }
-  var yearTag=mp.year==='2026'?' <span style="font-size:9px;color:var(--accent3);font-weight:700;vertical-align:1px">\'26</span>':'';
-  var nombre='<div style="font-weight:600;display:flex;align-items:center">'+iconParaLabel(label)+label+yearTag+cuelloIcon+'</div>';
+  var nombre='<div style="font-weight:600;display:flex;align-items:center">'+iconParaLabel(label)+label+cuelloIcon+'</div>';
   var lineaMetricas='<div style="font-size:11.5px;color:var(--muted);margin-top:3px;font-family:IBM Plex Mono,monospace">'
     +'Ritmo: '+varHtml
     +(pend>0?' · termina ~'+fmtFechaCorta(fin):'')
@@ -2092,17 +2114,13 @@ function rowCarga(label,pend,opSet,opsEspeciales,extraNombre,cuellos){
 // Variante para modo Por Trabajador: usa labelMostrado (incluye nombre de SUBAREA cruda entre paréntesis si aplica)
 function rowCargaTrab(item,cuellos){
   var label=item.label;
-  var mp=mesesParaLabel(label),meses=mp.meses,mx=Math.max.apply(null,meses.concat([1]));
-  var total=meses.reduce(function(s,v){return s+v;},0);
-  var divisor=mp.year==='2026'?weeksElapsedInYear(2026):52;
-  var base=total/divisor;
+  var meses=rolling12(label),mx=Math.max.apply(null,meses.concat([1]));
+  var base=baseSemanalActivo(meses);
   var pend=item.pend,semanas=base>0?pend/base:0,color=semaforoColor(semanas);
   var pct=Math.min(100,(semanas/8)*100);
   var unit=(label==='PACKS')?'g':'p';
-  var mesesTranscurridos=today().getMonth()+1;
-  var hmCells=meses.map(function(v,idx){
-    var vDisp=(mp.year==='2025'&&idx>=mesesTranscurridos)?0:v;
-    return '<div class="hm-cell-mini" style="background:'+heatColor(vDisp,mx)+'"></div>';
+  var hmCells=meses.map(function(v){
+    return '<div class="hm-cell-mini" style="background:'+heatColor(v,mx)+'"></div>';
   }).join('');
   // En modo trabajador, el expand usa una llave compuesta para no chocar entre filas duplicadas del mismo label
   var expKey=label+'@'+(item.labelMostrado||label);
@@ -2113,8 +2131,7 @@ function rowCargaTrab(item,cuellos){
   if(cuellos&&cuellos[label]){
     cuelloIcon=' <span title="Sobrecargado · holgura disponible en: '+cuellos[label].join(', ')+'" style="color:var(--warn);cursor:help;font-size:11px">⚠</span>';
   }
-  var yearTag=mp.year==='2026'?' <span style="font-size:9px;color:var(--accent3);font-weight:700;vertical-align:1px">\'26</span>':'';
-  var nombre='<div style="font-weight:600;display:flex;align-items:center">'+iconParaLabel(label)+(item.labelMostrado||label)+yearTag+cuelloIcon+'</div>';
+  var nombre='<div style="font-weight:600;display:flex;align-items:center">'+iconParaLabel(label)+(item.labelMostrado||label)+cuelloIcon+'</div>';
   var subInfo='<div style="font-size:10.5px;color:var(--muted);margin-top:3px;font-family:IBM Plex Mono,monospace">'
     +'Ritmo: '+varHtml
     +(pend>0?' · termina ~'+fmtFechaCorta(fin):'')
@@ -2144,10 +2161,21 @@ function renderCarga(){
     +'<button class="fb'+(cargaModo==='subarea'?' active':'')+'" onclick="setCargaModo(\'subarea\')">Por subárea</button>'
     +'<button class="fb'+(cargaModo==='trabajador'?' active':'')+'" onclick="setCargaModo(\'trabajador\')">Por trabajador</button>'
     +'</div>';
-  html+='<div class="carga-grid carga-head"><div>'+(cargaModo==='trabajador'?'Trabajador / Subárea':'Subárea')+'</div><div>Histórico 2025</div><div style="text-align:right">Base /sem</div><div style="text-align:right">Pendiente</div><div>Semanas de cola</div></div>';
+  html+='<div class="carga-grid carga-head"><div>'+(cargaModo==='trabajador'?'Trabajador / Subárea':'Subárea')+'</div><div>Histórico</div><div style="text-align:right">Base /sem</div><div style="text-align:right">Pendiente</div><div>Semanas de cola</div></div>';
   if(cargaModo==='subarea'){
+    var _aOrderCarga=['Disco','Aros','Telar','Varios','ALMC'];
+    var _byArea={};
     HIST_LABELS.forEach(function(label){
-      html+=rowCarga(label,data.pend[label]||0,data.ops[label],data.opsEspeciales[label],lider[label],cuellos);
+      var area=(HIST_LABEL_ICON[label]||[])[1]||'Otros';
+      if(!_byArea[area])_byArea[area]=[];
+      _byArea[area].push(label);
+    });
+    var _areasOrdenadas=_aOrderCarga.filter(function(a){return _byArea[a];}).concat(Object.keys(_byArea).filter(function(a){return _aOrderCarga.indexOf(a)===-1;}));
+    _areasOrdenadas.forEach(function(area){
+      html+='<div style="display:flex;align-items:center;gap:6px;padding:10px 14px 6px 14px;background:rgba(0,0,0,.1)"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:'+ac(area)+'"></span><span style="font-size:11px;font-weight:700;color:'+ac(area)+';text-transform:uppercase;letter-spacing:.5px">'+area+'</span></div>';
+      _byArea[area].forEach(function(label){
+        html+=rowCarga(label,data.pend[label]||0,data.ops[label],data.opsEspeciales[label],lider[label],cuellos);
+      });
     });
   }else{
     var byTrab=getCargaPorTrabajador();
