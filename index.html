@@ -157,7 +157,7 @@ select{background:var(--surface2);border:1px solid var(--border);color:var(--tex
 </div>
 <main>
   <div class="view" id="view-semana">
-    <div class="st"><span class="dot" style="background:var(--danger)"></span>Reprogramadas y vencidas<span id="lc" style="font-size:11px;color:var(--muted);font-weight:400"></span><button onclick="enviarResumenCorreo()" style="margin-left:auto;background:var(--surface2);border:1px solid var(--border);color:var(--muted);border-radius:6px;padding:4px 10px;font-size:11px;cursor:pointer;font-weight:400">&#9993; Enviar resumen</button></div>
+    <div class="st"><span class="dot" style="background:var(--danger)"></span>Reprogramadas y vencidas<span id="lc" style="font-size:11px;color:var(--muted);font-weight:400"></span><button onclick="enviarResumenPorVendedor()" style="margin-left:auto;background:var(--surface2);border:1px solid var(--border);color:var(--muted);border-radius:6px;padding:4px 10px;font-size:11px;cursor:pointer;font-weight:400">&#9993; Enviar resumen</button><a onclick="enviarResumenCorreo()" style="margin-left:8px;color:var(--muted);font-size:10px;text-decoration:underline;cursor:pointer;font-weight:400">resumen general</a></div>
     <div class="card"><div class="card-body" id="lo" style="padding:12px"></div></div>
     <div class="wknav" style="margin-top:20px">
       <button class="nb" id="btnP" onclick="changeWeek(-1)">semana anterior</button>
@@ -410,6 +410,18 @@ function saveFechaEdit(op){
 var RAPIDA_SUBS=['Arillos','Armar / puntear','Banda','Criba','Disco','Eliminador','Embolsados','Empaque','Malla','Manual','Nuevo','Oblongo','Oblongo / manual','Pack','Pack / dona','Pack / manual','Packs rectangulares','Placa filtrante','Puntear','Remallado','Riñon / manual','Rumba','Tiras','Tiras / manual','Tubular','Tubulares'];
 // ===== Envío de resumen por correo (vencidas + nueva fecha + cerradas recientes) =====
 var CORREO_DESTINATARIOS=['nmoreno@matexsa.com.mx','clientes@matexsa.com.mx','ventasemoreno@matexsa.com.mx','fyasmin@matexsa.com.mx','poscar@matexsa.com.mx'];
+// Correo y nombre por código de vendedor, para el envío de resumen individual por vendedor.
+// JB = STOCK (no es una persona real) y JF/EV aún sin correo confirmado por Chato -> fallback a clientes@ mientras tanto.
+var VENDEDOR_INFO={
+  'NM':{nombre:'Nayeli Moreno',email:'nmoreno@matexsa.com.mx'},
+  'EM':{nombre:'Evaristo Moreno',email:'ventasemoreno@matexsa.com.mx'},
+  'YF':{nombre:'Yasmin Fabian',email:'fyasmin@matexsa.com.mx'},
+  'OP':{nombre:'Oscar Perez',email:'poscar@matexsa.com.mx'},
+  'LF':{nombre:'Laura Fabian',email:'lfabian@matexsa.com.mx'},
+  'JB':{nombre:'Stock',email:'clientes@matexsa.com.mx'},
+  'JF':{nombre:'JF',email:'clientes@matexsa.com.mx'},
+  'EV':{nombre:'Enrique V\u00e1zquez',email:'clientes@matexsa.com.mx'}
+};
 function getResumenData(){
   var T=today();
   var src=activeData().filter(function(d){var fe=pd(d.FEMIT);return !fe||Math.floor((T-fe)/86400000)<=100;});
@@ -493,6 +505,85 @@ function lineaOP(r,extra){
   var arts=getArts(r.OP);
   var artStr=(arts&&arts.length&&arts[0])?arts[0].slice(0,60):((r.SUBAREA||'')+(r.MESH?' '+r.MESH:''));
   return (pedStr?pedStr+' \u00b7 ':'')+'OP '+r.OP+(vend?' \u00b7 Vend: '+vend:'')+' \u00b7 '+fmtNum(totalCant)+' pzas'+(artStr?' \u00b7 '+artStr:'')+(extra?' \u00b7 '+extra:'');
+}
+// ===== Envio de resumen individual por vendedor =====
+function lineaOPSinVend(r,extra){
+  var parts=RAW.filter(function(x){return String(x.OP)===String(r.OP);});
+  var totalCant=parts.filter(function(p){return p.STATUS==='V';}).reduce(function(s,p){return s+(parseInt(p.CANT)||0);},0);
+  var pedStr=ped(r.OP);
+  var arts=getArts(r.OP);
+  var artStr=(arts&&arts.length&&arts[0])?arts[0].slice(0,60):((r.SUBAREA||'')+(r.MESH?' '+r.MESH:''));
+  return '- '+(pedStr?pedStr+' \u00b7 ':'')+'OP '+r.OP+' \u00b7 '+fmtNum(totalCant)+' pzas'+(artStr?' \u00b7 '+artStr:'')+(extra?' \u00b7 '+extra:'');
+}
+function agruparResumenPorVendedor(d){
+  var grupos={};
+  function bucket(v){
+    if(!grupos[v])grupos[v]={late:[],mnetWarn:[],closedRecent:[],proximas:{}};
+    return grupos[v];
+  }
+  d.late.forEach(function(r){
+    var fp=pd(r.Fprod||r.FProm),dl=fp?daysDiff(fp,d.T):0;
+    bucket((r.VENDEDOR||'').trim()||'SIN_VENDEDOR').late.push(lineaOPSinVend(r,dl+'d vencido'));
+  });
+  d.mnetWarn.forEach(function(r){
+    bucket((r.VENDEDOR||'').trim()||'SIN_VENDEDOR').mnetWarn.push(lineaOPSinVend(r,'\u2192 '+fd(pd(r.Fprod||r.FProm))));
+  });
+  d.closedRecent.forEach(function(r){
+    bucket((r.VENDEDOR||'').trim()||'SIN_VENDEDOR').closedRecent.push(lineaOPSinVend(r,fd(pd(r.FTERM))));
+  });
+  d.proximas.forEach(function(dia){
+    dia.rows.forEach(function(r){
+      var g=bucket((r.VENDEDOR||'').trim()||'SIN_VENDEDOR');
+      if(!g.proximas[dia.label])g.proximas[dia.label]=[];
+      g.proximas[dia.label].push(lineaOPSinVend(r,fd(pd(r.Fprod||r.FProm))));
+    });
+  });
+  return grupos;
+}
+function buildCorreoVendedor(vendCode,grupo,T){
+  var info=VENDEDOR_INFO[vendCode];
+  var esSinVendedor=vendCode==='SIN_VENDEDOR';
+  var nombreMostrado=esSinVendedor?'Sin vendedor asignado':(info?info.nombre:vendCode);
+  var to=esSinVendedor?'clientes@matexsa.com.mx':(info?info.email:'clientes@matexsa.com.mx');
+  var subject='Estatus de tus pedidos en producci\u00f3n \u2014 '+nombreMostrado+' \u2014 '+fd(T);
+  var lines=['Hola '+nombreMostrado+',','','Estatus de tus OP en producci\u00f3n al '+fd(T)+':',''];
+  if(grupo.late.length){lines.push('VENCIDAS:');lines=lines.concat(grupo.late,['']);}
+  if(grupo.mnetWarn.length){lines.push('CON NUEVA FECHA DE ENTREGA:');lines=lines.concat(grupo.mnetWarn,['']);}
+  Object.keys(grupo.proximas).forEach(function(diaLabel){
+    lines.push('PR\u00d3XIMA ENTREGA \u2014 '+diaLabel+':');
+    lines=lines.concat(grupo.proximas[diaLabel],['']);
+  });
+  if(grupo.closedRecent.length){lines.push('CERRADAS RECIENTEMENTE:');lines=lines.concat(grupo.closedRecent,['']);}
+  lines.push('Panel de consulta: https://ccf4.github.io/consulta_produccion/matex');
+  var body=lines.join('\n');
+  var mailto='mailto:'+to+'?subject='+encodeURIComponent(subject)+'&body='+encodeURIComponent(body);
+  var gmail='https://mail.google.com/mail/?view=cm&fs=1&to='+encodeURIComponent(to)+'&su='+encodeURIComponent(subject)+'&body='+encodeURIComponent(body);
+  var count=grupo.late.length+grupo.mnetWarn.length+grupo.closedRecent.length+Object.keys(grupo.proximas).reduce(function(s,k){return s+grupo.proximas[k].length;},0);
+  return {vendCode:vendCode,nombre:nombreMostrado,to:to,subject:subject,body:body,mailto:mailto,gmail:gmail,count:count};
+}
+function enviarResumenPorVendedor(){
+  var d=getResumenData();
+  var grupos=agruparResumenPorVendedor(d);
+  var codigos=Object.keys(grupos);
+  var correos=codigos.map(function(v){return buildCorreoVendedor(v,grupos[v],d.T);}).filter(function(c){return c.count>0;});
+  correos.sort(function(a,b){return b.count-a.count;});
+  if(!correos.length){alert('No hay OPs pendientes/recientes para enviar por vendedor.');return;}
+  // Intento abrir todos de un jalon, sincrono dentro del mismo click (asi el navegador no los bloquea)
+  correos.forEach(function(c){window.open(c.gmail,'_blank');});
+  // Aviso con la lista + links de respaldo por si alguno fue bloqueado por el navegador
+  var rows=correos.map(function(c){
+    return '<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border)">'
+      +'<div><div style="font-weight:600">'+c.nombre+'</div><div style="font-size:11px;color:var(--muted)">'+c.to+' \u00b7 '+c.count+' OP'+(c.count!==1?'s':'')+'</div></div>'
+      +'<div style="display:flex;gap:6px">'
+      +'<a href="'+c.gmail+'" target="_blank" style="background:var(--surface2);border:1px solid var(--border);color:var(--muted);border-radius:6px;padding:4px 10px;font-size:11px;text-decoration:none">Gmail</a>'
+      +'<a href="'+c.mailto+'" style="background:var(--surface2);border:1px solid var(--border);color:var(--muted);border-radius:6px;padding:4px 10px;font-size:11px;text-decoration:none">Mailto</a>'
+      +'</div></div>';
+  }).join('');
+  document.getElementById('mt').textContent='Resumen enviado por vendedor';
+  document.getElementById('mb').innerHTML=
+    '<div style="margin-bottom:10px;font-size:11px;color:var(--muted)">Se intentaron abrir '+correos.length+' borradores de Gmail (uno por vendedor). Si el navegador bloque\u00f3 alguno, \u00fasalo desde aqu\u00ed abajo.</div>'
+    +rows;
+  document.getElementById('modal').classList.add('open');
 }
 function buildResumenMailto(){
   var T=today();
