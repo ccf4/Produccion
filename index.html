@@ -516,73 +516,89 @@ function lineaOPSinVend(r,extra,statusFiltro){
   var artStr=(arts&&arts.length&&arts[0])?arts[0].slice(0,60):((r.SUBAREA||'')+(r.MESH?' '+r.MESH:''));
   return '- '+(pedStr?pedStr+' \u00b7 ':'')+'OP '+r.OP+' \u00b7 '+fmtNum(totalCant)+' pzas'+(artStr?' \u00b7 '+artStr:'')+(extra?' \u00b7 '+extra:'');
 }
-function agruparResumenPorVendedor(d){
-  var grupos={};
-  function bucket(v){
-    if(!grupos[v])grupos[v]={late:[],mnetWarn:[],closedRecent:[],proximas:{}};
-    return grupos[v];
-  }
-  d.late.forEach(function(r){
-    var fp=pd(r.Fprod||r.FProm),dl=fp?daysDiff(fp,d.T):0;
-    bucket((r.VENDEDOR||'').trim()||'SIN_VENDEDOR').late.push(lineaOPSinVend(r,dl+'d vencido'));
-  });
-  d.mnetWarn.forEach(function(r){
-    bucket((r.VENDEDOR||'').trim()||'SIN_VENDEDOR').mnetWarn.push(lineaOPSinVend(r,'\u2192 '+fd(pd(r.Fprod||r.FProm))));
-  });
-  d.closedRecent.forEach(function(r){
-    bucket((r.VENDEDOR||'').trim()||'SIN_VENDEDOR').closedRecent.push(lineaOPSinVend(r,fd(pd(r.FTERM)),'T'));
-  });
-  d.proximas.forEach(function(dia){
-    dia.rows.forEach(function(r){
-      var g=bucket((r.VENDEDOR||'').trim()||'SIN_VENDEDOR');
-      if(!g.proximas[dia.label])g.proximas[dia.label]=[];
-      g.proximas[dia.label].push(lineaOPSinVend(r,fd(pd(r.Fprod||r.FProm))));
-    });
-  });
-  return grupos;
+// Filtra las mismas filas crudas de getResumenData() (late/mnetWarn/closedRecent/proximas) para un solo
+// vendedor, conservando la forma del objeto d para poder reusar dibujarResumenCanvas() sin duplicar logica.
+function filasParaVendedor(d,vendCode){
+  function esDe(r){return ((r.VENDEDOR||'').trim()||'SIN_VENDEDOR')===vendCode;}
+  return {
+    T:d.T,
+    diasCerradas:d.diasCerradas,
+    late:d.late.filter(esDe),
+    mnetWarn:d.mnetWarn.filter(esDe),
+    closedRecent:d.closedRecent.filter(esDe),
+    proximas:d.proximas.map(function(dia){return {label:dia.label,fecha:dia.fecha,rows:dia.rows.filter(esDe)};})
+  };
 }
-function buildCorreoVendedor(vendCode,grupo,T){
+function buildCorreoVendedor(vendCode,filas,T){
   var info=VENDEDOR_INFO[vendCode];
   var esSinVendedor=vendCode==='SIN_VENDEDOR';
   var nombreMostrado=esSinVendedor?'Sin vendedor asignado':(info?info.nombre:vendCode);
   var to=esSinVendedor?'clientes@matexsa.com.mx':(info?info.email:'clientes@matexsa.com.mx');
   var subject='Estatus de tus pedidos en producci\u00f3n \u2014 '+nombreMostrado+' \u2014 '+fd(T);
   var lines=['Hola '+nombreMostrado+',','','Estatus de tus \u00d3rdenes de Producci\u00f3n al '+fd(T)+':',''];
-  if(grupo.late.length){lines.push('VENCIDAS (Pedir informaci\u00f3n al \u00e1rea de Producci\u00f3n):');lines=lines.concat(grupo.late,['']);}
-  if(grupo.mnetWarn.length){lines.push('CON NUEVA FECHA DE ENTREGA:');lines=lines.concat(grupo.mnetWarn,['']);}
-  Object.keys(grupo.proximas).forEach(function(diaLabel){
-    lines.push('PR\u00d3XIMA ENTREGA \u2014 '+diaLabel+':');
-    lines=lines.concat(grupo.proximas[diaLabel],['']);
+  if(filas.late.length){
+    lines.push('VENCIDAS (pedir informaci\u00f3n al \u00e1rea de Producci\u00f3n):');
+    filas.late.forEach(function(r){var fp=pd(r.Fprod||r.FProm),dl=fp?daysDiff(fp,T):0;lines.push(lineaOPSinVend(r,dl+'d vencido'));});
+    lines.push('');
+  }
+  if(filas.mnetWarn.length){
+    lines.push('CON NUEVA FECHA DE ENTREGA:');
+    filas.mnetWarn.forEach(function(r){lines.push(lineaOPSinVend(r,'\u2192 '+fd(pd(r.Fprod||r.FProm))));});
+    lines.push('');
+  }
+  filas.proximas.forEach(function(dia){
+    if(!dia.rows.length)return;
+    lines.push('PR\u00d3XIMA ENTREGA \u2014 '+dia.label+':');
+    dia.rows.forEach(function(r){lines.push(lineaOPSinVend(r,fd(pd(r.Fprod||r.FProm))));});
+    lines.push('');
   });
-  if(grupo.closedRecent.length){lines.push('CERRADAS RECIENTEMENTE:');lines=lines.concat(grupo.closedRecent,['']);}
+  if(filas.closedRecent.length){
+    lines.push('CERRADAS RECIENTEMENTE:');
+    filas.closedRecent.forEach(function(r){lines.push(lineaOPSinVend(r,fd(pd(r.FTERM)),'T'));});
+    lines.push('');
+  }
   lines.push('Panel de consulta: https://ccf4.github.io/consulta_produccion/matex');
   var body=lines.join('\n');
   var mailto='mailto:'+to+'?subject='+encodeURIComponent(subject)+'&body='+encodeURIComponent(body);
   var gmail='https://mail.google.com/mail/?view=cm&fs=1&to='+encodeURIComponent(to)+'&su='+encodeURIComponent(subject)+'&body='+encodeURIComponent(body);
-  var count=grupo.late.length+grupo.mnetWarn.length+grupo.closedRecent.length+Object.keys(grupo.proximas).reduce(function(s,k){return s+grupo.proximas[k].length;},0);
-  return {vendCode:vendCode,nombre:nombreMostrado,to:to,subject:subject,body:body,mailto:mailto,gmail:gmail,count:count};
+  var count=filas.late.length+filas.mnetWarn.length+filas.closedRecent.length+filas.proximas.reduce(function(s,dia){return s+dia.rows.length;},0);
+  var img=dibujarResumenCanvas(filas,{titulo:'Estatus de '+nombreMostrado+' \u2014 '+fd(T),temaClaro:true});
+  return {vendCode:vendCode,nombre:nombreMostrado,to:to,subject:subject,body:body,mailto:mailto,gmail:gmail,count:count,img:img};
+}
+function toggleImgVendedor(i){
+  var el=document.getElementById('imgVend'+i);
+  if(el)el.style.display=el.style.display==='none'?'block':'none';
 }
 function enviarResumenPorVendedor(){
   var d=getResumenData();
-  var grupos=agruparResumenPorVendedor(d);
-  var codigos=Object.keys(grupos);
-  var correos=codigos.map(function(v){return buildCorreoVendedor(v,grupos[v],d.T);}).filter(function(c){return c.count>0;});
+  var vendCodes=[],seenV={};
+  function agregar(r){var v=(r.VENDEDOR||'').trim()||'SIN_VENDEDOR';if(!seenV[v]){seenV[v]=true;vendCodes.push(v);}}
+  d.late.forEach(agregar);d.mnetWarn.forEach(agregar);d.closedRecent.forEach(agregar);
+  d.proximas.forEach(function(dia){dia.rows.forEach(agregar);});
+  var correos=vendCodes.map(function(v){return buildCorreoVendedor(v,filasParaVendedor(d,v),d.T);}).filter(function(c){return c.count>0;});
   correos.sort(function(a,b){return b.count-a.count;});
   if(!correos.length){alert('No hay OPs pendientes/recientes para enviar por vendedor.');return;}
   // Intento abrir todos de un jalon, sincrono dentro del mismo click (asi el navegador no los bloquea)
   correos.forEach(function(c){window.open(c.gmail,'_blank');});
-  // Aviso con la lista + links de respaldo por si alguno fue bloqueado por el navegador
-  var rows=correos.map(function(c){
-    return '<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border)">'
+  // Aviso con la lista + imagen (con iconos de area) + links de respaldo por si alguno fue bloqueado
+  var rows=correos.map(function(c,i){
+    return '<div style="padding:8px 0;border-bottom:1px solid var(--border)">'
+      +'<div style="display:flex;justify-content:space-between;align-items:center;gap:10px">'
       +'<div><div style="font-weight:600">'+c.nombre+'</div><div style="font-size:11px;color:var(--muted)">'+c.to+' \u00b7 '+c.count+' OP'+(c.count!==1?'s':'')+'</div></div>'
-      +'<div style="display:flex;gap:6px">'
+      +'<div style="display:flex;gap:6px;flex-shrink:0">'
+      +'<button onclick="toggleImgVendedor('+i+')" style="background:var(--surface2);border:1px solid var(--border);color:var(--muted);border-radius:6px;padding:4px 10px;font-size:11px;cursor:pointer">Ver imagen</button>'
       +'<a href="'+c.gmail+'" target="_blank" style="background:var(--surface2);border:1px solid var(--border);color:var(--muted);border-radius:6px;padding:4px 10px;font-size:11px;text-decoration:none">Gmail</a>'
       +'<a href="'+c.mailto+'" style="background:var(--surface2);border:1px solid var(--border);color:var(--muted);border-radius:6px;padding:4px 10px;font-size:11px;text-decoration:none">Mailto</a>'
-      +'</div></div>';
+      +'</div></div>'
+      +'<div id="imgVend'+i+'" style="display:none;margin-top:8px;text-align:center">'
+      +'<div style="font-size:10px;color:var(--muted);margin-bottom:4px">Clic derecho \u2192 Copiar imagen, y p\u00e9gala en el correo de '+c.nombre+'</div>'
+      +'<img src="'+c.img+'" style="max-width:100%;border-radius:6px;border:1px solid var(--border)">'
+      +'</div>'
+      +'</div>';
   }).join('');
   document.getElementById('mt').textContent='Resumen enviado por vendedor';
   document.getElementById('mb').innerHTML=
-    '<div style="margin-bottom:10px;font-size:11px;color:var(--muted)">Se intentaron abrir '+correos.length+' borradores de Gmail (uno por vendedor). Si el navegador bloque\u00f3 alguno, \u00fasalo desde aqu\u00ed abajo.</div>'
+    '<div style="margin-bottom:10px;font-size:11px;color:var(--muted)">Se intentaron abrir '+correos.length+' borradores de Gmail (uno por vendedor). Haz clic en "Ver imagen" para copiarla y pegarla en el correo de cada quien; los puntos de color indican el \u00e1rea de cada OP.</div>'
     +rows;
   document.getElementById('modal').classList.add('open');
 }
@@ -639,142 +655,164 @@ function toggleTemaCaptura(){
   if(btnT)btnT.textContent='Fondo: '+(_capturaTemaClaro?'claro':'oscuro');
   generarCapturaResumen(false);
 }
+// Dibuja el canvas del resumen (compartido entre el resumen general y cada correo por vendedor).
+// d: mismo shape que getResumenData() (T, late, mnetWarn, closedRecent, proximas, diasCerradas), completo o filtrado.
+// opciones: {titulo, temaClaro}
+function dibujarResumenCanvas(d,opciones){
+  opciones=opciones||{};
+  var T=d.T;
+  var temaClaro=opciones.temaClaro!==undefined?opciones.temaClaro:_capturaTemaClaro;
+  var titulo=opciones.titulo||('Estatus de pedidos en producci\u00f3n \u2014 '+fd(T));
+  var W=800,pad=22,rowH=26,headerH=30,sectionGap=16;
+  var pal=temaClaro?
+    {bg:'#ffffff',title:'#1e293b',muted:'#64748b',art:'#334155',op:'#0f172a',border:'#e2e8f0'}:
+    {bg:'#0d1523',title:'#e2e8f0',muted:'#94a3b8',art:'#c3cad6',op:'#e2e8f0',border:'#334155'};
+
+  function opRows(list,extraFn,statusFiltro){
+    var filtro=statusFiltro||'V';
+    return list.map(function(r){
+      var parts=RAW.filter(function(x){return String(x.OP)===String(r.OP);});
+      var totalCant=parts.filter(function(p){return p.STATUS===filtro;}).reduce(function(s,p){return s+(parseInt(p.CANT)||0);},0);
+      var arts=getArts(r.OP);
+      var fallback=(r.SUBAREA||'')+(r.MESH?' '+r.MESH:'');
+      var artStr=(arts&&arts.length&&arts[0])?arts[0]:fallback;
+      var artFull=(arts&&arts.length)?arts.join(' + '):fallback;
+      return {op:r.OP,ped:ped(r.OP),vend:(r.VENDEDOR||'').trim(),cant:totalCant,art:artStr,artFull:artFull,extra:extraFn(r),area:r.AREA};
+    });
+  }
+  var closedRows=opRows(d.closedRecent,function(r){return fd(pd(r.FTERM));},'T');
+  var mnetRows=opRows(d.mnetWarn,function(r){return '\u2192 '+fd(pd(r.Fprod||r.FProm));});
+  var lateRows=opRows(d.late,function(r){var fp=pd(r.Fprod||r.FProm),dl=fp?daysDiff(fp,T):0;return dl+'d vencido';});
+  var proxDays=(d.proximas||[]).map(function(dia){
+    return {label:dia.label,fecha:dia.fecha,rows:opRows(dia.rows,function(r){return fd(pd(r.Fprod||r.FProm));})};
+  });
+
+  var totalRows=lateRows.length+mnetRows.length+closedRows.length;
+  var emptyCount=(lateRows.length?0:1)+(mnetRows.length?0:1)+(closedRows.length?0:1);
+  var proxRowsTotal=proxDays.reduce(function(s,dia){return s+(dia.rows.length||1);},0);
+  var H=pad*2+36+ (headerH+sectionGap)*3 + totalRows*rowH + emptyCount*rowH + 30
+    + headerH + proxDays.length*(headerH-8+sectionGap) + proxRowsTotal*rowH + 20;
+
+  var canvas=document.createElement('canvas');
+  var scale=2;
+  canvas.width=W*scale;canvas.height=H*scale;
+  var ctx=canvas.getContext('2d');
+  ctx.scale(scale,scale);
+  ctx.fillStyle=pal.bg;ctx.fillRect(0,0,W,H);
+
+  var y=pad;
+  ctx.fillStyle=pal.title;
+  ctx.font='bold 16px "IBM Plex Sans",Arial,sans-serif';
+  ctx.fillText(titulo,pad,y+14);
+  y+=36;
+
+  // x0 corrido +6px vs el original (pad+9 -> pad+15) para dejar espacio al punto de color de area
+  // entre la barra de acento (pad..pad+3) y el inicio del texto, sin recortar las demas columnas.
+  var x0=pad+15;
+  var colPed={x:x0,w:82},colOp={x:x0+88,w:62},colVend={x:x0+156,w:48},colCant={x:x0+210,w:48},colArt={x:x0+264,w:290},colExtra={x:x0+562,w:W-pad-15-562};
+
+  function drawAreaDot(r){
+    if(!r.area)return;
+    ctx.beginPath();
+    ctx.arc(pad+9,y+rowH/2-6,3.2,0,Math.PI*2);
+    ctx.fillStyle=ac(r.area);
+    ctx.fill();
+  }
+
+  function drawSection(title,color,rows,emptyText,titleColor){
+    ctx.fillStyle=titleColor||color;
+    ctx.font='bold 12px "IBM Plex Sans",Arial,sans-serif';
+    ctx.fillText(title,pad,y+12);
+    y+=headerH;
+    if(!rows.length){
+      ctx.fillStyle=pal.muted;
+      ctx.font='12px "IBM Plex Sans",Arial,sans-serif';
+      ctx.fillText(emptyText,pad+8,y+11);
+      y+=rowH;
+    } else {
+      rows.forEach(function(r){
+        ctx.fillStyle=color;
+        ctx.fillRect(pad,y+2,3,rowH-10);
+        drawAreaDot(r);
+        ctx.font='11px "IBM Plex Mono",monospace';
+        ctx.fillStyle=pal.muted;
+        ctx.fillText(truncTxt(ctx,r.ped||'\u2014',colPed.w),colPed.x,y+12);
+        ctx.font='bold 11px "IBM Plex Mono",monospace';
+        ctx.fillStyle=pal.op;
+        ctx.fillText('OP '+r.op,colOp.x,y+12);
+        ctx.font='11px "IBM Plex Sans",Arial,sans-serif';
+        ctx.fillStyle=pal.muted;
+        ctx.fillText(truncTxt(ctx,r.vend||'\u2014',colVend.w),colVend.x,y+12);
+        ctx.fillText(fmtNum(r.cant)+'p',colCant.x,y+12);
+        ctx.font='11px "IBM Plex Sans",Arial,sans-serif';
+        ctx.fillStyle=pal.art;
+        ctx.fillText(truncTxt(ctx,r.art||'\u2014',colArt.w),colArt.x,y+12);
+        ctx.fillStyle=pal.muted;
+        ctx.fillText(truncTxt(ctx,r.extra,colExtra.w),colExtra.x,y+12);
+        y+=rowH;
+      });
+    }
+    y+=sectionGap;
+  }
+
+  var colArtWide={x:colArt.x,w:(colExtra.x-colArt.x)+100};
+  function drawSubSection(title,color,rows,emptyText){
+    ctx.fillStyle=color;
+    ctx.font='bold 11px "IBM Plex Sans",Arial,sans-serif';
+    ctx.fillText(title,pad,y+10);
+    y+=headerH-8;
+    if(!rows.length){
+      ctx.fillStyle=pal.muted;
+      ctx.font='12px "IBM Plex Sans",Arial,sans-serif';
+      ctx.fillText(emptyText,pad+8,y+11);
+      y+=rowH;
+    } else {
+      rows.forEach(function(r){
+        ctx.fillStyle=color;
+        ctx.fillRect(pad,y+2,3,rowH-10);
+        drawAreaDot(r);
+        ctx.font='11px "IBM Plex Mono",monospace';
+        ctx.fillStyle=pal.muted;
+        ctx.fillText(truncTxt(ctx,r.ped||'\u2014',colPed.w),colPed.x,y+12);
+        ctx.font='bold 11px "IBM Plex Mono",monospace';
+        ctx.fillStyle=pal.op;
+        ctx.fillText('OP '+r.op,colOp.x,y+12);
+        ctx.font='11px "IBM Plex Sans",Arial,sans-serif';
+        ctx.fillStyle=pal.muted;
+        ctx.fillText(truncTxt(ctx,r.vend||'\u2014',colVend.w),colVend.x,y+12);
+        ctx.fillText(fmtNum(r.cant)+'p',colCant.x,y+12);
+        ctx.font='11px "IBM Plex Sans",Arial,sans-serif';
+        ctx.fillStyle=pal.art;
+        ctx.fillText(truncTxt(ctx,r.artFull||r.art||'\u2014',colArtWide.w),colArtWide.x,y+12);
+        y+=rowH;
+      });
+    }
+    y+=sectionGap;
+  }
+
+  drawSection('VENCIDAS','#ef4444',lateRows,'Sin \u00f3rdenes vencidas.');
+  drawSection('CON NUEVA FECHA DE ENTREGA','#f97316',mnetRows,'Sin \u00f3rdenes con cambio de fecha.');
+
+  ctx.fillStyle=pal.title;
+  ctx.font='bold 12px "IBM Plex Sans",Arial,sans-serif';
+  ctx.fillText('PR\u00d3XIMAS ENTREGAS',pad,y+12);
+  y+=headerH;
+  proxDays.forEach(function(dia){
+    drawSubSection(dia.label+' \u2014 '+fd(dia.fecha),'#3b82f6',dia.rows,'Sin \u00f3rdenes programadas.');
+  });
+
+  drawSection('CERRADAS \u00daLTIMOS '+(d.diasCerradas!==undefined?d.diasCerradas:2)+' D\u00cdAS','#10b981',closedRows,'Sin \u00f3rdenes cerradas recientemente.',pal.title);
+
+  return canvas.toDataURL('image/png');
+}
 function generarCapturaResumen(forceDownload){
   var btn=document.getElementById('btnCaptura');
   var msg=document.getElementById('resumenCopyMsg');
   var prevBtnTxt=btn?btn.textContent:'';
   if(btn){btn.textContent='Generando...';btn.disabled=true;}
   try {
-    var d=getResumenData(),T=d.T;
-    var W=800,pad=22,rowH=26,headerH=30,sectionGap=16;
-    var pal=_capturaTemaClaro?
-      {bg:'#ffffff',title:'#1e293b',muted:'#64748b',art:'#334155',op:'#0f172a',border:'#e2e8f0'}:
-      {bg:'#0d1523',title:'#e2e8f0',muted:'#94a3b8',art:'#c3cad6',op:'#e2e8f0',border:'#334155'};
-
-    function opRows(list,extraFn,statusFiltro){
-      var filtro=statusFiltro||'V';
-      return list.map(function(r){
-        var parts=RAW.filter(function(x){return String(x.OP)===String(r.OP);});
-        var totalCant=parts.filter(function(p){return p.STATUS===filtro;}).reduce(function(s,p){return s+(parseInt(p.CANT)||0);},0);
-        var arts=getArts(r.OP);
-        var fallback=(r.SUBAREA||'')+(r.MESH?' '+r.MESH:'');
-        var artStr=(arts&&arts.length&&arts[0])?arts[0]:fallback;
-        var artFull=(arts&&arts.length)?arts.join(' + '):fallback;
-        return {op:r.OP,ped:ped(r.OP),vend:(r.VENDEDOR||'').trim(),cant:totalCant,art:artStr,artFull:artFull,extra:extraFn(r)};
-      });
-    }
-    var closedRows=opRows(d.closedRecent,function(r){return fd(pd(r.FTERM));},'T');
-    var mnetRows=opRows(d.mnetWarn,function(r){return '\u2192 '+fd(pd(r.Fprod||r.FProm));});
-    var lateRows=opRows(d.late,function(r){var fp=pd(r.Fprod||r.FProm),dl=fp?daysDiff(fp,T):0;return dl+'d vencido';});
-    var proxDays=d.proximas.map(function(dia){
-      return {label:dia.label,fecha:dia.fecha,rows:opRows(dia.rows,function(r){return fd(pd(r.Fprod||r.FProm));})};
-    });
-
-    var totalRows=lateRows.length+mnetRows.length+closedRows.length;
-    var emptyCount=(lateRows.length?0:1)+(mnetRows.length?0:1)+(closedRows.length?0:1);
-    var proxRowsTotal=proxDays.reduce(function(s,dia){return s+(dia.rows.length||1);},0);
-    var H=pad*2+36+ (headerH+sectionGap)*3 + totalRows*rowH + emptyCount*rowH + 30
-      + headerH + proxDays.length*(headerH-8+sectionGap) + proxRowsTotal*rowH + 20;
-
-    var canvas=document.createElement('canvas');
-    var scale=2;
-    canvas.width=W*scale;canvas.height=H*scale;
-    var ctx=canvas.getContext('2d');
-    ctx.scale(scale,scale);
-    ctx.fillStyle=pal.bg;ctx.fillRect(0,0,W,H);
-
-    var y=pad;
-    ctx.fillStyle=pal.title;
-    ctx.font='bold 16px "IBM Plex Sans",Arial,sans-serif';
-    ctx.fillText('Estatus de pedidos en producci\u00f3n \u2014 '+fd(T),pad,y+14);
-    y+=36;
-
-    var x0=pad+9;
-    var colPed={x:x0,w:82},colOp={x:x0+88,w:62},colVend={x:x0+156,w:48},colCant={x:x0+210,w:48},colArt={x:x0+264,w:290},colExtra={x:x0+562,w:W-pad-9-562};
-
-    function drawSection(title,color,rows,emptyText,titleColor){
-      ctx.fillStyle=titleColor||color;
-      ctx.font='bold 12px "IBM Plex Sans",Arial,sans-serif';
-      ctx.fillText(title,pad,y+12);
-      y+=headerH;
-      if(!rows.length){
-        ctx.fillStyle=pal.muted;
-        ctx.font='12px "IBM Plex Sans",Arial,sans-serif';
-        ctx.fillText(emptyText,pad+8,y+11);
-        y+=rowH;
-      } else {
-        rows.forEach(function(r){
-          ctx.fillStyle=color;
-          ctx.fillRect(pad,y+2,3,rowH-10);
-          ctx.font='11px "IBM Plex Mono",monospace';
-          ctx.fillStyle=pal.muted;
-          ctx.fillText(truncTxt(ctx,r.ped||'\u2014',colPed.w),colPed.x,y+12);
-          ctx.font='bold 11px "IBM Plex Mono",monospace';
-          ctx.fillStyle=pal.op;
-          ctx.fillText('OP '+r.op,colOp.x,y+12);
-          ctx.font='11px "IBM Plex Sans",Arial,sans-serif';
-          ctx.fillStyle=pal.muted;
-          ctx.fillText(truncTxt(ctx,r.vend||'\u2014',colVend.w),colVend.x,y+12);
-          ctx.fillText(fmtNum(r.cant)+'p',colCant.x,y+12);
-          ctx.font='11px "IBM Plex Sans",Arial,sans-serif';
-          ctx.fillStyle=pal.art;
-          ctx.fillText(truncTxt(ctx,r.art||'\u2014',colArt.w),colArt.x,y+12);
-          ctx.fillStyle=pal.muted;
-          ctx.fillText(truncTxt(ctx,r.extra,colExtra.w),colExtra.x,y+12);
-          y+=rowH;
-        });
-      }
-      y+=sectionGap;
-    }
-
-    var colArtWide={x:colArt.x,w:(colExtra.x-colArt.x)+100};
-    function drawSubSection(title,color,rows,emptyText){
-      ctx.fillStyle=color;
-      ctx.font='bold 11px "IBM Plex Sans",Arial,sans-serif';
-      ctx.fillText(title,pad,y+10);
-      y+=headerH-8;
-      if(!rows.length){
-        ctx.fillStyle=pal.muted;
-        ctx.font='12px "IBM Plex Sans",Arial,sans-serif';
-        ctx.fillText(emptyText,pad+8,y+11);
-        y+=rowH;
-      } else {
-        rows.forEach(function(r){
-          ctx.fillStyle=color;
-          ctx.fillRect(pad,y+2,3,rowH-10);
-          ctx.font='11px "IBM Plex Mono",monospace';
-          ctx.fillStyle=pal.muted;
-          ctx.fillText(truncTxt(ctx,r.ped||'\u2014',colPed.w),colPed.x,y+12);
-          ctx.font='bold 11px "IBM Plex Mono",monospace';
-          ctx.fillStyle=pal.op;
-          ctx.fillText('OP '+r.op,colOp.x,y+12);
-          ctx.font='11px "IBM Plex Sans",Arial,sans-serif';
-          ctx.fillStyle=pal.muted;
-          ctx.fillText(truncTxt(ctx,r.vend||'\u2014',colVend.w),colVend.x,y+12);
-          ctx.fillText(fmtNum(r.cant)+'p',colCant.x,y+12);
-          ctx.font='11px "IBM Plex Sans",Arial,sans-serif';
-          ctx.fillStyle=pal.art;
-          ctx.fillText(truncTxt(ctx,r.artFull||r.art||'\u2014',colArtWide.w),colArtWide.x,y+12);
-          y+=rowH;
-        });
-      }
-      y+=sectionGap;
-    }
-
-    drawSection('VENCIDAS','#ef4444',lateRows,'Sin \u00f3rdenes vencidas.');
-    drawSection('CON NUEVA FECHA DE ENTREGA','#f97316',mnetRows,'Sin \u00f3rdenes con cambio de fecha.');
-
-    ctx.fillStyle=pal.title;
-    ctx.font='bold 12px "IBM Plex Sans",Arial,sans-serif';
-    ctx.fillText('PR\u00d3XIMAS ENTREGAS',pad,y+12);
-    y+=headerH;
-    proxDays.forEach(function(dia){
-      drawSubSection(dia.label+' \u2014 '+fd(dia.fecha),'#3b82f6',dia.rows,'Sin \u00f3rdenes programadas.');
-    });
-
-    drawSection('CERRADAS \u00daLTIMOS '+d.diasCerradas+' D\u00cdAS','#10b981',closedRows,'Sin \u00f3rdenes cerradas recientemente.',pal.title);
-
-    var dataUrl=canvas.toDataURL('image/png');
+    var d=getResumenData();
+    var dataUrl=dibujarResumenCanvas(d,{temaClaro:_capturaTemaClaro});
 
     var preview=document.getElementById('capturaPreview');
     if(!preview){
