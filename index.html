@@ -413,14 +413,14 @@ var CORREO_DESTINATARIOS=['nmoreno@matexsa.com.mx','clientes@matexsa.com.mx','ve
 // Correo y nombre por código de vendedor, para el envío de resumen individual por vendedor.
 // JB = STOCK (no es una persona real) y JF/EV aún sin correo confirmado por Chato -> fallback a clientes@ mientras tanto.
 var VENDEDOR_INFO={
-  'NM':{nombre:'Nayeli Moreno',email:'nmoreno@matexsa.com.mx'},
-  'EM':{nombre:'Evaristo Moreno',email:'ventasemoreno@matexsa.com.mx'},
-  'YF':{nombre:'Yasmin Fabian',email:'fyasmin@matexsa.com.mx'},
-  'OP':{nombre:'Oscar Perez',email:'poscar@matexsa.com.mx'},
-  'LF':{nombre:'Laura Fabian',email:'lfabian@matexsa.com.mx'},
+  'NM':{nombre:'Nayeli',email:'nmoreno@matexsa.com.mx'},
+  'EM':{nombre:'Evaristo',email:'ventasemoreno@matexsa.com.mx'},
+  'YF':{nombre:'Yasmin',email:'fyasmin@matexsa.com.mx'},
+  'OP':{nombre:'Oscar',email:'poscar@matexsa.com.mx'},
+  'LF':{nombre:'Laura',email:'lfabian@matexsa.com.mx'},
   'JB':{nombre:'Stock',email:'clientes@matexsa.com.mx'},
   'JF':{nombre:'JF',email:'clientes@matexsa.com.mx'},
-  'EV':{nombre:'Enrique V\u00e1zquez',email:'clientes@matexsa.com.mx'}
+  'EV':{nombre:'Enrique',email:'clientes@matexsa.com.mx'}
 };
 function getResumenData(){
   var T=today();
@@ -547,8 +547,8 @@ function buildCorreoVendedor(vendCode,grupo,T){
   var nombreMostrado=esSinVendedor?'Sin vendedor asignado':(info?info.nombre:vendCode);
   var to=esSinVendedor?'clientes@matexsa.com.mx':(info?info.email:'clientes@matexsa.com.mx');
   var subject='Estatus de tus pedidos en producci\u00f3n \u2014 '+nombreMostrado+' \u2014 '+fd(T);
-  var lines=['Hola '+nombreMostrado+',','','Estatus de tus OP en producci\u00f3n al '+fd(T)+':',''];
-  if(grupo.late.length){lines.push('VENCIDAS:');lines=lines.concat(grupo.late,['']);}
+  var lines=['Hola '+nombreMostrado+',','','Estatus de tus \u00d3rdenes de Producci\u00f3n al '+fd(T)+':',''];
+  if(grupo.late.length){lines.push('VENCIDAS (Pedir informaci\u00f3n al \u00e1rea de Producci\u00f3n):');lines=lines.concat(grupo.late,['']);}
   if(grupo.mnetWarn.length){lines.push('CON NUEVA FECHA DE ENTREGA:');lines=lines.concat(grupo.mnetWarn,['']);}
   Object.keys(grupo.proximas).forEach(function(diaLabel){
     lines.push('PR\u00d3XIMA ENTREGA \u2014 '+diaLabel+':');
