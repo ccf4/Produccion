@@ -1104,8 +1104,9 @@ function buildGrid(WS,gridId,countId,sumId){
   mnetSrc=mnetSrc.filter(function(m){var fe=pd(m.FECHA||m.FEMIT);return !fe||Math.floor((T-fe)/86400000)<=100;});
   var q=searchQ();
   [0,1,2,3,4,7].forEach(function(i){var d=new Date(WS);d.setDate(d.getDate()+i);days.push(d);dlabs.push(d.toLocaleDateString('es-MX',{weekday:'short',day:'2-digit'}));});
-  var ops=src.filter(function(d){return inR(pd(d.Fprod||d.FProm),WS,WE);});
-  var mnetOps=mnetSrc.filter(function(m){return inR(pd(m.FProm),WS,WE);});
+  var NM=new Date(WE);NM.setDate(NM.getDate()+1);NM.setHours(0,0,0,0);
+  var ops=src.filter(function(d){var dt=pd(d.Fprod||d.FProm);return inR(dt,WS,WE)||(dt&&dt.toDateString()===NM.toDateString());});
+  var mnetOps=mnetSrc.filter(function(m){var dt=pd(m.FProm);return inR(dt,WS,WE)||(dt&&dt.toDateString()===NM.toDateString());});
   if(countId)document.getElementById(countId).textContent=' - '+ops.length+' OP';
   var areaOrder=['Disco','Aros','Telar','Varios','ALMC'];
   // Build area/subarea groups directly from RAW to handle multi-subarea OPs correctly
