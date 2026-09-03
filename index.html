@@ -1452,7 +1452,9 @@ function renderTable(){
 function scrollGanttToday(){
   var el=document.getElementById('ganttScroll');
   if(!el)return;
-  el.scrollTo({left:Math.max(0,(window._ganttTodayOffset-7)*window._ganttDayW),behavior:'smooth'});
+  var labelW=window._ganttMobile?0:(window._ganttLabelW||0);
+  var visibleW=el.clientWidth-labelW;
+  el.scrollTo({left:Math.max(0,window._ganttTodayOffset*window._ganttDayW+window._ganttDayW/2-visibleW/2),behavior:'smooth'});
 }
 function weeklyTSums(area,subKey,isPack,numWeeks){
   var T=today(),weeks=[];
@@ -1782,7 +1784,7 @@ function renderGantt(){
       });
     });
   });
-  window._ganttTodayOffset=todayOffset;window._ganttDayW=dayW;
+  window._ganttTodayOffset=todayOffset;window._ganttDayW=dayW;window._ganttLabelW=LABEL_W;window._ganttMobile=_mobileGantt;
   var topBarHtml='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">'+
     '<div style="font-size:10px;color:var(--muted)">'+src.length+' OP abiertas (vigentes y vencidas recientes)</div>'+
     '<button onclick="scrollGanttToday()" style="background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:3px 10px;font-size:11px;font-weight:600;cursor:pointer">Hoy</button>'+
@@ -1819,7 +1821,9 @@ function renderGantt(){
         var rect=el.getBoundingClientRect();
         el.style.maxHeight=(window.innerHeight-rect.top-16)+'px';
       }
-      el.scrollLeft=Math.max(0,(todayOffset-7)*dayW);
+      var labelW=_mobileGantt?0:LABEL_W;
+      var visibleW=el.clientWidth-labelW;
+      el.scrollLeft=Math.max(0,todayOffset*dayW+dayW/2-visibleW/2);
       el.addEventListener('scroll',function(){
         var sl=el.scrollLeft;
         el.querySelectorAll('.gantt-bar-wrap').forEach(function(bar){
