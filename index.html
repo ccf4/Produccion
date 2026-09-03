@@ -52,6 +52,8 @@ main{padding:22px 28px;max-width:1600px;margin:0 auto;}
 .week-row{display:grid;grid-template-columns:160px repeat(6,1fr);gap:1px;margin-bottom:1px;}
 .week-row .row-label{background:var(--surface2);padding:5px 8px;font-size:13px;font-weight:700;display:flex;align-items:center;gap:5px;min-height:60px;}
 .week-row .day-cell{background:var(--surface2);min-height:60px;padding:3px;display:flex;flex-direction:column;gap:3px;}
+.next-week-col{border-left:2px dashed var(--border);}
+.week-days .next-week-col{opacity:.6;}
 .week-row .day-cell.today{background:#253d50;border-bottom-color:transparent!important;border-top-color:transparent!important;}
 .mnet-sep{padding:4px 6px;background:rgba(61,138,255,.12);border-top:2px solid rgba(61,138,255,.25);font-size:9px;font-weight:700;color:rgba(61,138,255,.7);letter-spacing:1px;}
 .day-op{border-radius:4px;padding:4px 6px;font-size:10px;font-family:'IBM Plex Mono',monospace;cursor:pointer;border-left:2px solid var(--accent);background:rgba(96,165,250,.12);line-height:1.4;transition:all .1s;}
@@ -1020,7 +1022,14 @@ function maxWeekOff(T){
   mnetSrc.forEach(function(m){chk(pd(m.FProm));});
   return Math.max(0,Math.min(maxOff,52));
 }
-function changeWeek(d){var T=today(),mx=maxWeekOff(T);proxOff=Math.max(0,Math.min(mx,proxOff+d));renderSemana(T);}
+function minWeekOff(T){
+  var src=activeData(),mnetSrc=activeMissing(),minOff=0;
+  function chk(dt){if(!dt)return;var diff=Math.floor((dt-wkS(T,0))/86400000);var off=Math.floor(diff/7);if(off<minOff)minOff=off;}
+  src.forEach(function(d){chk(pd(d.Fprod||d.FProm));});
+  mnetSrc.forEach(function(m){chk(pd(m.FProm));});
+  return Math.min(0,Math.max(minOff,-52));
+}
+function changeWeek(d){var T=today(),mx=maxWeekOff(T),mn=minWeekOff(T);proxOff=Math.max(mn,Math.min(mx,proxOff+d));renderSemana(T);}
 function refreshAll(){var T=today();renderSemana(T);renderTable();if(document.getElementById('ganttScroll'))renderGantt();}
 
 function showDetail(op){
@@ -1094,7 +1103,7 @@ function buildGrid(WS,gridId,countId,sumId){
   src=src.filter(function(d){var fe=pd(d.FEMIT);return !fe||Math.floor((T-fe)/86400000)<=100;});
   mnetSrc=mnetSrc.filter(function(m){var fe=pd(m.FECHA||m.FEMIT);return !fe||Math.floor((T-fe)/86400000)<=100;});
   var q=searchQ();
-  for(var i=0;i<7;i++){var d=new Date(WS);d.setDate(d.getDate()+i);if(d.getDay()===0)continue;days.push(d);dlabs.push(d.toLocaleDateString('es-MX',{weekday:'short',day:'2-digit'}));}
+  [0,1,2,3,4,7].forEach(function(i){var d=new Date(WS);d.setDate(d.getDate()+i);days.push(d);dlabs.push(d.toLocaleDateString('es-MX',{weekday:'short',day:'2-digit'}));});
   var ops=src.filter(function(d){return inR(pd(d.Fprod||d.FProm),WS,WE);});
   var mnetOps=mnetSrc.filter(function(m){return inR(pd(m.FProm),WS,WE);});
   if(countId)document.getElementById(countId).textContent=' - '+ops.length+' OP';
@@ -1121,11 +1130,11 @@ function buildGrid(WS,gridId,countId,sumId){
     if(sumId)document.getElementById(sumId).innerHTML='';
     return;
   }
-  var html='<div class="week-days"><div>Area / Subarea</div>'+days.map(function(d,i){return '<div class="'+(d.toDateString()===T.toDateString()?'today-col':'')+'">'+dlabs[i]+'</div>';}).join('')+'</div>';
+  var html='<div class="week-days"><div>Area / Subarea</div>'+days.map(function(d,i){var cls=(d.toDateString()===T.toDateString()?'today-col ':'')+(i===days.length-1?'next-week-col':'');return '<div class="'+cls+'">'+dlabs[i]+'</div>';}).join('')+'</div>';
   areas.forEach(function(area){
     var col=ac(area);
     html+='<div class="week-row" style="min-height:0"><div class="row-label" style="height:22px;min-height:22px;background:rgba(0,0,0,.2);font-size:11px;font-weight:700;color:'+col+'"><span style="width:7px;height:7px;border-radius:50%;background:'+col+';display:inline-block;flex-shrink:0"></span>'+area+'</div>';
-    days.forEach(function(dayD){var isT=dayD.toDateString()===T.toDateString();html+='<div class="day-cell '+(isT?'today':'')+'" style="height:22px;min-height:22px;background:rgba(0,0,0,.15)"></div>';});
+    days.forEach(function(dayD,dhi){var isT=dayD.toDateString()===T.toDateString(),isNW=dhi===days.length-1;html+='<div class="day-cell '+(isT?'today':'')+(isNW?' next-week-col':'')+'" style="height:22px;min-height:22px;background:rgba(0,0,0,.15)"></div>';});
     html+='</div>';
     var _subOrd=['Disco','Pack','Manual','Oblongo/Manual','Riñon','Riñon/Manual','Oblongo','Pack Rect / Manual','Tiras','Tapas','Armar','Tubular','Tubulares','Remallado','Empaque','Criba','Eliminador','Placa filtrante','Embolsados','Nuevo'];
     var subareas=_subOrd.filter(function(s){return areaSubMap[area]&&areaSubMap[area][s];}).concat(Object.keys(areaSubMap[area]||{}).filter(function(s){return _subOrd.indexOf(s)===-1;}));
@@ -1169,8 +1178,8 @@ var _wkUnit=isGolpeSub?' gol.':' pzas';
 var _wkSums=weeklyTSums(area,_wkSubKey,isGolpeSub,8);
 var _wkSpark=subSparklineHtml(_wkSums,_wkLastVal,col,_wkUnit);
 var row='<div class="week-row"><div class="row-label" style="padding-left:10px;font-size:12px;font-weight:700;color:#b0c4de;"><div style="display:flex;flex-direction:column;gap:1px;overflow:hidden;width:100%;"><div style="display:flex;align-items:center;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+subIcon(subarea,area)+normSub(subarea)+'</div>'+_wkSpark+'</div></div>';
-      days.forEach(function(dayD){
-        var dk=dayD.toISOString().slice(0,10),isT=dayD.toDateString()===T.toDateString();
+      days.forEach(function(dayD,dsi){
+        var dk=dayD.toISOString().slice(0,10),isT=dayD.toDateString()===T.toDateString(),isNW=dsi===days.length-1;
         var noWork=noWorkDays.indexOf(dk)>=0;
         var dayOps=subOps.filter(function(d){var fp=pd(d.Fprod||d.FProm);return fp&&fp.toISOString().slice(0,10)===dk;});
         var cells=dayOps.map(function(op){
@@ -1186,7 +1195,7 @@ var row='<div class="week-row"><div class="row-label" style="padding-left:10px;f
           var _calIconSmall='<svg viewBox="0 0 24 24" width="10" height="10" fill="none" stroke="#ffd166" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;vertical-align:-1px;margin-right:3px"><rect x="3" y="5" width="18" height="16" rx="2"/><line x1="3" y1="10" x2="21" y2="10"/><line x1="8" y1="3" x2="8" y2="7"/><line x1="16" y1="3" x2="16" y2="7"/></svg>';
           return '<div class="day-op '+cls+(isMatch?' search-match':'')+(_isEdited?' edited':'')+'" data-area="'+op.AREA+'" data-subarea="'+op.SUBAREA+'" onmouseenter="showOpTip(this,'+op.OP+')" onmouseleave="hideOpTip()" onclick="showDetail(\''+op.OP+'\')"><div class="op-num">'+(_isEdited?_calIconSmall:'')+'OP '+op.OP+'</div>'+(ps?'<div class="op-ped">'+ps+'</div>':'')+'<div class="op-cant">'+cantStr+'</div></div>';
         }).join('');
-        row+='<div class="day-cell '+(isT?'today':'')+(noWork?' no-work':'')+'">'+(noWork?'<div class="no-work-label">sin trabajo</div>':'')+(cells||'')+'</div>';
+        row+='<div class="day-cell '+(isT?'today':'')+(noWork?' no-work':'')+(isNW?' next-week-col':'')+'">'+(noWork?'<div class="no-work-label">sin trabajo</div>':'')+(cells||'')+'</div>';
       });
       row+='</div>';html+=row;
     });
@@ -1196,15 +1205,15 @@ var row='<div class="week-row"><div class="row-label" style="padding-left:10px;f
     mnetTypes.forEach(function(tipo){
       var typeMops=mnetOps.filter(function(m){return mnetTipo(m.ARTICULO)===tipo;});
       var row='<div class="week-row"><div class="row-label"><span style="width:7px;height:7px;border-radius:50%;background:#6b7280;display:inline-block;flex-shrink:0;margin-right:5px"></span>'+tipo+'</div>';
-      days.forEach(function(dayD){
-        var dk=dayD.toISOString().slice(0,10),isT=dayD.toDateString()===T.toDateString();
+      days.forEach(function(dayD,ddi){
+        var dk=dayD.toISOString().slice(0,10),isT=dayD.toDateString()===T.toDateString(),isNW=ddi===days.length-1;
         var dayOps=typeMops.filter(function(m){var fp=pd(m.FProm);return fp&&fp.toISOString().slice(0,10)===dk;});
         var cells=dayOps.map(function(m){
           var ps=EDITOR_MODE?'':(m.PEDIDO?m.PEDIDO.replace('P-000','P-').replace('P-00','P-'):'');
           var isMatch=q&&matchSearch(m.OP,m.PEDIDO);
           return '<div class="day-op mnet-op'+(isMatch?' search-match':'')+'" onclick="showMissing(\''+m.OP+'\')"><div class="op-num">OP '+m.OP+'</div>'+(ps?'<div class="op-ped">'+ps+'</div>':'')+'<div class="op-cant">'+fmtNum(parseInt(m.CANT)||0)+' pzas</div></div>';
         }).join('');
-        row+='<div class="day-cell '+(isT?'today':'')+'">'+(cells||'')+'</div>';
+        row+='<div class="day-cell '+(isT?'today':'')+(isNW?' next-week-col':'')+'">'+(cells||'')+'</div>';
       });
       row+='</div>';html+=row;
     });
@@ -1215,8 +1224,8 @@ var row='<div class="week-row"><div class="row-label" style="padding-left:10px;f
 
 function renderSemana(T){
   var WS=wkS(T,proxOff),WE=wkE(WS);
-  var mx=maxWeekOff(T);
-  document.getElementById('btnP').disabled=proxOff<=0;
+  var mx=maxWeekOff(T),mn=minWeekOff(T);
+  document.getElementById('btnP').disabled=proxOff<=mn;
   document.getElementById('btnN').disabled=proxOff>=mx;
   document.getElementById('pl').textContent=proxOff===0?('Esta semana — '+fwk(WS)):fwk(WS);
   document.getElementById('wgTitle').textContent='Entregas programadas';
