@@ -357,11 +357,13 @@ function loadCierres(){
     .catch(function(){});
 }
 function saveCierre(op){
-  var iso=document.getElementById('cierreFechaInput').value;
+  var dia=parseInt(document.getElementById('cierreFechaDia').value,10);
+  var mes=parseInt(document.getElementById('cierreFechaMes').value,10);
+  var ano=parseInt(document.getElementById('cierreFechaAno').value,10);
   var pass=document.getElementById('cierrePass').value;
   var msgEl=document.getElementById('cierreMsg');
-  if(!iso){msgEl.textContent='Selecciona una fecha.';msgEl.style.color='var(--danger)';return;}
-  var cierreFecha=mdyFromIso(iso);
+  if(!dia||!mes||!ano||dia<1||dia>31||mes<1||mes>12||ano<2020){msgEl.textContent='Revisa la fecha (formato DD/MM/AAAA).';msgEl.style.color='var(--danger)';return;}
+  var cierreFecha=mes+'/'+dia+'/'+ano;
   msgEl.textContent='Guardando...';msgEl.style.color='var(--muted)';
   fetch(EDIT_WORKER_URL,{
     method:'POST',
@@ -1070,7 +1072,14 @@ function showDetail(op){
       '</div>'
       :(!isTerminated?
       '<div style="margin-top:10px;padding-top:10px;border-top:1px dashed var(--border)">'+
-        '<div class="dr"><span class="dk">Marcar como entregada</span><span><input type="date" id="cierreFechaInput" value="'+todayIso()+'" style="background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:4px 8px;font-family:inherit"></span></div>'+
+        '<div class="dr"><span class="dk">Marcar como entregada</span><span style="display:inline-flex;align-items:center;gap:3px">'+
+          '<input type="number" id="cierreFechaDia" min="1" max="31" placeholder="DD" value="'+today().getDate()+'" style="width:44px;background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:4px 4px;font-family:inherit;text-align:center">'+
+          '<span style="color:var(--muted)">/</span>'+
+          '<input type="number" id="cierreFechaMes" min="1" max="12" placeholder="MM" value="'+(today().getMonth()+1)+'" style="width:44px;background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:4px 4px;font-family:inherit;text-align:center">'+
+          '<span style="color:var(--muted)">/</span>'+
+          '<input type="number" id="cierreFechaAno" min="2020" max="2100" placeholder="AAAA" value="'+today().getFullYear()+'" style="width:64px;background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:4px 4px;font-family:inherit;text-align:center">'+
+          '<span style="font-size:10px;color:var(--muted);margin-left:2px">DD/MM/AAAA</span>'+
+        '</span></div>'+
         '<div class="dr"><span class="dk">Contrase\u00f1a</span><span><input type="password" id="cierrePass" style="background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:4px 8px;font-family:inherit;width:120px"></span></div>'+
         '<div style="display:flex;justify-content:flex-end;margin-top:6px"><button onclick="saveCierre(\''+op+'\')" style="background:var(--accent3);color:#fff;border:none;border-radius:6px;padding:6px 14px;font-weight:600;cursor:pointer">Cerrar OP</button></div>'+
         '<div id="cierreMsg" style="font-size:11px;text-align:right;margin-top:4px;min-height:14px"></div>'+
