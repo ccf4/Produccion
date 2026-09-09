@@ -146,6 +146,7 @@ select{background:var(--surface2);border:1px solid var(--border);color:var(--tex
   <div class="hdr-info">
     <div style="display:grid;grid-template-columns:auto auto auto;gap:2px 6px;font-size:10px;color:var(--muted);font-family:'IBM Plex Mono',monospace">
       <div style="grid-column:1/-1;font-size:9px;letter-spacing:.6px;opacity:.6;text-transform:uppercase;margin-bottom:2px;text-align:center">Última actualización</div>
+      <span style="opacity:.75" class="datos-row">Datos:</span><span style="text-align:right" class="datos-row">3/sep/26</span><span class="datos-row"></span>
       <span style="opacity:.75" class="entregas-row">Entregas:</span><span style="text-align:right" class="entregas-row">3/sep/26</span><span class="entregas-row">09:15</span>
     </div>
   </div>
@@ -2435,7 +2436,7 @@ function init(){
   if(EDITOR_MODE){
     var tabsBar=document.querySelector('.tabs');
     if(tabsBar)tabsBar.style.display='none';
-    document.querySelectorAll('.entregas-row').forEach(function(e){e.style.display='none';});
+    document.querySelectorAll('.entregas-row, .datos-row').forEach(function(e){e.style.display='none';});
     var logoEl=document.querySelector('.logo');
     if(logoEl)logoEl.style.display='none';
     var searchEl=document.getElementById('searchBox');
