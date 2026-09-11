@@ -999,6 +999,7 @@ function wkE(s){var d=new Date(s);d.setDate(d.getDate()+6);d.setHours(23,59,59,9
 function inR(d,s,e){return d&&d>=s&&d<=e;}
 function pd(s){if(!s||!s.trim)return null;s=s.trim();if(!s)return null;var p=s.split('/');if(p.length===3){var m=parseInt(p[0])-1,dy=parseInt(p[1]),y=parseInt(p[2]);var dt=new Date(y,m,dy);if(!isNaN(dt.getTime()))return dt;}var dt2=new Date(s);return isNaN(dt2.getTime())?null:dt2;}
 function fd(d){if(!d)return '--';return d.toLocaleDateString('es-MX',{day:'2-digit',month:'short',year:'2-digit'});}
+function fdShort(d){if(!d)return '--';return d.toLocaleDateString('es-MX',{day:'2-digit',month:'short'});}
 function fds(d){if(!d)return '--';return d.toLocaleDateString('es-MX',{day:'2-digit',month:'short'});}
 function fwk(s){return fds(s)+' - '+fds(wkE(s));}
 function sb(s){var m={'list x prod':'bl','X Rev':'br','Alm x ent':'ba','RECORTE':'bc'};return '<span class="badge '+(m[s]||'')+'">'+s+'</span>';}
@@ -1302,15 +1303,12 @@ function renderSemana(T){
         var totalCant=parts.filter(function(p){return p.STATUS==='V';}).reduce(function(s,p){return s+(parseInt(p.CANT)||0);},0);
         var arts=getArts(r.OP);
         tarjetasHtml.push('<div class="late-card" style="background:rgba(249,115,22,.05);border:1px solid rgba(249,115,22,.2);border-left:4px solid var(--warn)" onclick="showDetail(\''+r.OP+'\')">'+
-          '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">'+
-          '<span style="display:flex;align-items:center;gap:4px;font-size:14px;font-weight:700;color:'+ac(r.AREA)+'">'+subIcon(r.SUBAREA,r.AREA)+(r.AREA==='Aros'&&r.SUBAREA==='NUEVO'?'Aro nuevo':normSub(r.SUBAREA))+'</span>'+
-          '<span style="background:rgba(249,115,22,.15);color:var(--warn);font-size:10px;font-weight:600;padding:2px 8px;border-radius:10px;font-family:IBM Plex Mono,monospace">'+fd(fp0)+' \u2192 '+fd(fprod)+'</span>'+
-          '</div>'+
+          '<div style="display:flex;align-items:center;gap:4px;font-size:14px;font-weight:700;color:'+ac(r.AREA)+';margin-bottom:6px">'+subIcon(r.SUBAREA,r.AREA)+(r.AREA==='Aros'&&r.SUBAREA==='NUEVO'?'Aro nuevo':normSub(r.SUBAREA))+'</div>'+
           '<div style="font-size:12px;font-weight:700;font-family:IBM Plex Mono,monospace;color:var(--muted);margin-bottom:2px">OP '+r.OP+(ped(r.OP)?'<span style="font-weight:400"> \u00b7 '+ped(r.OP)+'</span>':'')+' </div>'+
-          (arts.length?'<div style="font-size:10px;color:var(--muted);margin-bottom:8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+(arts[0]||'')+'</div>':'')+
-          '<div style="display:flex;justify-content:space-between;align-items:center;font-size:10px">'+
-          '<span style="color:var(--muted)">'+fmtNum(totalCant)+' pzas \u00b7 '+(r.MAT||'--')+'</span>'+
-          (esHoy?'<span style="background:rgba(5,150,105,.18);color:var(--accent3);font-weight:700;padding:3px 8px;border-radius:6px">Entrega hoy</span>':'<span style="background:rgba(5,150,105,.12);color:var(--accent3);font-weight:700;padding:3px 8px;border-radius:6px;font-family:IBM Plex Mono,monospace">Fecha de entrega: '+fd(fprod)+'</span>')+
+          '<div style="font-size:10px;color:var(--muted);margin-bottom:8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-height:12px">'+(arts.length?(arts[0]||''):'&nbsp;')+'</div>'+
+          '<div style="display:flex;justify-content:space-between;align-items:center;font-size:10px;gap:6px">'+
+          '<span style="color:var(--muted);flex-shrink:0">'+fmtNum(totalCant)+' pzas \u00b7 '+(r.MAT||'--')+'</span>'+
+          (esHoy?'<span style="background:rgba(5,150,105,.18);color:var(--accent3);font-weight:700;padding:3px 8px;border-radius:6px;flex-shrink:0">Entrega hoy</span>':'<span style="background:rgba(249,115,22,.15);color:var(--warn);font-weight:600;padding:3px 8px;border-radius:6px;font-family:IBM Plex Mono,monospace;flex-shrink:0">'+fdShort(fp0)+' \u2192 '+fdShort(fprod)+'</span>')+
           '</div></div>');
       });
     }
