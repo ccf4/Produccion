@@ -1284,25 +1284,33 @@ function renderSemana(T){
     seen2[d.OP]=true;return true;
   });
   var lcBadges='';
-  var iconGroups={};
-  function addToIconGroups(r){
-    var parts=RAW.filter(function(x){return String(x.OP)===String(r.OP);});
-    var _cross=parts.some(function(x){return x.AREA!==r.AREA;});
-    var totalCant=(_cross?parts:parts.filter(function(x){return x.SUBAREA===r.SUBAREA;})).filter(function(x){return x.STATUS==='V';}).reduce(function(s,x){return s+(parseInt(x.CANT)||0);},0);
-    var key=r.AREA+'|'+normSub(r.SUBAREA);
-    if(!iconGroups[key])iconGroups[key]={area:r.AREA,sub:r.SUBAREA,total:0};
-    iconGroups[key].total+=totalCant;
+  function buildIconGroups(arr){
+    var groups={};
+    arr.forEach(function(r){
+      var parts=RAW.filter(function(x){return String(x.OP)===String(r.OP);});
+      var _cross=parts.some(function(x){return x.AREA!==r.AREA;});
+      var totalCant=(_cross?parts:parts.filter(function(x){return x.SUBAREA===r.SUBAREA;})).filter(function(x){return x.STATUS==='V';}).reduce(function(s,x){return s+(parseInt(x.CANT)||0);},0);
+      var key=r.AREA+'|'+normSub(r.SUBAREA);
+      if(!groups[key])groups[key]={area:r.AREA,sub:r.SUBAREA,total:0};
+      groups[key].total+=totalCant;
+    });
+    return Object.values(groups).sort(function(a,b){return b.total-a.total;});
   }
-  late.forEach(addToIconGroups);
-  mnetWarn.forEach(addToIconGroups);
-  var iconGroupsArr=Object.values(iconGroups).sort(function(a,b){return b.total-a.total;});
-  if(iconGroupsArr.length){
-    lcBadges='<span style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">'+iconGroupsArr.map(function(g){
-      var ic=subIcon(g.sub,g.area);
-      if(!ic)ic='<span style="display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:4px;background:color-mix(in srgb,'+ac(g.area)+' 12%,white);vertical-align:middle;margin-right:5px;flex-shrink:0"><span style="width:8px;height:8px;border-radius:50%;background:'+ac(g.area)+'"></span></span>';
-      return '<span style="display:flex;align-items:center;gap:4px;font-size:11px;color:var(--text);font-weight:600">'+ic+fmtNum(g.total)+'</span>';
-    }).join('')+'</span>';
+  function renderIconGroup(g){
+    var ic=subIcon(g.sub,g.area);
+    if(!ic)ic='<span style="display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:4px;background:color-mix(in srgb,'+ac(g.area)+' 12%,white);vertical-align:middle;margin-right:5px;flex-shrink:0"><span style="width:8px;height:8px;border-radius:50%;background:'+ac(g.area)+'"></span></span>';
+    return '<span style="display:flex;align-items:center;gap:4px;font-size:11px;color:var(--text);font-weight:600">'+ic+fmtNum(g.total)+'</span>';
   }
+  var lateGroups=buildIconGroups(late);
+  var warnGroups=buildIconGroups(mnetWarn);
+  var lcBadges='';
+  if(lateGroups.length){
+    lcBadges+='<span style="display:flex;align-items:center;gap:8px;background:#fdecec;border:1px solid rgba(163,45,45,.2);border-radius:8px;padding:4px 8px">'+lateGroups.map(renderIconGroup).join('')+'</span>';
+  }
+  if(warnGroups.length){
+    lcBadges+='<span style="display:flex;align-items:center;gap:8px;background:#fdf1e8;border:1px solid rgba(133,79,11,.2);border-radius:8px;padding:4px 8px">'+warnGroups.map(renderIconGroup).join('')+'</span>';
+  }
+  if(lcBadges)lcBadges='<span style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">'+lcBadges+'</span>';
   document.getElementById('lcBadges').innerHTML=lcBadges;
   if(!late.length&&!mnetWarn.length){
     document.getElementById('lo').innerHTML='<span style="color:var(--accent3);font-size:12px">Sin ordenes vencidas.</span>';
