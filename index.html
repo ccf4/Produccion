@@ -1317,10 +1317,16 @@ function renderSemana(T){
   } else {
     var lhtml='';
     var tarjetasHtml=[];
+    function dateHeaderHtml(d){
+      return '<div style="grid-column:1/-1;font-size:10px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;padding:6px 2px 3px;border-bottom:1px solid var(--border);margin-top:4px">'+fdShort(d)+'</div>';
+    }
     if(late.length){
       late.sort(function(a,b){var fa=pd(a.Fprod||a.FProm),fb=pd(b.Fprod||b.FProm);return (fa||new Date(0))-(fb||new Date(0));});
+      var _prevLateDate=null;
       late.forEach(function(r){
         var fp=pd(r.Fprod||r.FProm),fe=pd(r.FVALE),daysLate=fp?daysDiff(fp,T):0;
+        var dKey=fp?fd(fp):'';
+        if(dKey!==_prevLateDate){tarjetasHtml.push(dateHeaderHtml(fp));_prevLateDate=dKey;}
         var parts=RAW.filter(function(x){return String(x.OP)===String(r.OP);});
         var totalCant=parts.filter(function(p){return p.STATUS==='V';}).reduce(function(s,p){return s+(parseInt(p.CANT)||0);},0);
         var meshList=[...new Set(parts.map(function(p){return p.MESH||'';}).filter(Boolean))].join(' \u00b7 ');
@@ -1334,9 +1340,12 @@ function renderSemana(T){
     }
     if(mnetWarn.length){
       mnetWarn.sort(function(a,b){var fa=pd(a.Fprod||a.FProm),fb=pd(b.Fprod||b.FProm);return (fa||new Date(0))-(fb||new Date(0));});
+      var _prevWarnDate=null;
       mnetWarn.forEach(function(r){
         var fp0=pd(r.FProm),fprod=pd(r.Fprod||r.FProm),daysL=(fp0&&fprod)?daysDiff(fp0,fprod):0;
         var esHoy=fprod&&fd(fprod)===fd(T);
+        var dKey=fprod?fd(fprod):'';
+        if(dKey!==_prevWarnDate){tarjetasHtml.push(dateHeaderHtml(fprod));_prevWarnDate=dKey;}
         var parts=RAW.filter(function(x){return String(x.OP)===String(r.OP);});
         var totalCant=parts.filter(function(p){return p.STATUS==='V';}).reduce(function(s,p){return s+(parseInt(p.CANT)||0);},0);
         var arts=getArts(r.OP);
