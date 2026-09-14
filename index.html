@@ -78,7 +78,7 @@ main{padding:22px 28px;max-width:1600px;margin:0 auto;}
 .ws-cant{font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:600;}
 .ws-sub{font-size:10px;color:var(--muted);}
 .late-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:8px;}
-.late-card{border-radius:10px;padding:12px 14px;cursor:pointer;}
+.late-card{border-radius:10px;padding:12px 14px;cursor:pointer;min-height:122px;display:flex;flex-direction:column;}
 .badge{display:inline-block;padding:2px 7px;border-radius:10px;font-size:10px;font-weight:600;letter-spacing:.5px;text-transform:uppercase;white-space:nowrap;}
 .bl{background:rgba(96,165,250,.15);color:var(--accent);}
 .br{background:rgba(251,146,60,.15);color:#fb923c;}
@@ -1337,7 +1337,7 @@ function renderSemana(T){
           '<div style="display:flex;align-items:center;gap:4px;font-size:11px;font-weight:700;color:'+ac(r.AREA)+';margin-bottom:4px">'+subIcon(r.SUBAREA,r.AREA)+(r.AREA==='Aros'&&r.SUBAREA==='NUEVO'?'Aro nuevo':r.AREA+' / '+r.SUBAREA)+'</div>'+
           (ped(r.OP)?'<div style="font-size:9px;color:var(--accent4);font-family:IBM Plex Mono,monospace;margin-bottom:4px">'+ped(r.OP)+'</div>':'')+
           '<div style="font-size:10px;color:var(--muted);margin-bottom:6px">'+fmtNum(totalCant)+' pzas \u00b7 '+(r.MAT||'--')+(meshList?' \u00b7 '+meshList:'')+'</div>'+
-          '<div style="display:flex;justify-content:space-between;font-size:10px;font-family:IBM Plex Mono,monospace"><span style="color:var(--muted)">Emitida: '+fd(fe)+'</span><span style="color:var(--danger);font-weight:600">FProm: '+fd(fp)+'</span></div></div></div>');
+          '<div style="display:flex;justify-content:space-between;font-size:10px;font-family:IBM Plex Mono,monospace;margin-top:auto"><span style="color:var(--muted)">Emitida: '+fd(fe)+'</span><span style="color:var(--danger);font-weight:600">FProm: '+fd(fp)+'</span></div></div></div>');
       });
     }
     if(mnetWarn.length){
@@ -1360,7 +1360,7 @@ function renderSemana(T){
           '<div style="display:flex;align-items:center;gap:4px;font-size:14px;font-weight:700;color:'+ac(r.AREA)+';margin-bottom:6px">'+subIcon(r.SUBAREA,r.AREA)+(r.AREA==='Aros'&&r.SUBAREA==='NUEVO'?'Aro nuevo':normSub(r.SUBAREA))+'</div>'+
           '<div style="font-size:12px;font-weight:700;font-family:IBM Plex Mono,monospace;color:var(--muted);margin-bottom:2px">OP '+r.OP+(ped(r.OP)?'<span style="font-weight:400"> \u00b7 '+ped(r.OP)+'</span>':'')+' </div>'+
           '<div style="font-size:10px;color:var(--muted);margin-bottom:8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-height:12px">'+(arts.length?(arts[0]||''):'&nbsp;')+'</div>'+
-          '<div style="display:flex;justify-content:space-between;align-items:center;font-size:10px;gap:6px">'+
+          '<div style="display:flex;justify-content:space-between;align-items:center;font-size:10px;gap:6px;margin-top:auto">'+
           '<span style="color:var(--muted);flex-shrink:0">'+fmtNum(totalCant)+' pzas \u00b7 '+(r.MAT||'--')+'</span>'+
           (esHoy?'<span style="background:rgba(5,150,105,.18);color:var(--accent3);font-weight:700;padding:3px 8px;border-radius:6px;flex-shrink:0">Entrega hoy</span>':'<span style="background:rgba(249,115,22,.15);color:var(--warn);font-weight:600;padding:3px 8px;border-radius:6px;font-family:IBM Plex Mono,monospace;flex-shrink:0">'+fdShort(fp0)+' \u2192 '+fdShort(fprod)+'</span>')+
           '</div></div></div>');
