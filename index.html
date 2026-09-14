@@ -164,8 +164,8 @@ select{background:var(--surface2);border:1px solid var(--border);color:var(--tex
 </div>
 <main>
   <div class="view" id="view-semana">
-    <div class="st"><span class="dot" style="background:var(--danger)"></span><span onclick="toggleLateSection()" style="cursor:pointer;display:flex;align-items:center;gap:7px">Reprogramadas y vencidas<span id="lc" style="font-size:11px;color:var(--muted);font-weight:400"></span><svg id="lcChevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;transition:transform .15s"><polyline points="6 9 12 15 18 9"></polyline></svg></span><button onclick="enviarResumenPorVendedor()" style="margin-left:auto;background:var(--surface2);border:1px solid var(--border);color:var(--muted);border-radius:6px;padding:4px 10px;font-size:11px;cursor:pointer;font-weight:400">&#9993; Enviar resumen</button><a onclick="enviarResumenCorreo()" style="margin-left:8px;color:var(--muted);font-size:10px;text-decoration:underline;cursor:pointer;font-weight:400">resumen general</a></div>
-    <div class="card" id="loCard" style="display:none"><div class="card-body" id="lo" style="padding:12px"></div></div>
+    <div class="st"><span class="dot" style="background:var(--danger)"></span><span onclick="toggleLateSection()" style="cursor:pointer;display:flex;align-items:center;gap:7px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:6px 10px;transition:background .1s" onmouseenter="this.style.background='var(--surface)'" onmouseleave="this.style.background='var(--surface2)'">Reprogramadas y vencidas<span id="lc" style="font-size:11px;color:var(--muted);font-weight:400"></span><span style="display:flex;align-items:center;gap:4px;color:var(--accent);font-size:11px;font-weight:600"><span id="lcLabel">Ver detalle</span><svg id="lcChevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px;transition:transform .15s"><polyline points="6 9 12 15 18 9"></polyline></svg></span></span><button onclick="enviarResumenPorVendedor()" style="margin-left:auto;background:var(--surface2);border:1px solid var(--border);color:var(--muted);border-radius:6px;padding:4px 10px;font-size:11px;cursor:pointer;font-weight:400">&#9993; Enviar resumen</button><a onclick="enviarResumenCorreo()" style="margin-left:8px;color:var(--muted);font-size:10px;text-decoration:underline;cursor:pointer;font-weight:400">resumen general</a></div>
+    <div class="card" id="loCard" style="display:none;margin-top:8px"><div class="card-body" id="lo" style="padding:12px"></div></div>
     <div class="wknav" style="margin-top:20px">
       <button class="nb" id="btnP" onclick="changeWeek(-1)" aria-label="Semana anterior" title="Semana anterior"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg></button>
       <div class="nwl" id="pl"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="3"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg><span id="plText">--</span></div>
@@ -1057,10 +1057,11 @@ function minWeekOff(T){
 }
 function changeWeek(d){var T=today(),mx=maxWeekOff(T),mn=minWeekOff(T);proxOff=Math.max(mn,Math.min(mx,proxOff+d));renderSemana(T);}
 function toggleLateSection(){
-  var card=document.getElementById('loCard'),chev=document.getElementById('lcChevron');
+  var card=document.getElementById('loCard'),chev=document.getElementById('lcChevron'),label=document.getElementById('lcLabel');
   var open=card.style.display!=='none';
   card.style.display=open?'none':'block';
   chev.style.transform=open?'rotate(0deg)':'rotate(180deg)';
+  if(label)label.textContent=open?'Ver detalle':'Ocultar';
 }
 function refreshAll(){var T=today();renderSemana(T);renderTable();if(document.getElementById('ganttScroll'))renderGantt();}
 
