@@ -1268,7 +1268,7 @@ function renderSemana(T){
   var mx=maxWeekOff(T),mn=minWeekOff(T);
   document.getElementById('btnP').disabled=proxOff<=mn;
   document.getElementById('btnN').disabled=proxOff>=mx;
-  document.getElementById('plText').textContent=proxOff===0?('Esta semana — '+fwk(WS)):fwk(WS);
+  document.getElementById('plText').textContent=fwk(WS);
   document.getElementById('wgTitle').textContent='Entregas programadas';
   document.getElementById('otrosSec').style.display=proxOff===0?'block':'none';
   buildGrid(WS,'wg','wc');
@@ -1284,8 +1284,25 @@ function renderSemana(T){
     seen2[d.OP]=true;return true;
   });
   var lcBadges='';
-  if(late.length)lcBadges+='<span style="background:var(--bg-danger,#fdecec);color:#a32d2d;font-size:11px;font-weight:600;padding:3px 9px;border-radius:10px">'+late.length+' vencida'+(late.length===1?'':'s')+'</span>';
-  if(mnetWarn.length)lcBadges+='<span style="background:#fdf1e8;color:#854f0b;font-size:11px;font-weight:600;padding:3px 9px;border-radius:10px">'+mnetWarn.length+' reprogramada'+(mnetWarn.length===1?'':'s')+'</span>';
+  var iconGroups={};
+  function addToIconGroups(r){
+    var parts=RAW.filter(function(x){return String(x.OP)===String(r.OP);});
+    var _cross=parts.some(function(x){return x.AREA!==r.AREA;});
+    var totalCant=(_cross?parts:parts.filter(function(x){return x.SUBAREA===r.SUBAREA;})).filter(function(x){return x.STATUS==='V';}).reduce(function(s,x){return s+(parseInt(x.CANT)||0);},0);
+    var key=r.AREA+'|'+normSub(r.SUBAREA);
+    if(!iconGroups[key])iconGroups[key]={area:r.AREA,sub:r.SUBAREA,total:0};
+    iconGroups[key].total+=totalCant;
+  }
+  late.forEach(addToIconGroups);
+  mnetWarn.forEach(addToIconGroups);
+  var iconGroupsArr=Object.values(iconGroups).sort(function(a,b){return b.total-a.total;});
+  if(iconGroupsArr.length){
+    lcBadges='<span style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">'+iconGroupsArr.map(function(g){
+      var ic=subIcon(g.sub,g.area);
+      if(!ic)ic='<span style="display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:4px;background:color-mix(in srgb,'+ac(g.area)+' 12%,white);vertical-align:middle;margin-right:5px;flex-shrink:0"><span style="width:8px;height:8px;border-radius:50%;background:'+ac(g.area)+'"></span></span>';
+      return '<span style="display:flex;align-items:center;gap:4px;font-size:11px;color:var(--text);font-weight:600">'+ic+fmtNum(g.total)+'</span>';
+    }).join('')+'</span>';
+  }
   document.getElementById('lcBadges').innerHTML=lcBadges;
   if(!late.length&&!mnetWarn.length){
     document.getElementById('lo').innerHTML='<span style="color:var(--accent3);font-size:12px">Sin ordenes vencidas.</span>';
