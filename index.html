@@ -1234,7 +1234,7 @@ var row='<div class="week-row"><div class="row-label" style="padding-left:10px;f
           var ps=pedShort(op.OP),isMatch=q&&matchSearch(op.OP,ped(op.OP));
           var _isEdited=!!OVERRIDES[String(op.OP)];
           var _calIconSmall='<svg viewBox="0 0 24 24" width="10" height="10" fill="none" stroke="#ffd166" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;vertical-align:-1px;margin-right:3px"><rect x="3" y="5" width="18" height="16" rx="2"/><line x1="3" y1="10" x2="21" y2="10"/><line x1="8" y1="3" x2="8" y2="7"/><line x1="16" y1="3" x2="16" y2="7"/></svg>';
-          return '<div class="day-op '+cls+(isMatch?' search-match':'')+(_isEdited?' edited':'')+'" data-area="'+op.AREA+'" data-subarea="'+op.SUBAREA+'" onmouseenter="showOpTip(this,'+op.OP+')" onmouseleave="hideOpTip()" onclick="showDetail(\''+op.OP+'\')"><div class="op-num">'+(_isEdited?_calIconSmall:'')+'OP '+op.OP+'</div>'+(ps?'<div class="op-ped">'+ps+'</div>':'')+'<div class="op-cant">'+cantStr+'</div></div>';
+          return '<div class="day-op '+cls+(isMatch?' search-match':'')+(_isEdited?' edited':'')+'" data-area="'+op.AREA+'" data-subarea="'+op.SUBAREA+'" data-op="'+op.OP+'" onmouseenter="showOpTip(this,'+op.OP+')" onmouseleave="hideOpTip()" onclick="showDetail(\''+op.OP+'\')"><div class="op-num">'+(_isEdited?_calIconSmall:'')+'OP '+op.OP+'</div>'+(ps?'<div class="op-ped">'+ps+'</div>':'')+'<div class="op-cant">'+cantStr+'</div></div>';
         }).join('');
         row+='<div class="day-cell '+(isT?'today':'')+(noWork?' no-work':'')+(isNW?' next-week-col':'')+'">'+(noWork?'<div class="no-work-label">sin trabajo</div>':'')+(cells||'')+'</div>';
       });
@@ -1914,6 +1914,10 @@ function showOpTip(el,opId){
   if(!opId)opId=el.getAttribute('data-op')||'';
   var rows=RAW.filter(function(r){return String(r.OP)===String(opId);});
   if(!rows.length){hideOpTip();return;}
+  var subareasHl=Array.from(new Set(rows.map(function(r){return normSub(r.SUBAREA);})));
+  if(subareasHl.length>1){
+    document.querySelectorAll('.day-op[data-op="'+opId+'"]').forEach(function(d){d.classList.add('hl');});
+  }
   function distinctVals(field){
     var seen=[];
     rows.forEach(function(r){var v=(r[field]||'').toString().trim();if(v&&seen.indexOf(v)<0)seen.push(v);});
@@ -1933,7 +1937,10 @@ function showOpTip(el,opId){
   _opTT.innerHTML=html;
   _opTT.style.display='block';
 }
-function hideOpTip(){if(_opTT)_opTT.style.display='none';}
+function hideOpTip(){
+  if(_opTT)_opTT.style.display='none';
+  document.querySelectorAll('.day-op.hl').forEach(function(d){d.classList.remove('hl');});
+}
 document.addEventListener('mousemove',function(e){
   if(!_opTT||_opTT.style.display==='none')return;
   var tw=_opTT.offsetWidth,th=_opTT.offsetHeight;
