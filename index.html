@@ -26,6 +26,7 @@ header{background:var(--surface);border-bottom:1px solid var(--border);padding:1
   .search-input{width:100%;}
   main{padding:14px;}
   .tabs{padding:0 10px;}
+  .st{flex-wrap:wrap;row-gap:6px;}
 }
 .logo{font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--accent);letter-spacing:2px;text-transform:uppercase;}
 .title{font-size:17px;font-weight:700;}
@@ -164,7 +165,7 @@ select{background:var(--surface2);border:1px solid var(--border);color:var(--tex
 </div>
 <main>
   <div class="view" id="view-semana">
-    <div class="st"><span class="dot" style="background:var(--danger)"></span><span onclick="toggleLateSection()" style="cursor:pointer;display:flex;align-items:center;gap:8px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:6px 10px;transition:background .1s" onmouseenter="this.style.background='var(--surface)'" onmouseleave="this.style.background='var(--surface2)'">Reprogramadas y vencidas<span id="lcBadges" style="display:flex;align-items:center;gap:6px"></span><span style="display:flex;align-items:center;gap:4px;color:var(--accent);font-size:11px;font-weight:600"><span id="lcLabel">Ver detalle</span><svg id="lcChevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px;transition:transform .15s"><polyline points="6 9 12 15 18 9"></polyline></svg></span></span><button onclick="enviarResumenPorVendedor()" style="margin-left:auto;background:var(--surface2);border:1px solid var(--border);color:var(--muted);border-radius:6px;padding:4px 10px;font-size:11px;cursor:pointer;font-weight:400">&#9993; Enviar resumen</button><a onclick="enviarResumenCorreo()" style="margin-left:8px;color:var(--muted);font-size:10px;text-decoration:underline;cursor:pointer;font-weight:400">resumen general</a></div>
+    <div class="st"><span class="dot" style="background:var(--danger)"></span><span onclick="toggleLateSection()" style="cursor:pointer;display:flex;align-items:center;gap:8px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:6px 10px;transition:background .1s;overflow:hidden;flex:1 1 260px;min-width:0" onmouseenter="this.style.background='var(--surface)'" onmouseleave="this.style.background='var(--surface2)'"><span style="flex-shrink:0">Reprogramadas y vencidas</span><span id="lcBadges" style="display:flex;align-items:center;gap:6px;overflow-x:auto;flex:1;min-width:0;-webkit-overflow-scrolling:touch"></span><span style="flex-shrink:0;display:flex;align-items:center;gap:4px;color:var(--accent);font-size:11px;font-weight:600"><span id="lcLabel">Ver detalle</span><svg id="lcChevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px;transition:transform .15s"><polyline points="6 9 12 15 18 9"></polyline></svg></span></span><button onclick="enviarResumenPorVendedor()" style="margin-left:auto;background:var(--surface2);border:1px solid var(--border);color:var(--muted);border-radius:6px;padding:4px 10px;font-size:11px;cursor:pointer;font-weight:400;flex-shrink:0">&#9993; Enviar resumen</button><a onclick="enviarResumenCorreo()" style="margin-left:8px;color:var(--muted);font-size:10px;text-decoration:underline;cursor:pointer;font-weight:400;flex-shrink:0">resumen general</a></div>
     <div class="card" id="loCard" style="display:none;margin-top:8px"><div class="card-body" id="lo" style="padding:12px"></div></div>
     <div class="wknav" style="margin-top:20px">
       <button class="nb" id="btnP" onclick="changeWeek(-1)" aria-label="Semana anterior" title="Semana anterior"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg></button>
@@ -1299,18 +1300,18 @@ function renderSemana(T){
   function renderIconGroup(g){
     var ic=subIcon(g.sub,g.area);
     if(!ic)ic='<span style="display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:4px;background:color-mix(in srgb,'+ac(g.area)+' 12%,white);vertical-align:middle;margin-right:5px;flex-shrink:0"><span style="width:8px;height:8px;border-radius:50%;background:'+ac(g.area)+'"></span></span>';
-    return '<span style="display:flex;align-items:center;gap:4px;font-size:11px;color:var(--text);font-weight:600">'+ic+fmtNum(g.total)+'</span>';
+    return '<span style="display:flex;align-items:center;gap:4px;font-size:11px;color:var(--text);font-weight:600;flex-shrink:0">'+ic+fmtNum(g.total)+'</span>';
   }
   var lateGroups=buildIconGroups(late);
   var warnGroups=buildIconGroups(mnetWarn);
   var lcBadges='';
   if(lateGroups.length){
-    lcBadges+='<span style="display:flex;align-items:center;gap:8px;background:#fdecec;border:1px solid rgba(163,45,45,.2);border-radius:8px;padding:4px 8px">'+lateGroups.map(renderIconGroup).join('')+'</span>';
+    lcBadges+='<span style="display:flex;align-items:center;gap:8px;background:#fdecec;border:1px solid rgba(163,45,45,.2);border-radius:8px;padding:4px 8px;flex-shrink:0">'+lateGroups.map(renderIconGroup).join('')+'</span>';
   }
   if(warnGroups.length){
-    lcBadges+='<span style="display:flex;align-items:center;gap:8px;background:#fdf1e8;border:1px solid rgba(133,79,11,.2);border-radius:8px;padding:4px 8px">'+warnGroups.map(renderIconGroup).join('')+'</span>';
+    lcBadges+='<span style="display:flex;align-items:center;gap:8px;background:#fdf1e8;border:1px solid rgba(133,79,11,.2);border-radius:8px;padding:4px 8px;flex-shrink:0">'+warnGroups.map(renderIconGroup).join('')+'</span>';
   }
-  if(lcBadges)lcBadges='<span style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">'+lcBadges+'</span>';
+  if(lcBadges)lcBadges='<span style="display:flex;align-items:center;gap:10px;flex-wrap:nowrap;white-space:nowrap">'+lcBadges+'</span>';
   document.getElementById('lcBadges').innerHTML=lcBadges;
   if(!late.length&&!mnetWarn.length){
     document.getElementById('lo').innerHTML='<span style="color:var(--accent3);font-size:12px">Sin ordenes vencidas.</span>';
