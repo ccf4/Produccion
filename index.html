@@ -1300,17 +1300,17 @@ function renderSemana(T){
   }
   function renderIconGroup(g){
     var ic=subIcon(g.sub,g.area);
-    if(!ic)ic='<span style="display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:4px;background:color-mix(in srgb,'+ac(g.area)+' 12%,white);vertical-align:middle;margin-right:5px;flex-shrink:0"><span style="width:8px;height:8px;border-radius:50%;background:'+ac(g.area)+'"></span></span>';
+    if(!ic)ic='<span style="display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:4px;background:color-mix(in srgb,'+ac(g.area)+' 18%,#1e2533);vertical-align:middle;margin-right:5px;flex-shrink:0"><span style="width:8px;height:8px;border-radius:50%;background:'+ac(g.area)+'"></span></span>';
     return '<span style="display:flex;align-items:center;gap:1px;font-size:11px;color:var(--text);font-weight:600;flex-shrink:0">'+ic+fmtNum(g.total)+'</span>';
   }
   var lateGroups=buildIconGroups(late);
   var warnGroups=buildIconGroups(mnetWarn);
   var lcBadges='';
   if(lateGroups.length){
-    lcBadges+='<span style="display:flex;align-items:center;gap:8px;background:#fdecec;border:1px solid rgba(163,45,45,.2);border-radius:8px;padding:4px 8px;flex-shrink:0;gap:10px">'+lateGroups.map(renderIconGroup).join('')+'</span>';
+    lcBadges+='<span style="display:flex;align-items:center;gap:8px;background:rgba(239,68,68,.14);border:1px solid rgba(239,68,68,.32);border-radius:8px;padding:4px 8px;flex-shrink:0;gap:10px">'+lateGroups.map(renderIconGroup).join('')+'</span>';
   }
   if(warnGroups.length){
-    lcBadges+='<span style="display:flex;align-items:center;gap:8px;background:#fdf1e8;border:1px solid rgba(133,79,11,.2);border-radius:8px;padding:4px 8px;flex-shrink:0;gap:10px">'+warnGroups.map(renderIconGroup).join('')+'</span>';
+    lcBadges+='<span style="display:flex;align-items:center;gap:8px;background:rgba(249,115,22,.14);border:1px solid rgba(249,115,22,.32);border-radius:8px;padding:4px 8px;flex-shrink:0;gap:10px">'+warnGroups.map(renderIconGroup).join('')+'</span>';
   }
   if(lcBadges)lcBadges='<span style="display:flex;align-items:center;gap:10px;flex-wrap:nowrap;white-space:nowrap">'+lcBadges+'</span>';
   document.getElementById('lcBadges').innerHTML=lcBadges;
