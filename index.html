@@ -173,7 +173,7 @@ select{background:var(--surface2);border:1px solid var(--border);color:var(--tex
       <div class="nwl" id="pl"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="3"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg><span id="plText">--</span></div>
       <button class="nb" id="btnN" onclick="changeWeek(1)" aria-label="Semana siguiente" title="Semana siguiente"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg></button>
     </div>
-    <div class="st"><span class="dot" style="background:var(--accent)"></span><span id="wgTitle">Entregas programadas</span><span id="wc" style="font-size:11px;color:var(--muted);font-weight:400"></span></div>
+    <div class="st"><span class="dot" style="background:var(--accent)"></span><span style="display:flex;align-items:center;gap:8px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:6px 10px;overflow:hidden;flex:1 1 260px;min-width:0"><span style="flex-shrink:0"><span id="wgTitle">Entregas de la semana</span><span id="wc" style="font-size:11px;color:var(--muted);font-weight:400"></span></span><span id="wgBadges" style="display:flex;align-items:center;gap:16px;overflow-x:auto;flex:1;min-width:0;-webkit-overflow-scrolling:touch"></span></span></div>
     <div class="card"><div class="card-body" style="padding:12px"><div style="overflow-x:auto"><div id="wg"></div></div></div></div>
     <div id="extraSecs">
       <div class="st" style="margin-top:20px"><span class="dot" style="background:var(--accent3)"></span>Cerradas últimos 5 días hábiles<span id="cc" style="font-size:11px;color:var(--muted);font-weight:400"></span></div>
@@ -1139,9 +1139,10 @@ function showMissing(op){
 
 
 
-function buildGrid(WS,gridId,countId,sumId){
+function buildGrid(WS,gridId,countId,sumId,badgesId){
   var src=activeData(),mnetSrc=activeMissing();
   var WE=wkE(WS),T=today(),days=[],dlabs=[];
+  var weekBadges=[];
   src=src.filter(function(d){var fe=pd(d.FEMIT);return !fe||Math.floor((T-fe)/86400000)<=100;});
   mnetSrc=mnetSrc.filter(function(m){var fe=pd(m.FECHA||m.FEMIT);return !fe||Math.floor((T-fe)/86400000)<=100;});
   var q=searchQ();
@@ -1153,6 +1154,7 @@ function buildGrid(WS,gridId,countId,sumId){
   var areaOrder=['Disco','Aros','Telar','Varios','ALMC'];
   // Build area/subarea groups directly from RAW to handle multi-subarea OPs correctly
   var weekOpSet=new Set(ops.map(function(d){return String(d.OP);}));
+  var curWeekOpSet=new Set(ops.filter(function(d){var dt=pd(d.Fprod||d.FProm);return inR(dt,WS,WE);}).map(function(d){return String(d.OP);}));
   var areaSubMap={};
   RAW.forEach(function(r){
     if(!weekOpSet.has(String(r.OP)))return;
@@ -1171,6 +1173,7 @@ function buildGrid(WS,gridId,countId,sumId){
   if(!areas.length&&!mnetOps.length){
     document.getElementById(gridId).innerHTML='<div style="color:var(--muted);font-size:12px;padding:16px 0">Fin órdenes pendientes esta semana.</div>';
     if(sumId)document.getElementById(sumId).innerHTML='';
+    if(badgesId&&document.getElementById(badgesId))document.getElementById(badgesId).innerHTML='';
     return;
   }
   var html='<div class="week-days"><div>Area / Subarea</div>'+days.map(function(d,i){var cls=(d.toDateString()===T.toDateString()?'today-col ':'')+(i===days.length-1?'next-week-col':'');return '<div class="'+cls+'">'+dlabs[i]+'</div>';}).join('')+'</div>';
@@ -1214,12 +1217,21 @@ function buildGrid(WS,gridId,countId,sumId){
         }
       });
       var isGolpeSub=subarea==='Pack';
-var golpeLabel=isGolpeSub?fmtNum(totalGolpesSub)+' golpes':(totalGolpesSub!==totalCantSub?fmtNum(totalCantSub)+' pzas · '+fmtNum(totalGolpesSub)+' golpes':fmtNum(totalCantSub)+' pzas');
+var golpeLabel=(totalGolpesSub!==totalCantSub?fmtNum(totalCantSub)+' pzas · '+fmtNum(totalGolpesSub)+' golpes':fmtNum(totalCantSub)+' pzas');
+var _subOpIdsCurWeek=_subOpIds.filter(function(opId){return curWeekOpSet.has(opId);});
+var _subRowsCurWeek=_subOpIdsCurWeek.reduce(function(acc,opId){
+  var opRows=RAW.filter(function(r){return String(r.OP)===opId&&r.STATUS!=='T'&&r.STATUS!=='C';});
+  var isCross=opRows.some(function(r){return r.AREA!==area;});
+  return acc.concat(isCross?opRows:opRows.filter(function(r){return normSub(r.SUBAREA)===subarea;}));
+},[]);
+var totalCantCurWeek=_subRowsCurWeek.reduce(function(s,r){return s+(parseInt(r.CANT)||0);},0);
+if(totalCantCurWeek>0)weekBadges.push({area:area,sub:subarea,total:totalCantCurWeek});
 var _wkSubKey=normSub(subarea);
-var _wkLastVal=isGolpeSub?totalGolpesSub:totalCantSub;
-var _wkUnit=isGolpeSub?' gol.':' pzas';
-var _wkSums=weeklyTSums(area,_wkSubKey,isGolpeSub,8);
-var _wkSpark=subSparklineHtml(_wkSums,_wkLastVal,col,_wkUnit);
+var _wkLastVal=totalCantSub;
+var _wkUnit=' pzas';
+var _wkExtra=(isGolpeSub&&totalGolpesSub!==totalCantSub)?' · '+fmtNum(totalGolpesSub)+' golpes':'';
+var _wkSums=weeklyTSums(area,_wkSubKey,false,8);
+var _wkSpark=subSparklineHtml(_wkSums,_wkLastVal,col,_wkUnit,_wkExtra);
 var row='<div class="week-row"><div class="row-label" style="padding-left:10px;font-size:12px;font-weight:700;color:#b0c4de;"><div style="display:flex;flex-direction:column;gap:1px;overflow:hidden;width:100%;"><div style="display:flex;align-items:center;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+subIcon(subarea,area)+normSub(subarea)+'</div>'+_wkSpark+'</div></div>';
       days.forEach(function(dayD,dsi){
         var dk=dayD.toISOString().slice(0,10),isT=dayD.toDateString()===T.toDateString(),isNW=dsi===days.length-1;
@@ -1262,6 +1274,15 @@ var row='<div class="week-row"><div class="row-label" style="padding-left:10px;f
     });
   }
   document.getElementById(gridId).innerHTML=html;
+  if(badgesId&&document.getElementById(badgesId)){
+    var wgBadgesHtml=weekBadges.map(function(g){
+      var ic=subIcon(g.sub,g.area);
+      if(!ic)ic='<span style="display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:4px;background:color-mix(in srgb,'+ac(g.area)+' 18%,#1e2533);vertical-align:middle;margin-right:2px;flex-shrink:0"><span style="width:8px;height:8px;border-radius:50%;background:'+ac(g.area)+'"></span></span>';
+      else ic=ic.replace('margin-right:5px','margin-right:2px');
+      return '<span style="display:flex;align-items:center;gap:0;font-size:11px;color:var(--text);font-weight:600;flex-shrink:0">'+ic+fmtNum(g.total)+'</span>';
+    }).join('');
+    document.getElementById(badgesId).innerHTML=wgBadgesHtml;
+  }
   if(sumId)document.getElementById(sumId).innerHTML=buildSummary(WS,WE,src);
 }
 
@@ -1271,9 +1292,9 @@ function renderSemana(T){
   document.getElementById('btnP').disabled=proxOff<=mn;
   document.getElementById('btnN').disabled=proxOff>=mx;
   document.getElementById('plText').textContent=fwk(WS);
-  document.getElementById('wgTitle').textContent='Entregas programadas';
+  document.getElementById('wgTitle').textContent='Entregas de la semana';
   document.getElementById('otrosSec').style.display=proxOff===0?'block':'none';
-  buildGrid(WS,'wg','wc');
+  buildGrid(WS,'wg','wc',null,'wgBadges');
   var src=activeData().filter(function(d){var fe=pd(d.FEMIT);return !fe||Math.floor((T-fe)/86400000)<=100;});
   var seen1={};
   var late=src.filter(function(d){var p=pd(d.Fprod||d.FProm);if(!p||p>=T)return false;if(seen1[d.OP])return false;seen1[d.OP]=true;return true;});
@@ -1300,17 +1321,18 @@ function renderSemana(T){
   }
   function renderIconGroup(g){
     var ic=subIcon(g.sub,g.area);
-    if(!ic)ic='<span style="display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:4px;background:color-mix(in srgb,'+ac(g.area)+' 18%,#1e2533);vertical-align:middle;margin-right:5px;flex-shrink:0"><span style="width:8px;height:8px;border-radius:50%;background:'+ac(g.area)+'"></span></span>';
-    return '<span style="display:flex;align-items:center;gap:1px;font-size:11px;color:var(--text);font-weight:600;flex-shrink:0">'+ic+fmtNum(g.total)+'</span>';
+    if(!ic)ic='<span style="display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:4px;background:color-mix(in srgb,'+ac(g.area)+' 18%,#1e2533);vertical-align:middle;margin-right:2px;flex-shrink:0"><span style="width:8px;height:8px;border-radius:50%;background:'+ac(g.area)+'"></span></span>';
+    else ic=ic.replace('margin-right:5px','margin-right:2px');
+    return '<span style="display:flex;align-items:center;gap:0;font-size:11px;color:var(--text);font-weight:600;flex-shrink:0">'+ic+fmtNum(g.total)+'</span>';
   }
   var lateGroups=buildIconGroups(late);
   var warnGroups=buildIconGroups(mnetWarn);
   var lcBadges='';
   if(lateGroups.length){
-    lcBadges+='<span style="display:flex;align-items:center;gap:8px;background:rgba(239,68,68,.14);border:1px solid rgba(239,68,68,.32);border-radius:8px;padding:4px 8px;flex-shrink:0;gap:10px">'+lateGroups.map(renderIconGroup).join('')+'</span>';
+    lcBadges+='<span style="display:flex;align-items:center;gap:16px;background:rgba(239,68,68,.14);border:1px solid rgba(239,68,68,.32);border-radius:8px;padding:4px 8px;flex-shrink:0">'+lateGroups.map(renderIconGroup).join('')+'</span>';
   }
   if(warnGroups.length){
-    lcBadges+='<span style="display:flex;align-items:center;gap:8px;background:rgba(249,115,22,.14);border:1px solid rgba(249,115,22,.32);border-radius:8px;padding:4px 8px;flex-shrink:0;gap:10px">'+warnGroups.map(renderIconGroup).join('')+'</span>';
+    lcBadges+='<span style="display:flex;align-items:center;gap:16px;background:rgba(249,115,22,.14);border:1px solid rgba(249,115,22,.32);border-radius:8px;padding:4px 8px;flex-shrink:0">'+warnGroups.map(renderIconGroup).join('')+'</span>';
   }
   if(lcBadges)lcBadges='<span style="display:flex;align-items:center;gap:10px;flex-wrap:nowrap;white-space:nowrap">'+lcBadges+'</span>';
   document.getElementById('lcBadges').innerHTML=lcBadges;
@@ -1556,7 +1578,7 @@ function weeklyTSums(area,subKey,isPack,numWeeks){
   return weeks;
 }
 function fmtWeekShort(d){return d.getDate()+' '+MES_NAMES[d.getMonth()];}
-function subSparklineHtml(weeks,tot,col,unit){
+function subSparklineHtml(weeks,tot,col,unit,extraLabel){
   var maxV=Math.max.apply(null,weeks.map(function(w){return w.val;}).concat([tot,1]));
   function barH(v){return v>0?Math.max(1,Math.round((v/maxV)*14)):1;}
   function barOp(v){return v>0?'75':'25';}
@@ -1568,7 +1590,7 @@ function subSparklineHtml(weeks,tot,col,unit){
   var tableRows=weeks.map(function(w){
     return {l:fmtWeekShort(w.ws)+'\u2013'+fmtWeekShort(w.we),v:fmtNum(w.val)+unit};
   });
-  tableRows.push({l:'Pendiente actual',v:fmtNum(tot)+unit,cur:true});
+  tableRows.push({l:'Pendiente actual',v:fmtNum(tot)+unit+(extraLabel||''),cur:true});
   var payload=encodeURIComponent(JSON.stringify(tableRows));
   return '<div data-spark-table="'+payload+'" onmouseenter="showSparkTip(this)" onmouseleave="hideHmTip()" onmousemove="moveHmStripTip(event)" style="display:flex;align-items:flex-end;gap:2px;height:14px;margin-top:3px;cursor:default;">'+bars+totLabel+'</div>';
 }
