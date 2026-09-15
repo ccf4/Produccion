@@ -1324,7 +1324,6 @@ function renderSemana(T){
         var fp=pd(r.Fprod||r.FProm),fe=pd(r.FVALE),daysLate=fp?daysDiff(fp,T):0;
         var dKey=fp?fd(fp):'';
         var isNewDate=dKey!==_prevLateDate;_prevLateDate=dKey;
-        if(isNewDate&&!_lateIsFirst)tarjetasHtml.push('<div style="width:1px;align-self:stretch;background:var(--border);flex-shrink:0"></div>');
         _lateIsFirst=false;
         var dateTag=isNewDate?'<div style="font-size:9px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:3px;line-height:1.3">'+fdShort(fp)+'</div>':'<div style="font-size:9px;margin-bottom:3px;line-height:1.3;visibility:hidden">&nbsp;</div>';
         var parts=RAW.filter(function(x){return String(x.OP)===String(r.OP);});
@@ -1348,7 +1347,6 @@ function renderSemana(T){
         var esHoy=fprod&&fd(fprod)===fd(T);
         var dKey=fprod?fd(fprod):'';
         var isNewDate=dKey!==_prevWarnDate;_prevWarnDate=dKey;
-        if(isNewDate&&!_warnIsFirst)tarjetasHtml.push('<div style="width:1px;align-self:stretch;background:var(--border);flex-shrink:0"></div>');
         _warnIsFirst=false;
         var dateTag=isNewDate?'<div style="font-size:9px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:3px;line-height:1.3">'+fdShort(fprod)+'</div>':'<div style="font-size:9px;margin-bottom:3px;line-height:1.3;visibility:hidden">&nbsp;</div>';
         var parts=RAW.filter(function(x){return String(x.OP)===String(r.OP);});
