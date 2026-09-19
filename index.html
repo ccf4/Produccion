@@ -890,6 +890,219 @@ function generarCapturaResumen(forceDownload){
     if(msg){msg.textContent='No se pudo generar la captura: '+e.message;msg.style.color='var(--danger)';}
   }
 }
+// ===== Resumen general por área (botón en Gantt) =====
+// A diferencia del resumen por vendedor/general (listas de OPs), esta vista agrupa TODO lo
+// pendiente (V) por área y lo reparte en el tiempo: vencidas, cada día hábil próximo, y
+// "después" (lo que cae más adelante) — para ver de un vistazo dónde está la carga de cada área.
+function _diasHabilesResumenGeneral(T,count){
+  var result=[],off=0,guard=0;
+  while(result.length<count&&guard<21){
+    var d=new Date(T);d.setDate(d.getDate()+off);
+    if(d.getDay()!==0)result.push(d);
+    off++;guard++;
+  }
+  return result;
+}
+function getResumenGeneralData(){
+  var T=today();
+  var DIAS_SEM2=['DOM','LUN','MAR','MIÉ','JUE','VIE','SÁB'];
+  var dias=_diasHabilesResumenGeneral(T,6);
+  var diaLabels=dias.map(function(d){
+    var off=daysDiff(T,d);
+    if(off===0)return 'HOY';
+    if(off===1)return 'MAÑ.';
+    return DIAS_SEM2[d.getDay()];
+  });
+  var _aOrder=['Disco','Aros','Telar','Varios','ALMC'];
+  var areasOut=[];
+  _aOrder.forEach(function(area){
+    var rows=RAW.filter(function(r){return r.AREA===area&&r.STATUS==='V';});
+    if(!rows.length)return;
+    var vencRows=rows.filter(function(r){var fp=pd(r.Fprod||r.FProm);return fp&&fp<T;});
+    var vencidasCant=vencRows.reduce(function(s,r){return s+(parseInt(r.CANT)||0);},0);
+    var vencidasOps=new Set(vencRows.map(function(r){return r.OP;})).size;
+    var totalCant=rows.reduce(function(s,r){return s+(parseInt(r.CANT)||0);},0);
+    var opsCount=new Set(rows.map(function(r){return r.OP;})).size;
+    var dayBuckets=dias.map(function(fecha){
+      var dr=rows.filter(function(r){
+        var fp=pd(r.Fprod||r.FProm);
+        return fp&&fp.getFullYear()===fecha.getFullYear()&&fp.getMonth()===fecha.getMonth()&&fp.getDate()===fecha.getDate();
+      });
+      return dr.reduce(function(s,r){return s+(parseInt(r.CANT)||0);},0);
+    });
+    var bucketedCant=vencidasCant+dayBuckets.reduce(function(s,v){return s+v;},0);
+    var despuesCant=Math.max(0,totalCant-bucketedCant);
+    areasOut.push({area:area,totalCant:totalCant,opsCount:opsCount,vencidasCant:vencidasCant,vencidasOps:vencidasOps,dayBuckets:dayBuckets,despuesCant:despuesCant});
+  });
+  return {T:T,diaLabels:diaLabels,areas:areasOut};
+}
+// Iconos simples por área dibujados con primitivas de canvas (sin depender de imágenes async).
+function drawAreaIcon(ctx,area,x,y,size,color){
+  ctx.save();
+  ctx.strokeStyle=color;ctx.fillStyle=color;
+  ctx.lineWidth=Math.max(1.2,size*0.08);
+  var cx=x+size/2,cy=y+size/2,r=size*0.42;
+  ctx.beginPath();
+  if(area==='Disco'){
+    ctx.arc(cx,cy,r,0,Math.PI*2);ctx.stroke();
+    ctx.beginPath();ctx.moveTo(cx-r*0.7,cy);ctx.lineTo(cx+r*0.7,cy);ctx.moveTo(cx,cy-r*0.7);ctx.lineTo(cx,cy+r*0.7);ctx.stroke();
+  } else if(area==='Aros'){
+    ctx.arc(cx-r*0.32,cy,r*0.62,0,Math.PI*2);ctx.stroke();
+    ctx.beginPath();ctx.arc(cx+r*0.32,cy,r*0.62,0,Math.PI*2);ctx.stroke();
+  } else if(area==='Telar'){
+    var g=size*0.78,gx=x+(size-g)/2,gy=y+(size-g)/2,step=g/3;
+    ctx.lineWidth=Math.max(1,size*0.045);
+    for(var i=0;i<=3;i++){
+      ctx.beginPath();ctx.moveTo(gx+i*step,gy);ctx.lineTo(gx+i*step,gy+g);ctx.stroke();
+      ctx.beginPath();ctx.moveTo(gx,gy+i*step);ctx.lineTo(gx+g,gy+i*step);ctx.stroke();
+    }
+  } else if(area==='Varios'){
+    var pts=6,ang0=-Math.PI/2;
+    ctx.beginPath();
+    for(var k=0;k<=pts;k++){var a=ang0+k*(Math.PI*2/pts);var px=cx+r*Math.cos(a),py=cy+r*Math.sin(a);if(k===0)ctx.moveTo(px,py);else ctx.lineTo(px,py);}
+    ctx.closePath();ctx.stroke();
+  } else if(area==='ALMC'){
+    var bw=size*0.68,bh=size*0.46,bx=x+(size-bw)/2,by=y+size*0.4;
+    ctx.beginPath();ctx.rect(bx,by,bw,bh);ctx.stroke();
+    ctx.beginPath();ctx.moveTo(bx-size*0.05,by);ctx.lineTo(bx+bw/2,by-size*0.26);ctx.lineTo(bx+bw+size*0.05,by);ctx.stroke();
+  } else {
+    ctx.arc(cx,cy,r,0,Math.PI*2);ctx.stroke();
+  }
+  ctx.restore();
+}
+function dibujarResumenGeneralCanvas(data,opciones){
+  opciones=opciones||{};
+  var temaClaro=opciones.temaClaro!==undefined?opciones.temaClaro:true;
+  var pal=temaClaro?
+    {bg:'#ffffff',title:'#1e293b',muted:'#64748b',border:'#e2e8f0'}:
+    {bg:'#0d1523',title:'#e2e8f0',muted:'#94a3b8',border:'#334155'};
+  var W=860,pad=24,titleH=46,areaHeaderH=28,chartH=96,blockGap=20;
+  var areas=data.areas;
+  var H=pad*2+titleH+(areas.length?areas.length*(areaHeaderH+chartH+blockGap):40)+10;
+  var canvas=document.createElement('canvas');
+  var scale=2;
+  canvas.width=W*scale;canvas.height=H*scale;
+  var ctx=canvas.getContext('2d');
+  ctx.scale(scale,scale);
+  ctx.fillStyle=pal.bg;ctx.fillRect(0,0,W,H);
+
+  var totalGeneral=areas.reduce(function(s,a){return s+a.totalCant;},0);
+  var opsGeneral=areas.reduce(function(s,a){return s+a.opsCount;},0);
+
+  var y=pad;
+  ctx.fillStyle=pal.title;
+  ctx.font='bold 17px "IBM Plex Sans",Arial,sans-serif';
+  ctx.fillText('Resumen general de producción — carga por área',pad,y+14);
+  ctx.font='11px "IBM Plex Sans",Arial,sans-serif';
+  ctx.fillStyle=pal.muted;
+  ctx.fillText(fd(data.T)+' · '+fmtNum(opsGeneral)+' OP pendientes · '+fmtNum(totalGeneral)+' pzas en total',pad,y+32);
+  y+=titleH;
+
+  if(!areas.length){
+    ctx.font='13px "IBM Plex Sans",Arial,sans-serif';
+    ctx.fillStyle=pal.muted;
+    ctx.fillText('Sin órdenes pendientes.',pad,y+14);
+    return canvas.toDataURL('image/png');
+  }
+
+  areas.forEach(function(a){
+    var col=ac(a.area);
+    ctx.fillStyle=col;
+    ctx.fillRect(pad,y+2,4,areaHeaderH+chartH-8);
+    drawAreaIcon(ctx,a.area,pad+14,y+2,20,col);
+    ctx.font='bold 14px "IBM Plex Sans",Arial,sans-serif';
+    ctx.fillStyle=pal.title;
+    ctx.fillText(a.area,pad+40,y+16);
+    ctx.textAlign='right';
+    ctx.font='bold 12px "IBM Plex Sans",Arial,sans-serif';
+    ctx.fillStyle=pal.title;
+    ctx.fillText(fmtNum(a.totalCant)+' pzas · '+a.opsCount+' OP',W-pad,y+13);
+    if(a.vencidasCant>0){
+      ctx.font='11px "IBM Plex Sans",Arial,sans-serif';
+      ctx.fillStyle='#ef4444';
+      ctx.fillText(a.vencidasOps+' OP vencidas · '+fmtNum(a.vencidasCant)+' pzas',W-pad,y+27);
+    }
+    ctx.textAlign='left';
+    y+=areaHeaderH;
+
+    var barLabels=[],barValues=[],barTypes=[];
+    if(a.vencidasCant>0){barLabels.push('VENC.');barValues.push(a.vencidasCant);barTypes.push('venc');}
+    data.diaLabels.forEach(function(lbl,i){barLabels.push(lbl);barValues.push(a.dayBuckets[i]);barTypes.push('dia');});
+    if(a.despuesCant>0){barLabels.push('DESP.');barValues.push(a.despuesCant);barTypes.push('desp');}
+    var n=barValues.length;
+    var chartX=pad+14,chartW=W-pad*2-14,gap=8;
+    var barW=Math.min(50,(chartW-(n-1)*gap)/n);
+    var usedW=barW*n+gap*(n-1);
+    var startX=chartX+(chartW-usedW)/2;
+    var maxV=Math.max.apply(null,barValues.concat([1]));
+    var chartBaseY=y+chartH-22;
+    var chartTopY=y+8;
+    var maxBarH=chartBaseY-chartTopY;
+    barValues.forEach(function(v,i){
+      var bh=maxV>0?Math.round((v/maxV)*maxBarH):0;
+      if(v>0)bh=Math.max(bh,3);
+      var bx=startX+i*(barW+gap);
+      var color=barTypes[i]==='venc'?'#ef4444':barTypes[i]==='desp'?pal.muted:col;
+      ctx.globalAlpha=barTypes[i]==='desp'?0.45:0.85;
+      ctx.fillStyle=color;
+      ctx.fillRect(bx,chartBaseY-bh,barW,bh);
+      ctx.globalAlpha=1;
+      if(v>0){
+        ctx.font='10px "IBM Plex Mono",monospace';
+        ctx.fillStyle=pal.title;
+        ctx.textAlign='center';
+        ctx.fillText(fmtNum(v),bx+barW/2,chartBaseY-bh-4);
+      }
+      ctx.font='9px "IBM Plex Sans",Arial,sans-serif';
+      ctx.fillStyle=pal.muted;
+      ctx.textAlign='center';
+      ctx.fillText(barLabels[i],bx+barW/2,chartBaseY+13);
+      ctx.textAlign='left';
+    });
+    ctx.strokeStyle=pal.border;
+    ctx.lineWidth=1;
+    ctx.beginPath();ctx.moveTo(chartX,chartBaseY+0.5);ctx.lineTo(chartX+chartW,chartBaseY+0.5);ctx.stroke();
+
+    y+=chartH+blockGap;
+  });
+
+  return canvas.toDataURL('image/png');
+}
+var _capturaGeneralTemaClaro=true;
+function pintarResumenGeneral(){
+  var data=getResumenGeneralData();
+  var dataUrl=dibujarResumenGeneralCanvas(data,{temaClaro:_capturaGeneralTemaClaro});
+  var preview=document.getElementById('capturaGeneralPreview');
+  if(preview)preview.innerHTML='<img src="'+dataUrl+'" style="max-width:100%;border-radius:6px;display:block;margin:0 auto;border:1px solid var(--border)">';
+  window._resumenGeneralDataUrl=dataUrl;
+}
+function toggleTemaCapturaGeneral(){
+  _capturaGeneralTemaClaro=!_capturaGeneralTemaClaro;
+  var btn=document.getElementById('btnTemaGeneral');
+  if(btn)btn.textContent='Fondo: '+(_capturaGeneralTemaClaro?'claro':'oscuro');
+  pintarResumenGeneral();
+}
+function descargarCapturaGeneral(){
+  if(!window._resumenGeneralDataUrl)return;
+  var a=document.createElement('a');
+  a.href=window._resumenGeneralDataUrl;a.download='resumen_general_areas_'+todayIso()+'.png';
+  document.body.appendChild(a);a.click();document.body.removeChild(a);
+  var msg=document.getElementById('resumenGeneralMsg');
+  if(msg){msg.textContent='Imagen descargada ✓';msg.style.color='var(--accent3)';}
+}
+function generarResumenGeneralAreas(){
+  document.getElementById('mt').textContent='Resumen general — carga por área';
+  document.getElementById('mb').innerHTML=
+    '<div style="margin-bottom:8px;font-size:11px;color:var(--muted)">De un vistazo: lo vencido, lo que sigue día a día y lo que queda más adelante, por área. Clic derecho sobre la imagen → Copiar imagen.</div>'+
+    '<div id="capturaGeneralPreview" style="text-align:center;padding:10px 0"></div>'+
+    '<div style="display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap;margin-top:10px">'+
+    '<button onclick="toggleTemaCapturaGeneral()" id="btnTemaGeneral" style="background:var(--surface2);border:1px solid var(--border);color:var(--muted);border-radius:6px;padding:6px 14px;font-size:12px;cursor:pointer">Fondo: claro</button>'+
+    '<button onclick="descargarCapturaGeneral()" style="background:var(--accent3);color:#fff;border:none;border-radius:6px;padding:6px 14px;font-weight:600;font-size:12px;cursor:pointer">Descargar imagen</button>'+
+    '</div>'+
+    '<div id="resumenGeneralMsg" style="font-size:11px;text-align:right;margin-top:6px;min-height:14px"></div>';
+  document.getElementById('modal').classList.add('open');
+  pintarResumenGeneral();
+}
 function copiarResumenCorreo(){
   var ta=document.getElementById('resumenText');
   var msg=document.getElementById('resumenCopyMsg');
@@ -1917,8 +2130,10 @@ function renderGantt(){
   window._ganttTodayOffset=todayOffset;window._ganttDayW=dayW;window._ganttLabelW=LABEL_W;window._ganttMobile=_mobileGantt;
   var topBarHtml='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">'+
     '<div style="font-size:10px;color:var(--muted)">'+src.length+' OP abiertas (vigentes y vencidas recientes)</div>'+
+    '<div style="display:flex;gap:8px;align-items:center">'+
+    '<button onclick="generarResumenGeneralAreas()" style="background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:3px 10px;font-size:11px;font-weight:600;cursor:pointer">Resumen general</button>'+
     '<button onclick="scrollGanttToday()" style="background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:3px 10px;font-size:11px;font-weight:600;cursor:pointer">Hoy</button>'+
-    '</div>';
+    '</div></div>';
   if(_mobileGantt){
     var labelsHtml='<div style="height:'+(H1+H2)+'px;border-bottom:2px solid var(--border);box-sizing:border-box"></div>';
     var timelineBodyHtml='';
