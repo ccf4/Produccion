@@ -913,11 +913,7 @@ function getResumenGeneralData(){
     if(off===1)return 'MAÑ.';
     return DIAS_SEM2[d.getDay()];
   });
-  var _aOrder=['Disco','Aros','Telar','Varios','ALMC'];
-  var areasOut=[];
-  _aOrder.forEach(function(area){
-    var rows=RAW.filter(function(r){return r.AREA===area&&r.STATUS==='V';});
-    if(!rows.length)return;
+  function bucketsDeFilas(rows){
     var vencRows=rows.filter(function(r){var fp=pd(r.Fprod||r.FProm);return fp&&fp<T;});
     var vencidasCant=vencRows.reduce(function(s,r){return s+(parseInt(r.CANT)||0);},0);
     var vencidasOps=new Set(vencRows.map(function(r){return r.OP;})).size;
@@ -932,7 +928,35 @@ function getResumenGeneralData(){
     });
     var bucketedCant=vencidasCant+dayBuckets.reduce(function(s,v){return s+v;},0);
     var despuesCant=Math.max(0,totalCant-bucketedCant);
-    areasOut.push({area:area,totalCant:totalCant,opsCount:opsCount,vencidasCant:vencidasCant,vencidasOps:vencidasOps,dayBuckets:dayBuckets,despuesCant:despuesCant});
+    return {totalCant:totalCant,opsCount:opsCount,vencidasCant:vencidasCant,vencidasOps:vencidasOps,dayBuckets:dayBuckets,despuesCant:despuesCant};
+  }
+  var _aOrder=['Disco','Aros','Telar','Varios','ALMC'];
+  // Mismo orden de subáreas que usa el Gantt, para que la lectura sea consistente entre vistas.
+  var _subOrder=['Disco','Pack','Manual','Oblongo/Manual','Riñon','Riñon/Manual','Oblongo','Pack Rect / Manual','Tiras','Tapas','Armar','Tubular','Tubulares','Remallado','Criba','Eliminador','Placa filtrante','Embolsados','Nuevo'];
+  var areasOut=[];
+  _aOrder.forEach(function(area){
+    var areaRows=RAW.filter(function(r){return r.AREA===area&&r.STATUS==='V';});
+    if(!areaRows.length)return;
+    var subGroups={};
+    areaRows.forEach(function(r){
+      var k=normSub(r.SUBAREA)||r.SUBAREA||'';
+      if(!subGroups[k])subGroups[k]=[];
+      subGroups[k].push(r);
+    });
+    var subKeys=_subOrder.filter(function(s){return subGroups[s];}).concat(
+      Object.keys(subGroups).filter(function(s){return _subOrder.indexOf(s)===-1;}).sort(function(a,b){
+        var ta=subGroups[a].reduce(function(s,r){return s+(parseInt(r.CANT)||0);},0);
+        var tb=subGroups[b].reduce(function(s,r){return s+(parseInt(r.CANT)||0);},0);
+        return tb-ta;
+      })
+    );
+    var subsOut=subKeys.map(function(subKey){
+      var b=bucketsDeFilas(subGroups[subKey]);
+      b.subKey=subKey;
+      return b;
+    });
+    var areaB=bucketsDeFilas(areaRows);
+    areasOut.push({area:area,totalCant:areaB.totalCant,opsCount:areaB.opsCount,subs:subsOut});
   });
   return {T:T,diaLabels:diaLabels,areas:areasOut};
 }
@@ -974,11 +998,29 @@ function dibujarResumenGeneralCanvas(data,opciones){
   opciones=opciones||{};
   var temaClaro=opciones.temaClaro!==undefined?opciones.temaClaro:true;
   var pal=temaClaro?
-    {bg:'#ffffff',title:'#1e293b',muted:'#64748b',border:'#e2e8f0'}:
-    {bg:'#0d1523',title:'#e2e8f0',muted:'#94a3b8',border:'#334155'};
-  var W=860,pad=24,titleH=46,areaHeaderH=28,chartH=96,blockGap=20;
+    {bg:'#ffffff',title:'#1e293b',muted:'#64748b',border:'#e2e8f0',areaBg:'rgba(0,0,0,.025)'}:
+    {bg:'#0d1523',title:'#e2e8f0',muted:'#94a3b8',border:'#334155',areaBg:'rgba(255,255,255,.02)'};
+  var W=860,pad=24,titleH=46;
+  var areaHeaderH=24,subHeaderH=26,chartH=88,subGap=10,areaGap=20;
   var areas=data.areas;
-  var H=pad*2+titleH+(areas.length?areas.length*(areaHeaderH+chartH+blockGap):40)+10;
+
+  // Pass 1: calcular alturas (varía según cuántas subáreas tenga cada área)
+  var y=pad+titleH;
+  var layout=[];
+  areas.forEach(function(a){
+    var areaStartY=y;
+    y+=areaHeaderH;
+    var subsLayout=[];
+    a.subs.forEach(function(s,i){
+      subsLayout.push({d:s,y:y});
+      y+=subHeaderH+chartH;
+      if(i<a.subs.length-1)y+=subGap;
+    });
+    y+=areaGap;
+    layout.push({d:a,y:areaStartY,h:(y-areaGap)-areaStartY,subs:subsLayout});
+  });
+  var H=(areas.length?y:pad+titleH+40)+10;
+
   var canvas=document.createElement('canvas');
   var scale=2;
   canvas.width=W*scale;canvas.height=H*scale;
@@ -989,81 +1031,92 @@ function dibujarResumenGeneralCanvas(data,opciones){
   var totalGeneral=areas.reduce(function(s,a){return s+a.totalCant;},0);
   var opsGeneral=areas.reduce(function(s,a){return s+a.opsCount;},0);
 
-  var y=pad;
   ctx.fillStyle=pal.title;
   ctx.font='bold 17px "IBM Plex Sans",Arial,sans-serif';
-  ctx.fillText('Resumen general de producción — carga por área',pad,y+14);
+  ctx.fillText('Resumen general de producción — carga por subárea',pad,pad+14);
   ctx.font='11px "IBM Plex Sans",Arial,sans-serif';
   ctx.fillStyle=pal.muted;
-  ctx.fillText(fd(data.T)+' · '+fmtNum(opsGeneral)+' OP pendientes · '+fmtNum(totalGeneral)+' pzas en total',pad,y+32);
-  y+=titleH;
+  ctx.fillText(fd(data.T)+' · '+fmtNum(opsGeneral)+' OP pendientes · '+fmtNum(totalGeneral)+' pzas en total',pad,pad+32);
 
   if(!areas.length){
     ctx.font='13px "IBM Plex Sans",Arial,sans-serif';
     ctx.fillStyle=pal.muted;
-    ctx.fillText('Sin órdenes pendientes.',pad,y+14);
+    ctx.fillText('Sin órdenes pendientes.',pad,pad+titleH+14);
     return canvas.toDataURL('image/png');
   }
 
-  areas.forEach(function(a){
-    var col=ac(a.area);
+  layout.forEach(function(al){
+    var a=al.d,col=ac(a.area);
+    // franja de fondo + barra de acento cubriendo toda el área (encabezado + sus subáreas)
+    ctx.fillStyle=pal.areaBg;
+    ctx.fillRect(pad,al.y,W-pad*2,al.h);
     ctx.fillStyle=col;
-    ctx.fillRect(pad,y+2,4,areaHeaderH+chartH-8);
-    drawAreaIcon(ctx,a.area,pad+14,y+2,20,col);
-    ctx.font='bold 14px "IBM Plex Sans",Arial,sans-serif';
-    ctx.fillStyle=pal.title;
-    ctx.fillText(a.area,pad+40,y+16);
-    ctx.textAlign='right';
+    ctx.fillRect(pad,al.y+2,4,al.h-6);
+
+    drawAreaIcon(ctx,a.area,pad+12,al.y+3,18,col);
     ctx.font='bold 12px "IBM Plex Sans",Arial,sans-serif';
-    ctx.fillStyle=pal.title;
-    ctx.fillText(fmtNum(a.totalCant)+' pzas · '+a.opsCount+' OP',W-pad,y+13);
-    if(a.vencidasCant>0){
-      ctx.font='11px "IBM Plex Sans",Arial,sans-serif';
-      ctx.fillStyle='#ef4444';
-      ctx.fillText(a.vencidasOps+' OP vencidas · '+fmtNum(a.vencidasCant)+' pzas',W-pad,y+27);
-    }
+    ctx.fillStyle=col;
+    ctx.fillText(a.area.toUpperCase(),pad+36,al.y+15);
+    ctx.textAlign='right';
+    ctx.font='11px "IBM Plex Sans",Arial,sans-serif';
+    ctx.fillStyle=pal.muted;
+    ctx.fillText(fmtNum(a.totalCant)+' pzas · '+a.opsCount+' OP en total',W-pad-6,al.y+15);
     ctx.textAlign='left';
-    y+=areaHeaderH;
 
-    var barLabels=[],barValues=[],barTypes=[];
-    if(a.vencidasCant>0){barLabels.push('VENC.');barValues.push(a.vencidasCant);barTypes.push('venc');}
-    data.diaLabels.forEach(function(lbl,i){barLabels.push(lbl);barValues.push(a.dayBuckets[i]);barTypes.push('dia');});
-    if(a.despuesCant>0){barLabels.push('DESP.');barValues.push(a.despuesCant);barTypes.push('desp');}
-    var n=barValues.length;
-    var chartX=pad+14,chartW=W-pad*2-14,gap=8;
-    var barW=Math.min(50,(chartW-(n-1)*gap)/n);
-    var usedW=barW*n+gap*(n-1);
-    var startX=chartX+(chartW-usedW)/2;
-    var maxV=Math.max.apply(null,barValues.concat([1]));
-    var chartBaseY=y+chartH-22;
-    var chartTopY=y+8;
-    var maxBarH=chartBaseY-chartTopY;
-    barValues.forEach(function(v,i){
-      var bh=maxV>0?Math.round((v/maxV)*maxBarH):0;
-      if(v>0)bh=Math.max(bh,3);
-      var bx=startX+i*(barW+gap);
-      var color=barTypes[i]==='venc'?'#ef4444':barTypes[i]==='desp'?pal.muted:col;
-      ctx.globalAlpha=barTypes[i]==='desp'?0.45:0.85;
-      ctx.fillStyle=color;
-      ctx.fillRect(bx,chartBaseY-bh,barW,bh);
-      ctx.globalAlpha=1;
-      if(v>0){
-        ctx.font='10px "IBM Plex Mono",monospace';
-        ctx.fillStyle=pal.title;
-        ctx.textAlign='center';
-        ctx.fillText(fmtNum(v),bx+barW/2,chartBaseY-bh-4);
+    al.subs.forEach(function(sl){
+      var s=sl.d,sy=sl.y;
+      ctx.font='bold 13px "IBM Plex Sans",Arial,sans-serif';
+      ctx.fillStyle=pal.title;
+      ctx.fillText(s.subKey,pad+36,sy+14);
+      ctx.textAlign='right';
+      ctx.font='bold 12px "IBM Plex Sans",Arial,sans-serif';
+      ctx.fillStyle=pal.title;
+      ctx.fillText(fmtNum(s.totalCant)+' pzas · '+s.opsCount+' OP',W-pad-6,sy+13);
+      if(s.vencidasCant>0){
+        ctx.font='10px "IBM Plex Sans",Arial,sans-serif';
+        ctx.fillStyle='#ef4444';
+        ctx.fillText(s.vencidasOps+' OP venc. · '+fmtNum(s.vencidasCant)+' pzas',W-pad-6,sy+27);
       }
-      ctx.font='9px "IBM Plex Sans",Arial,sans-serif';
-      ctx.fillStyle=pal.muted;
-      ctx.textAlign='center';
-      ctx.fillText(barLabels[i],bx+barW/2,chartBaseY+13);
       ctx.textAlign='left';
-    });
-    ctx.strokeStyle=pal.border;
-    ctx.lineWidth=1;
-    ctx.beginPath();ctx.moveTo(chartX,chartBaseY+0.5);ctx.lineTo(chartX+chartW,chartBaseY+0.5);ctx.stroke();
 
-    y+=chartH+blockGap;
+      var chartTop=sy+subHeaderH;
+      var barLabels=[],barValues=[],barTypes=[];
+      if(s.vencidasCant>0){barLabels.push('VENC.');barValues.push(s.vencidasCant);barTypes.push('venc');}
+      data.diaLabels.forEach(function(lbl,i){barLabels.push(lbl);barValues.push(s.dayBuckets[i]);barTypes.push('dia');});
+      if(s.despuesCant>0){barLabels.push('DESP.');barValues.push(s.despuesCant);barTypes.push('desp');}
+      var n=barValues.length;
+      var chartX=pad+36,chartW=W-pad*2-36-6,gap=8;
+      var barW=Math.min(46,(chartW-(n-1)*gap)/n);
+      var usedW=barW*n+gap*(n-1);
+      var startX=chartX+(chartW-usedW)/2;
+      var maxV=Math.max.apply(null,barValues.concat([1]));
+      var chartBaseY=chartTop+chartH-20;
+      var maxBarH=chartBaseY-(chartTop+6);
+      barValues.forEach(function(v,i){
+        var bh=maxV>0?Math.round((v/maxV)*maxBarH):0;
+        if(v>0)bh=Math.max(bh,3);
+        var bx=startX+i*(barW+gap);
+        var color=barTypes[i]==='venc'?'#ef4444':barTypes[i]==='desp'?pal.muted:col;
+        ctx.globalAlpha=barTypes[i]==='desp'?0.45:0.85;
+        ctx.fillStyle=color;
+        ctx.fillRect(bx,chartBaseY-bh,barW,bh);
+        ctx.globalAlpha=1;
+        if(v>0){
+          ctx.font='10px "IBM Plex Mono",monospace';
+          ctx.fillStyle=pal.title;
+          ctx.textAlign='center';
+          ctx.fillText(fmtNum(v),bx+barW/2,chartBaseY-bh-4);
+        }
+        ctx.font='9px "IBM Plex Sans",Arial,sans-serif';
+        ctx.fillStyle=pal.muted;
+        ctx.textAlign='center';
+        ctx.fillText(barLabels[i],bx+barW/2,chartBaseY+12);
+        ctx.textAlign='left';
+      });
+      ctx.strokeStyle=pal.border;
+      ctx.lineWidth=1;
+      ctx.beginPath();ctx.moveTo(chartX,chartBaseY+0.5);ctx.lineTo(chartX+chartW,chartBaseY+0.5);ctx.stroke();
+    });
   });
 
   return canvas.toDataURL('image/png');
