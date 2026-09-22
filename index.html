@@ -166,15 +166,17 @@ select{background:var(--surface2);border:1px solid var(--border);color:var(--tex
 </div>
 <main>
   <div class="view" id="view-semana">
-    <div class="st"><span class="dot" style="background:var(--danger)"></span><span onclick="toggleLateSection()" style="cursor:pointer;display:flex;align-items:center;gap:8px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:6px 10px;transition:background .1s;overflow:hidden;flex:1 1 260px;min-width:0" onmouseenter="this.style.background='var(--surface)'" onmouseleave="this.style.background='var(--surface2)'"><span style="flex-shrink:0">Reprogramadas y vencidas</span><span id="lcBadges" style="display:flex;align-items:center;gap:6px;overflow-x:auto;flex:1;min-width:0;-webkit-overflow-scrolling:touch"></span><span style="flex-shrink:0;display:flex;align-items:center;gap:4px;color:var(--accent);font-size:11px;font-weight:600"><span id="lcLabel" class="lc-label">Ver detalle</span><svg id="lcChevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px;transition:transform .15s"><polyline points="6 9 12 15 18 9"></polyline></svg></span></span><button onclick="enviarResumenPorVendedor()" style="margin-left:auto;background:var(--surface2);border:1px solid var(--border);color:var(--muted);border-radius:6px;padding:4px 10px;font-size:11px;cursor:pointer;font-weight:400;flex-shrink:0">&#9993; Enviar resumen</button><a onclick="enviarResumenCorreo()" style="margin-left:8px;color:var(--muted);font-size:10px;text-decoration:underline;cursor:pointer;font-weight:400;flex-shrink:0">resumen general</a></div>
+    <div class="st"><span class="dot" style="background:var(--danger)"></span><span onclick="toggleLateSection()" style="cursor:pointer;display:flex;align-items:center;gap:8px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:6px 10px;transition:background .1s;overflow:hidden;flex:1 1 260px;min-width:0" onmouseenter="this.style.background='var(--surface)'" onmouseleave="this.style.background='var(--surface2)'"><span style="flex-shrink:0">Vencidas</span><span id="lcBadges" style="display:flex;align-items:center;gap:6px;overflow-x:auto;flex:1;min-width:0;-webkit-overflow-scrolling:touch"></span><span style="flex-shrink:0;display:flex;align-items:center;gap:4px;color:var(--accent);font-size:11px;font-weight:600"><span id="lcLabel" class="lc-label">Ver detalle</span><svg id="lcChevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px;transition:transform .15s"><polyline points="6 9 12 15 18 9"></polyline></svg></span></span><button onclick="enviarResumenPorVendedor()" style="margin-left:auto;background:var(--surface2);border:1px solid var(--border);color:var(--muted);border-radius:6px;padding:4px 10px;font-size:11px;cursor:pointer;font-weight:400;flex-shrink:0">&#9993; Enviar resumen</button><a onclick="enviarResumenCorreo()" style="margin-left:8px;color:var(--muted);font-size:10px;text-decoration:underline;cursor:pointer;font-weight:400;flex-shrink:0">resumen general</a></div>
     <div class="card" id="loCard" style="display:none;margin-top:8px"><div class="card-body" id="lo" style="padding:12px"></div></div>
     <div class="wknav" style="margin-top:20px">
       <button class="nb" id="btnP" onclick="changeWeek(-1)" aria-label="Semana anterior" title="Semana anterior"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg></button>
       <div class="nwl" id="pl"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="3"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg><span id="plText">--</span></div>
       <button class="nb" id="btnN" onclick="changeWeek(1)" aria-label="Semana siguiente" title="Semana siguiente"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg></button>
     </div>
-    <div class="st"><span class="dot" style="background:var(--accent)"></span><span style="display:flex;align-items:center;gap:8px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:6px 10px;overflow:hidden;flex:1 1 260px;min-width:0"><span style="flex-shrink:0"><span id="wgTitle">Entregas de la semana</span><span id="wc" style="font-size:11px;color:var(--muted);font-weight:400"></span></span><span id="wgBadges" style="display:flex;align-items:center;gap:16px;overflow-x:auto;flex:1;min-width:0;-webkit-overflow-scrolling:touch"></span></span></div>
+    <div class="st"><span class="dot" style="background:var(--accent)"></span><span style="display:flex;align-items:center;gap:8px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:6px 10px;overflow:hidden;flex:1 1 260px;min-width:0"><span style="flex-shrink:0"><span id="wgTitle">Entregas pendientes de la semana</span><span id="wc" style="font-size:11px;color:var(--muted);font-weight:400"></span></span><span id="wgBadges" style="display:flex;align-items:center;gap:16px;overflow-x:auto;flex:1;min-width:0;-webkit-overflow-scrolling:touch"></span></span></div>
     <div class="card"><div class="card-body" style="padding:12px"><div style="overflow-x:auto"><div id="wg"></div></div></div></div>
+    <div class="st" style="margin-top:20px"><span class="dot" style="background:var(--warn)"></span><span onclick="toggleReprogSection()" style="cursor:pointer;display:flex;align-items:center;gap:8px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:6px 10px;transition:background .1s;overflow:hidden;flex:1 1 260px;min-width:0" onmouseenter="this.style.background='var(--surface)'" onmouseleave="this.style.background='var(--surface2)'"><span style="flex-shrink:0">Reprogramadas</span><span id="rpBadges" style="display:flex;align-items:center;gap:6px;overflow-x:auto;flex:1;min-width:0;-webkit-overflow-scrolling:touch"></span><span style="flex-shrink:0;display:flex;align-items:center;gap:4px;color:var(--accent);font-size:11px;font-weight:600"><span id="rpLabel" class="lc-label">Ver detalle</span><svg id="rpChevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px;transition:transform .15s"><polyline points="6 9 12 15 18 9"></polyline></svg></span></span></div>
+    <div class="card" id="rpCard" style="display:none;margin-top:8px"><div class="card-body" id="rp" style="padding:12px"></div></div>
     <div id="extraSecs">
       <div class="st" style="margin-top:20px"><span class="dot" style="background:var(--accent3)"></span>Cerradas últimos 5 días hábiles<span id="cc" style="font-size:11px;color:var(--muted);font-weight:400"></span></div>
       <div class="card"><div class="card-body" id="cl" style="padding:12px"></div></div>
@@ -1342,6 +1344,7 @@ function subIcon(sub,area){
     'Disco':'<defs><clipPath id="si-dc-UID"><circle cx="16" cy="16" r="10"/></clipPath></defs><g clip-path="url(#si-dc-UID)"><line x1="6" y1="9" x2="26" y2="9" stroke="C" stroke-width=".7"/><line x1="6" y1="12" x2="26" y2="12" stroke="C" stroke-width=".7"/><line x1="6" y1="15" x2="26" y2="15" stroke="C" stroke-width=".7"/><line x1="6" y1="18" x2="26" y2="18" stroke="C" stroke-width=".7"/><line x1="6" y1="21" x2="26" y2="21" stroke="C" stroke-width=".7"/><line x1="6" y1="24" x2="26" y2="24" stroke="C" stroke-width=".7"/><line x1="9" y1="6" x2="9" y2="26" stroke="C" stroke-width=".7"/><line x1="12" y1="6" x2="12" y2="26" stroke="C" stroke-width=".7"/><line x1="15" y1="6" x2="15" y2="26" stroke="C" stroke-width=".7"/><line x1="18" y1="6" x2="18" y2="26" stroke="C" stroke-width=".7"/><line x1="21" y1="6" x2="21" y2="26" stroke="C" stroke-width=".7"/><line x1="24" y1="6" x2="24" y2="26" stroke="C" stroke-width=".7"/></g><circle cx="16" cy="16" r="10" stroke="C" stroke-width="1.8" fill="none"/>',
     'Banda':'<defs><clipPath id="si-bd-UID"><circle cx="16" cy="16" r="10"/></clipPath></defs><g clip-path="url(#si-bd-UID)"><line x1="8.5" y1="6" x2="8.5" y2="26" stroke="C" stroke-width="1"/><line x1="11.0" y1="6" x2="11.0" y2="26" stroke="C" stroke-width="1"/><line x1="13.5" y1="6" x2="13.5" y2="26" stroke="C" stroke-width="1"/><line x1="16.0" y1="6" x2="16.0" y2="26" stroke="C" stroke-width="1"/><line x1="18.5" y1="6" x2="18.5" y2="26" stroke="C" stroke-width="1"/><line x1="21.0" y1="6" x2="21.0" y2="26" stroke="C" stroke-width="1"/><line x1="23.5" y1="6" x2="23.5" y2="26" stroke="C" stroke-width="1"/><line x1="6" y1="13.0" x2="26" y2="13.0" stroke="C" stroke-width=".9"/><line x1="6" y1="20.0" x2="26" y2="20.0" stroke="C" stroke-width=".9"/></g><circle cx="16" cy="16" r="10" stroke="C" stroke-width="1.8" fill="none"/>',
     'Pack':'<defs><clipPath id="si-pk-UID"><circle cx="16" cy="16" r="10"/></clipPath></defs><g clip-path="url(#si-pk-UID)"><line x1="6" y1="9" x2="26" y2="9" stroke="C" stroke-width=".7"/><line x1="6" y1="12" x2="26" y2="12" stroke="C" stroke-width=".7"/><line x1="6" y1="15" x2="26" y2="15" stroke="C" stroke-width=".7"/><line x1="6" y1="18" x2="26" y2="18" stroke="C" stroke-width=".7"/><line x1="6" y1="21" x2="26" y2="21" stroke="C" stroke-width=".7"/><line x1="6" y1="24" x2="26" y2="24" stroke="C" stroke-width=".7"/><line x1="9" y1="6" x2="9" y2="26" stroke="C" stroke-width=".7"/><line x1="12" y1="6" x2="12" y2="26" stroke="C" stroke-width=".7"/><line x1="15" y1="6" x2="15" y2="26" stroke="C" stroke-width=".7"/><line x1="18" y1="6" x2="18" y2="26" stroke="C" stroke-width=".7"/><line x1="21" y1="6" x2="21" y2="26" stroke="C" stroke-width=".7"/><line x1="24" y1="6" x2="24" y2="26" stroke="C" stroke-width=".7"/></g><circle cx="16" cy="16" r="10" stroke="C" stroke-width="1.8" fill="none"/><circle cx="16" cy="8" r="1.8" fill="C"/><circle cx="24" cy="16" r="1.8" fill="C"/><circle cx="16" cy="24" r="1.8" fill="C"/><circle cx="8" cy="16" r="1.8" fill="C"/>',
+    'Tapas':'<circle cx="16" cy="16" r="10" stroke="C" stroke-width="1.8" fill="none"/>',
     'Manual':'<circle cx="7" cy="11" r="3.5" stroke="C" stroke-width="1.6"/><circle cx="7" cy="27" r="3.5" stroke="C" stroke-width="1.6"/><path d="M9.5 11 Q14 15 19 19 Q24 15 34 12" stroke="C" stroke-width="2.2" stroke-linecap="round" fill="none"/><path d="M9.5 27 Q14 23 19 19 Q24 23 34 26" stroke="C" stroke-width="2.2" stroke-linecap="round" fill="none"/><circle cx="19" cy="19" r="2.5" fill="BG" stroke="C" stroke-width="1.4"/>',
     'Oblongo':'<rect x="5" y="10" width="22" height="12" rx="6" stroke="C" stroke-width="1.8"/><rect x="9" y="13" width="14" height="6" rx="3" stroke="C" stroke-width="1" stroke-dasharray="2 1.5"/>',
     'Riñon':'<path d="M27.85,6.99 C27.53,5.90 27.27,6.31 26.92,6.20 C26.57,6.09 26.63,5.66 25.77,6.34 C24.91,7.02 23.39,9.13 21.75,10.29 C20.11,11.45 17.76,12.71 15.93,13.31 C14.10,13.91 12.76,13.82 10.76,13.88 C8.76,13.94 5.22,12.87 3.93,13.67 C2.64,14.47 3.08,17.35 3.00,18.69 C2.92,20.03 2.93,20.84 3.43,21.71 C3.93,22.59 4.92,23.26 6.02,23.94 C7.12,24.62 7.14,25.49 10.04,25.80 C12.94,26.11 20.59,26.08 23.40,25.80 C26.21,25.52 26.08,24.68 26.92,24.15 C27.76,23.62 28.08,23.26 28.43,22.64 C28.78,22.02 28.93,22.07 29.00,20.42 C29.07,18.77 29.05,14.97 28.86,12.73 C28.67,10.49 28.17,8.08 27.85,6.99 Z" stroke="C" stroke-width="1.7"/><path d="M26.06,9.93 C25.21,8.83 22.97,12.52 21.46,13.45 C19.95,14.38 18.79,15.05 17.01,15.53 C15.23,16.01 12.63,16.25 10.76,16.32 C8.89,16.39 6.65,15.24 5.80,15.96 C4.95,16.68 4.87,19.40 5.66,20.63 C6.45,21.86 7.64,22.91 10.54,23.36 C13.44,23.81 20.44,23.65 23.04,23.36 C25.64,23.07 25.54,22.19 26.13,21.64 C26.72,21.09 26.57,22.01 26.56,20.06 C26.55,18.11 26.91,11.03 26.06,9.93 Z" stroke="C" stroke-width="1" stroke-dasharray="1.6 1.3"/>',
@@ -1432,6 +1435,13 @@ function minWeekOff(T){
 function changeWeek(d){var T=today(),mx=maxWeekOff(T),mn=minWeekOff(T);proxOff=Math.max(mn,Math.min(mx,proxOff+d));renderSemana(T);}
 function toggleLateSection(){
   var card=document.getElementById('loCard'),chev=document.getElementById('lcChevron'),label=document.getElementById('lcLabel');
+  var open=card.style.display!=='none';
+  card.style.display=open?'none':'block';
+  chev.style.transform=open?'rotate(0deg)':'rotate(180deg)';
+  if(label)label.textContent=open?'Ver detalle':'Ocultar';
+}
+function toggleReprogSection(){
+  var card=document.getElementById('rpCard'),chev=document.getElementById('rpChevron'),label=document.getElementById('rpLabel');
   var open=card.style.display!=='none';
   card.style.display=open?'none':'block';
   chev.style.transform=open?'rotate(0deg)':'rotate(180deg)';
@@ -1664,7 +1674,7 @@ function renderSemana(T){
   document.getElementById('btnP').disabled=proxOff<=mn;
   document.getElementById('btnN').disabled=proxOff>=mx;
   document.getElementById('plText').textContent=fwk(WS);
-  document.getElementById('wgTitle').textContent='Entregas de la semana';
+  document.getElementById('wgTitle').textContent='Entregas pendientes de la semana';
   document.getElementById('otrosSec').style.display=proxOff===0?'block':'none';
   buildGrid(WS,'wg','wc',null,'wgBadges');
   var src=activeData().filter(function(d){var fe=pd(d.FEMIT);return !fe||Math.floor((T-fe)/86400000)<=100;});
@@ -1703,65 +1713,66 @@ function renderSemana(T){
   if(lateGroups.length){
     lcBadges+='<span style="display:flex;align-items:center;gap:16px;background:rgba(239,68,68,.14);border:1px solid rgba(239,68,68,.32);border-radius:8px;padding:4px 8px;flex-shrink:0">'+lateGroups.map(renderIconGroup).join('')+'</span>';
   }
-  if(warnGroups.length){
-    lcBadges+='<span style="display:flex;align-items:center;gap:16px;background:rgba(249,115,22,.14);border:1px solid rgba(249,115,22,.32);border-radius:8px;padding:4px 8px;flex-shrink:0">'+warnGroups.map(renderIconGroup).join('')+'</span>';
-  }
   if(lcBadges)lcBadges='<span style="display:flex;align-items:center;gap:10px;flex-wrap:nowrap;white-space:nowrap">'+lcBadges+'</span>';
   document.getElementById('lcBadges').innerHTML=lcBadges;
-  if(!late.length&&!mnetWarn.length){
+  var rpBadges='';
+  if(warnGroups.length){
+    rpBadges+='<span style="display:flex;align-items:center;gap:16px;background:rgba(249,115,22,.14);border:1px solid rgba(249,115,22,.32);border-radius:8px;padding:4px 8px;flex-shrink:0">'+warnGroups.map(renderIconGroup).join('')+'</span>';
+  }
+  if(rpBadges)rpBadges='<span style="display:flex;align-items:center;gap:10px;flex-wrap:nowrap;white-space:nowrap">'+rpBadges+'</span>';
+  document.getElementById('rpBadges').innerHTML=rpBadges;
+  if(!late.length){
     document.getElementById('lo').innerHTML='<span style="color:var(--accent3);font-size:12px">Sin ordenes vencidas.</span>';
   } else {
-    var lhtml='';
     var tarjetasHtml=[];
-    if(late.length){
-      late.sort(function(a,b){var fa=pd(a.Fprod||a.FProm),fb=pd(b.Fprod||b.FProm);return (fa||new Date(0))-(fb||new Date(0));});
-      var _prevLateDate=null,_lateIsFirst=true;
-      late.forEach(function(r){
-        var fp=pd(r.Fprod||r.FProm),fe=pd(r.FVALE),daysLate=fp?daysDiff(fp,T):0;
-        var dKey=fp?fd(fp):'';
-        var isNewDate=dKey!==_prevLateDate;_prevLateDate=dKey;
-        _lateIsFirst=false;
-        var dateTag=isNewDate?'<div style="font-size:9px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:3px;line-height:1.3">'+fdShort(fp)+'</div>':'<div style="font-size:9px;margin-bottom:3px;line-height:1.3;visibility:hidden">&nbsp;</div>';
-        var parts=RAW.filter(function(x){return String(x.OP)===String(r.OP);});
-        var totalCant=parts.filter(function(p){return p.STATUS==='V';}).reduce(function(s,p){return s+(parseInt(p.CANT)||0);},0);
-        var meshList=[...new Set(parts.map(function(p){return p.MESH||'';}).filter(Boolean))].join(' \u00b7 ');
-        tarjetasHtml.push('<div style="display:flex;flex-direction:column">'
-          +dateTag+
-          '<div class="late-card" style="background:rgba(239,68,68,.06);border:1px solid rgba(239,68,68,.2);border-left:4px solid var(--danger);width:230px" onclick="showDetail(\''+r.OP+'\')">'+
-          '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px"><span style="font-family:IBM Plex Mono,monospace;font-weight:700;font-size:13px">OP '+r.OP+'</span><span style="background:rgba(239,68,68,.15);color:var(--danger);font-size:10px;font-weight:700;padding:2px 7px;border-radius:10px">'+daysLate+' d\u00eda'+(daysLate!==1?'s':'')+' vencido</span></div>'+
-          '<div style="display:flex;align-items:center;gap:4px;font-size:11px;font-weight:700;color:'+ac(r.AREA)+';margin-bottom:4px">'+subIcon(r.SUBAREA,r.AREA)+(r.AREA==='Aros'&&r.SUBAREA==='NUEVO'?'Aro nuevo':r.AREA+' / '+r.SUBAREA)+'</div>'+
-          (ped(r.OP)?'<div style="font-size:9px;color:var(--accent4);font-family:IBM Plex Mono,monospace;margin-bottom:4px">'+ped(r.OP)+'</div>':'')+
-          '<div style="font-size:10px;color:var(--muted);margin-bottom:6px">'+fmtNum(totalCant)+' pzas \u00b7 '+(r.MAT||'--')+(meshList?' \u00b7 '+meshList:'')+'</div>'+
-          '<div style="display:flex;justify-content:space-between;font-size:10px;font-family:IBM Plex Mono,monospace;margin-top:auto"><span style="color:var(--muted)">Emitida: '+fd(fe)+'</span><span style="color:var(--danger);font-weight:600">FProm: '+fd(fp)+'</span></div></div></div>');
-      });
-    }
-    if(mnetWarn.length){
-      mnetWarn.sort(function(a,b){var fa=pd(a.Fprod||a.FProm),fb=pd(b.Fprod||b.FProm);return (fa||new Date(0))-(fb||new Date(0));});
-      var _prevWarnDate=null,_warnIsFirst=true;
-      mnetWarn.forEach(function(r){
-        var fp0=pd(r.FProm),fprod=pd(r.Fprod||r.FProm),daysL=(fp0&&fprod)?daysDiff(fp0,fprod):0;
-        var esHoy=fprod&&fd(fprod)===fd(T);
-        var dKey=fprod?fd(fprod):'';
-        var isNewDate=dKey!==_prevWarnDate;_prevWarnDate=dKey;
-        _warnIsFirst=false;
-        var dateTag=isNewDate?'<div style="font-size:9px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:3px;line-height:1.3">'+fdShort(fprod)+'</div>':'<div style="font-size:9px;margin-bottom:3px;line-height:1.3;visibility:hidden">&nbsp;</div>';
-        var parts=RAW.filter(function(x){return String(x.OP)===String(r.OP);});
-        var totalCant=parts.filter(function(p){return p.STATUS==='V';}).reduce(function(s,p){return s+(parseInt(p.CANT)||0);},0);
-        var arts=getArts(r.OP);
-        tarjetasHtml.push('<div style="display:flex;flex-direction:column">'
-          +dateTag+
-          '<div class="late-card" style="background:rgba(249,115,22,.05);border:1px solid rgba(249,115,22,.2);border-left:4px solid var(--warn);width:230px" onclick="showDetail(\''+r.OP+'\')">'+
-          '<div style="display:flex;align-items:center;gap:4px;font-size:14px;font-weight:700;color:'+ac(r.AREA)+';margin-bottom:6px">'+subIcon(r.SUBAREA,r.AREA)+(r.AREA==='Aros'&&r.SUBAREA==='NUEVO'?'Aro nuevo':normSub(r.SUBAREA))+'</div>'+
-          '<div style="font-size:12px;font-weight:700;font-family:IBM Plex Mono,monospace;color:var(--muted);margin-bottom:2px">OP '+r.OP+(ped(r.OP)?'<span style="font-weight:400"> \u00b7 '+ped(r.OP)+'</span>':'')+' </div>'+
-          '<div style="font-size:10px;color:var(--muted);margin-bottom:8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-height:12px">'+(arts.length?(arts[0]||''):'&nbsp;')+'</div>'+
-          '<div style="display:flex;justify-content:space-between;align-items:center;font-size:10px;gap:6px;margin-top:auto">'+
-          '<span style="color:var(--muted);flex-shrink:0">'+fmtNum(totalCant)+' pzas \u00b7 '+(r.MAT||'--')+'</span>'+
-          (esHoy?'<span style="background:rgba(5,150,105,.18);color:var(--accent3);font-weight:700;padding:3px 8px;border-radius:6px;flex-shrink:0">Entrega hoy</span>':'<span style="background:rgba(249,115,22,.15);color:var(--warn);font-weight:600;padding:3px 8px;border-radius:6px;font-family:IBM Plex Mono,monospace;flex-shrink:0">'+fdShort(fp0)+' \u2192 '+fdShort(fprod)+'</span>')+
-          '</div></div></div>');
-      });
-    }
-    lhtml='<div style="display:flex;flex-wrap:wrap;gap:10px;align-items:flex-start">'+tarjetasHtml.join('')+'</div>';
-    document.getElementById('lo').innerHTML=lhtml;
+    late.sort(function(a,b){var fa=pd(a.Fprod||a.FProm),fb=pd(b.Fprod||b.FProm);return (fa||new Date(0))-(fb||new Date(0));});
+    var _prevLateDate=null;
+    late.forEach(function(r){
+      var fp=pd(r.Fprod||r.FProm),fe=pd(r.FVALE),daysLate=fp?daysDiff(fp,T):0;
+      var dKey=fp?fd(fp):'';
+      var isNewDate=dKey!==_prevLateDate;_prevLateDate=dKey;
+      var dateTag=isNewDate?'<div style="font-size:9px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:3px;line-height:1.3">'+fdShort(fp)+'</div>':'<div style="font-size:9px;margin-bottom:3px;line-height:1.3;visibility:hidden">&nbsp;</div>';
+      var parts=RAW.filter(function(x){return String(x.OP)===String(r.OP);});
+      var totalCant=parts.filter(function(p){return p.STATUS==='V';}).reduce(function(s,p){return s+(parseInt(p.CANT)||0);},0);
+      var meshList=[...new Set(parts.map(function(p){return p.MESH||'';}).filter(Boolean))].join(' \u00b7 ');
+      tarjetasHtml.push('<div style="display:flex;flex-direction:column">'
+        +dateTag+
+        '<div class="late-card" style="background:rgba(239,68,68,.06);border:1px solid rgba(239,68,68,.2);border-left:4px solid var(--danger);width:230px" onclick="showDetail(\''+r.OP+'\')">'+
+        '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px"><span style="font-family:IBM Plex Mono,monospace;font-weight:700;font-size:13px">OP '+r.OP+'</span><span style="background:rgba(239,68,68,.15);color:var(--danger);font-size:10px;font-weight:700;padding:2px 7px;border-radius:10px">'+daysLate+' d\u00eda'+(daysLate!==1?'s':'')+' vencido</span></div>'+
+        '<div style="display:flex;align-items:center;gap:4px;font-size:11px;font-weight:700;color:'+ac(r.AREA)+';margin-bottom:4px">'+subIcon(r.SUBAREA,r.AREA)+(r.AREA==='Aros'&&r.SUBAREA==='NUEVO'?'Aro nuevo':r.AREA+' / '+r.SUBAREA)+'</div>'+
+        (ped(r.OP)?'<div style="font-size:9px;color:var(--accent4);font-family:IBM Plex Mono,monospace;margin-bottom:4px">'+ped(r.OP)+'</div>':'')+
+        '<div style="font-size:10px;color:var(--muted);margin-bottom:6px">'+fmtNum(totalCant)+' pzas \u00b7 '+(r.MAT||'--')+(meshList?' \u00b7 '+meshList:'')+'</div>'+
+        '<div style="display:flex;justify-content:space-between;font-size:10px;font-family:IBM Plex Mono,monospace;margin-top:auto"><span style="color:var(--muted)">Emitida: '+fd(fe)+'</span><span style="color:var(--danger);font-weight:600">FProm: '+fd(fp)+'</span></div></div></div>');
+    });
+    document.getElementById('lo').innerHTML='<div style="display:flex;flex-wrap:wrap;gap:10px;align-items:flex-start">'+tarjetasHtml.join('')+'</div>';
+  }
+  if(!mnetWarn.length){
+    document.getElementById('rp').innerHTML='<span style="color:var(--accent3);font-size:12px">Sin ordenes reprogramadas.</span>';
+  } else {
+    var tarjetasHtmlR=[];
+    mnetWarn.sort(function(a,b){var fa=pd(a.Fprod||a.FProm),fb=pd(b.Fprod||b.FProm);return (fa||new Date(0))-(fb||new Date(0));});
+    var _prevWarnDate=null;
+    mnetWarn.forEach(function(r){
+      var fp0=pd(r.FProm),fprod=pd(r.Fprod||r.FProm),daysL=(fp0&&fprod)?daysDiff(fp0,fprod):0;
+      var esHoy=fprod&&fd(fprod)===fd(T);
+      var dKey=fprod?fd(fprod):'';
+      var isNewDate=dKey!==_prevWarnDate;_prevWarnDate=dKey;
+      var dateTag=isNewDate?'<div style="font-size:9px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:3px;line-height:1.3">'+fdShort(fprod)+'</div>':'<div style="font-size:9px;margin-bottom:3px;line-height:1.3;visibility:hidden">&nbsp;</div>';
+      var parts=RAW.filter(function(x){return String(x.OP)===String(r.OP);});
+      var totalCant=parts.filter(function(p){return p.STATUS==='V';}).reduce(function(s,p){return s+(parseInt(p.CANT)||0);},0);
+      var arts=getArts(r.OP);
+      tarjetasHtmlR.push('<div style="display:flex;flex-direction:column">'
+        +dateTag+
+        '<div class="late-card" style="background:rgba(249,115,22,.05);border:1px solid rgba(249,115,22,.2);border-left:4px solid var(--warn);width:230px" onclick="showDetail(\''+r.OP+'\')">'+
+        '<div style="display:flex;align-items:center;gap:4px;font-size:14px;font-weight:700;color:'+ac(r.AREA)+';margin-bottom:6px">'+subIcon(r.SUBAREA,r.AREA)+(r.AREA==='Aros'&&r.SUBAREA==='NUEVO'?'Aro nuevo':normSub(r.SUBAREA))+'</div>'+
+        '<div style="font-size:12px;font-weight:700;font-family:IBM Plex Mono,monospace;color:var(--muted);margin-bottom:2px">OP '+r.OP+(ped(r.OP)?'<span style="font-weight:400"> \u00b7 '+ped(r.OP)+'</span>':'')+' </div>'+
+        '<div style="font-size:10px;color:var(--muted);margin-bottom:8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-height:12px">'+(arts.length?(arts[0]||''):'&nbsp;')+'</div>'+
+        '<div style="display:flex;justify-content:space-between;align-items:center;font-size:10px;gap:6px;margin-top:auto">'+
+        '<span style="color:var(--muted);flex-shrink:0">'+fmtNum(totalCant)+' pzas \u00b7 '+(r.MAT||'--')+'</span>'+
+        (esHoy?'<span style="background:rgba(5,150,105,.18);color:var(--accent3);font-weight:700;padding:3px 8px;border-radius:6px;flex-shrink:0">Entrega hoy</span>':'<span style="background:rgba(249,115,22,.15);color:var(--warn);font-weight:600;padding:3px 8px;border-radius:6px;font-family:IBM Plex Mono,monospace;flex-shrink:0">'+fdShort(fp0)+' \u2192 '+fdShort(fprod)+'</span>')+
+        '</div></div></div>');
+    });
+    document.getElementById('rp').innerHTML='<div style="display:flex;flex-wrap:wrap;gap:10px;align-items:flex-start">'+tarjetasHtmlR.join('')+'</div>';
   }
   // CERRADAS - 5 biz days
   var bizD=0,bizCur=new Date(T);
