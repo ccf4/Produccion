@@ -573,7 +573,7 @@ function nombreLegible(nombre){
   var n=nombre.trim();
   var i=n.indexOf(',');
   if(i>0)n=n.slice(0,i).trim();
-  var MAX=28;
+  var MAX=45;
   if(n.length>MAX){
     var corte=n.lastIndexOf(' ',MAX);
     n=(corte>10?n.slice(0,corte):n.slice(0,MAX)).trim();
@@ -664,7 +664,7 @@ function buildCorreoVendedor(vendCode,filas,T){
   var primeraProxima=true;
   filas.proximas.forEach(function(dia){
     if(!dia.rows.length)return;
-    var encabezado=primeraProxima?textoNegrita('PR\u00d3XIMA(S) ENTREGA(S)'):textoNegrita('ENTREGAS programadas');
+    var encabezado=primeraProxima?textoNegrita('PR\u00d3XIMA(S) ENTREGA(S)'):textoNegrita('ENTREGAS PROGRAMADAS');
     primeraProxima=false;
     lines.push(encabezado+' \u2014 '+dia.label+':');
     dia.rows.forEach(function(r){lines.push(lineaOPSinVend(r,fd(pd(r.Fprod||r.FProm))));});
