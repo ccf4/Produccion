@@ -9,17 +9,14 @@ permissions:
 jobs:
   generar:
     runs-on: ubuntu-latest
+    # Imagen oficial de Playwright: ya trae Python, pip y Chromium instalados,
+    # así nos ahorramos el "pip install playwright" + "playwright install --with-deps
+    # chromium" de cada corrida (esos dos pasos eran el grueso del tiempo: descargar
+    # Chromium + sus librerías de sistema desde cero cada vez).
+    container:
+      image: mcr.microsoft.com/playwright/python:v1.56.0-noble
     steps:
       - uses: actions/checkout@v4
-
-      - uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
-
-      - name: Instalar dependencias
-        run: |
-          pip install playwright
-          playwright install --with-deps chromium
 
       - name: Generar el reporte (usa index.html/overrides.json/cierres.json ya en el repo)
         run: |
@@ -33,6 +30,7 @@ jobs:
           mv -f resumen_ejecutivo.pdf resumen_ejecutivo/latest.pdf
           printf '{"generated_at":"%s"}' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > resumen_ejecutivo/status.json
           rm -f resumen_ejecutivo.html resumen_ejecutivo_preview.png gen_resumen_ejecutivo.py subicon_template.js
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add resumen_ejecutivo/latest.pdf resumen_ejecutivo/status.json
