@@ -9,14 +9,24 @@ permissions:
 jobs:
   generar:
     runs-on: ubuntu-latest
-    # Imagen oficial de Playwright: ya trae Python, pip y Chromium instalados,
-    # así nos ahorramos el "pip install playwright" + "playwright install --with-deps
-    # chromium" de cada corrida (esos dos pasos eran el grueso del tiempo: descargar
-    # Chromium + sus librerías de sistema desde cero cada vez).
+    # Imagen oficial de Playwright: ya trae Chromium y sus dependencias de
+    # sistema instaladas, así nos ahorramos el "playwright install --with-deps
+    # chromium" de cada corrida (la parte lenta: descargar Chromium + sus
+    # librerías de sistema desde cero cada vez). El paquete de Python de
+    # Playwright sí hay que instalarlo aparte (ver siguiente paso), pero eso
+    # es rápido.
     container:
       image: mcr.microsoft.com/playwright/python:v1.56.0-noble
     steps:
       - uses: actions/checkout@v4
+
+      # La imagen de Playwright ya trae Chromium y sus dependencias de sistema
+      # instaladas, pero (a pesar de lo que dice su documentación) NO trae el
+      # paquete de Python instalado — hay que instalarlo aparte. Esto es rápido
+      # (es un paquete chico, no vuelve a bajar Chromium), así que no reintroduce
+      # el problema original de lentitud.
+      - name: Instalar el paquete de Playwright para Python
+        run: pip install playwright
 
       - name: Generar el reporte (usa index.html/overrides.json/cierres.json ya en el repo)
         run: |
