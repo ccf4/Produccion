@@ -24,8 +24,11 @@ exportar el PDF.
 
 USO
 ---
-1. Actualiza las constantes TODAY / EXCLUDE más abajo para la corrida que
-   toca (la ventana GRID/W0/W1 se recalcula sola a partir de TODAY).
+1. TODAY se calcula solo (fecha actual en hora de México) — no hace falta
+   tocarla; la ventana GRID/W0/W1 se recalcula sola a partir de ahí. Si
+   alguna vez hace falta reproducir una corrida de un día específico
+   (debug), se puede forzar con la variable de entorno RESUMEN_TODAY en
+   formato AAAA-MM-DD.
 2. Deja `index.html`, `cierres.json`, `overrides.json` (los 3 más recientes de
    GitHub, repo ccf4/Produccion) y `subicon_template.js` (del proyecto, es el
    MISMO archivo que usan index.html/matex.html — cópialo tal cual, no lo
@@ -58,12 +61,20 @@ bordes que separan "esta semana" de la previa y de la próxima — se calculan
 solos a partir de GRID, no hay que tocar nada.
 """
 import json, os, re
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta, timezone
 
 # ============================================================
-# CONFIG — ajustar en cada corrida
+# CONFIG
 # ============================================================
-TODAY = date(2026, 9, 24)
+# "Hoy" se calcula solo, en hora de México (UTC-6 fijo — México eliminó el
+# horario de verano en la mayor parte del país desde 2022, igual que el
+# resto del panel/paneles ya lo asumen). Antes había que editar esta fecha
+# a mano en cada corrida manual (el script se usaba solo desde chat); ahora
+# que corre automático desde el Action, ya no hace falta tocarla.
+# RESUMEN_TODAY (formato AAAA-MM-DD) permite forzarla para debug/pruebas.
+_MX = timezone(timedelta(hours=-6))
+_override = os.environ.get('RESUMEN_TODAY')
+TODAY = date.fromisoformat(_override) if _override else datetime.now(_MX).date()
 EXCLUDE = {"9098", "29841", "30550"}
 
 # Ventana: semana previa (contexto gris) + esta semana + próxima semana,
