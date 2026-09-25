@@ -9,29 +9,39 @@ permissions:
 jobs:
   generar:
     runs-on: ubuntu-latest
-    # Imagen oficial de Playwright: ya trae Chromium y sus dependencias de
-    # sistema instaladas, así nos ahorramos el "playwright install --with-deps
-    # chromium" de cada corrida (la parte lenta: descargar Chromium + sus
-    # librerías de sistema desde cero cada vez). El paquete de Python de
-    # Playwright sí hay que instalarlo aparte (ver siguiente paso), pero eso
-    # es rápido.
-    container:
-      image: mcr.microsoft.com/playwright/python:v1.56.0-noble
     steps:
       - uses: actions/checkout@v4
 
-      # La imagen de Playwright ya trae Chromium y sus dependencias de sistema
-      # instaladas, pero (a pesar de lo que dice su documentación) NO trae el
-      # paquete de Python instalado — hay que instalarlo aparte. Esto es rápido
-      # (es un paquete chico, no vuelve a bajar Chromium), así que no reintroduce
-      # el problema original de lentitud.
-      #
-      # IMPORTANTE: la versión del paquete de Python DEBE coincidir exacto con
-      # la versión de la imagen (arriba, v1.56.0-noble) — Playwright exige que
-      # ambas coincidan. Si en el futuro se sube el tag de la imagen, hay que
-      # actualizar este número también (y viceversa).
-      - name: Instalar el paquete de Playwright para Python (misma versión que la imagen)
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Instalar el paquete de Playwright para Python
         run: pip install playwright==1.56.0
+
+      # El binario de Chromium (~150MB) se guarda en caché entre corridas, en
+      # vez de descargarlo desde cero cada vez (eso era lo que hacía lenta
+      # cada corrida, ya sea instalándolo a mano o bajando la imagen completa
+      # de Playwright de Docker). Clave por versión: si el día de mañana se
+      # sube la versión de arriba, se genera sola una caché nueva.
+      - name: Restaurar Chromium en caché
+        id: playwright-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-browsers-${{ runner.os }}-1.56.0
+
+      - name: Descargar Chromium + dependencias de sistema (solo la primera vez)
+        if: steps.playwright-cache.outputs.cache-hit != 'true'
+        run: playwright install --with-deps chromium
+
+      # Las dependencias de sistema (apt) no viven dentro de la caché de
+      # arriba (viven en la máquina virtual, que es nueva en cada corrida),
+      # así que hay que reinstalarlas siempre — pero esto es rápido (solo
+      # paquetes de apt, no vuelve a bajar Chromium).
+      - name: Reinstalar dependencias de sistema (cuando el binario ya viene de caché)
+        if: steps.playwright-cache.outputs.cache-hit == 'true'
+        run: playwright install-deps chromium
 
       - name: Generar el reporte (usa index.html/overrides.json/cierres.json ya en el repo)
         run: |
@@ -45,7 +55,6 @@ jobs:
           mv -f resumen_ejecutivo.pdf resumen_ejecutivo/latest.pdf
           printf '{"generated_at":"%s"}' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > resumen_ejecutivo/status.json
           rm -f resumen_ejecutivo.html resumen_ejecutivo_preview.png gen_resumen_ejecutivo.py subicon_template.js
-          git config --global --add safe.directory "$GITHUB_WORKSPACE"
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add resumen_ejecutivo/latest.pdf resumen_ejecutivo/status.json
