@@ -356,7 +356,7 @@ function updateEntregasHeader(){
   if(rows.length>=3){rows[1].textContent=dd+'/'+mmm+'/'+yy;rows[2].textContent=hh+':'+mi;}
 }
 function loadCierres(){
-  fetch('https://raw.githubusercontent.com/ccf4/Produccion/main/cierres.json')
+  fetch('https://raw.githubusercontent.com/ccf4/Produccion/main/cierres.json?t='+Date.now(),{cache:'no-store'})
     .then(function(r){return r.ok?r.json():[];})
     .then(function(arr){
       (arr||[]).forEach(function(o){CIERRES[String(o.op)]={fecha:o.fecha,timestamp:o.timestamp};});
@@ -391,7 +391,7 @@ function saveCierre(op){
   }).catch(function(){msgEl.textContent='Error de conexión.';msgEl.style.color='var(--danger)';});
 }
 function loadOverrides(){
-  fetch('https://raw.githubusercontent.com/ccf4/Produccion/main/overrides.json')
+  fetch('https://raw.githubusercontent.com/ccf4/Produccion/main/overrides.json?t='+Date.now(),{cache:'no-store'})
     .then(function(r){return r.ok?r.json():[];})
     .then(function(arr){
       (arr||[]).forEach(function(o){OVERRIDES[String(o.op)]=o.fecha;});
