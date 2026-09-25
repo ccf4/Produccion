@@ -25,8 +25,13 @@ jobs:
       # paquete de Python instalado — hay que instalarlo aparte. Esto es rápido
       # (es un paquete chico, no vuelve a bajar Chromium), así que no reintroduce
       # el problema original de lentitud.
-      - name: Instalar el paquete de Playwright para Python
-        run: pip install playwright
+      #
+      # IMPORTANTE: la versión del paquete de Python DEBE coincidir exacto con
+      # la versión de la imagen (arriba, v1.56.0-noble) — Playwright exige que
+      # ambas coincidan. Si en el futuro se sube el tag de la imagen, hay que
+      # actualizar este número también (y viceversa).
+      - name: Instalar el paquete de Playwright para Python (misma versión que la imagen)
+        run: pip install playwright==1.56.0
 
       - name: Generar el reporte (usa index.html/overrides.json/cierres.json ya en el repo)
         run: |
