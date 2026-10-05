@@ -1,0 +1,21 @@
+{
+ "clasificacion": {
+  "31461": {
+   "AREA": "Disco",
+   "SUBAREA": "Manual",
+   "nota": "cortes manuales de rectángulos o tiras de malla (Chato, 05/oct/2026)"
+  }
+ },
+ "reestructuradas": {},
+ "vendedor_pedido": {
+  "P-29399": "LF",
+  "P-29406": "EM",
+  "P-29398": "LF",
+  "P-29397": "OP",
+  "P-29380": "YF",
+  "P-29396": "OP",
+  "P-29419": "NM",
+  "P-29376": "EM",
+  "P-29431": "LF"
+ }
+}
