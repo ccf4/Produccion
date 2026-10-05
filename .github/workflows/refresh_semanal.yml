@@ -1,9 +1,13 @@
 name: Refresh semanal
 
-# Se dispara a mano (o desde el lector de correo). Lee los archivos de la carpeta
-# nuevos/ del repo PRIVADO ccf4/matex-inbox, corre tools/refresh/refresh.py y,
-# si el reporte sale limpio, publica index.html (Produccion) y matex.html +
-# historico.json (consulta_produccion). Si hay algo que revisar NO publica nada.
+# Dos formas de correrlo:
+#  1) A mano (Actions > Refresh semanal > Run workflow): procesa lo que haya en nuevos/ de matex-inbox.
+#     'aplicar' = false solo hace la prueba y genera el reporte; true publica si sale limpio.
+#  2) Solo, cada 30 min, si el lector de correo dejó un lote COMPLETO en nuevos/:
+#       - marca LISTO   (solo ERP): procesa y publica si sale limpio.
+#       - marca REVISAR (trae PROD): corre solo la PRUEBA y deja el reporte; publicar es manual
+#         (corre este flujo a mano con aplicar = true cuando el reporte esté bien).
+#     Si algo requiere revisión NO publica y NO reintenta: revisas el reporte y lo corres a mano.
 
 on:
   workflow_dispatch:
@@ -12,6 +16,8 @@ on:
         description: 'true = publicar si sale limpio · false = solo prueba (genera el reporte y no toca nada)'
         required: true
         default: 'false'
+  schedule:
+    - cron: '7,37 * * * *'
 
 permissions:
   contents: write
@@ -20,28 +26,57 @@ concurrency:
   group: refresh-semanal
   cancel-in-progress: false
 
-env:
-  TOKEN: ${{ secrets.MATEX_TOKEN }}   # el mismo token fine-grained, con acceso a los 3 repos
-
 jobs:
   refresh:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-        with: { path: prod, token: '${{ secrets.MATEX_TOKEN }}' }
-      - uses: actions/checkout@v4
-        with: { repository: ccf4/consulta_produccion, path: mtx, token: '${{ secrets.MATEX_TOKEN }}' }
-      - uses: actions/checkout@v4
         with: { repository: ccf4/matex-inbox, path: inbox, token: '${{ secrets.MATEX_TOKEN }}' }
 
+      - name: Revisar si hay algo que procesar
+        id: chk
+        run: |
+          archivos=$(ls -A inbox/nuevos 2>/dev/null | grep -v -x -e '.gitkeep' -e 'LISTO' -e 'REVISAR' || true)
+          hay=false
+          if [ "${{ github.event_name }}" = "schedule" ]; then
+            aplicar=true
+            if [ -n "$archivos" ] && [ -f inbox/nuevos/REVISAR ]; then hay=true; aplicar=false
+            elif [ -n "$archivos" ] && [ -f inbox/nuevos/LISTO ]; then hay=true; fi
+          else
+            [ -n "$archivos" ] && hay=true
+            aplicar="${{ github.event.inputs.aplicar }}"
+          fi
+          echo "hay=$hay" >> "$GITHUB_OUTPUT"
+          echo "aplicar=$aplicar" >> "$GITHUB_OUTPUT"
+          if [ "$hay" = "true" ]; then echo "Archivos a procesar:"; echo "$archivos"; else echo "No hay un lote listo en nuevos/."; echo "No hay un lote listo en nuevos/ de matex-inbox. No se hizo nada." >> "$GITHUB_STEP_SUMMARY"; fi
+
+      - name: Consumir la marca (LISTO/REVISAR; evita reintentos si algo requiere revisión)
+        if: steps.chk.outputs.hay == 'true'
+        run: |
+          cd inbox
+          git config user.name "github-actions[bot]"; git config user.email "github-actions[bot]@users.noreply.github.com"
+          git rm -q --ignore-unmatch nuevos/LISTO nuevos/REVISAR
+          git diff --cached --quiet || { git commit -qm "lote tomado" && git pull -q --rebase && git push; }
+
+      - uses: actions/checkout@v4
+        if: steps.chk.outputs.hay == 'true'
+        with: { path: prod, token: '${{ secrets.MATEX_TOKEN }}' }
+      - uses: actions/checkout@v4
+        if: steps.chk.outputs.hay == 'true'
+        with: { repository: ccf4/consulta_produccion, path: mtx, token: '${{ secrets.MATEX_TOKEN }}' }
+
       - uses: actions/setup-python@v5
+        if: steps.chk.outputs.hay == 'true'
         with: { python-version: '3.12' }
-      - run: pip install openpyxl
+      - if: steps.chk.outputs.hay == 'true'
+        run: pip install openpyxl
 
       - name: Armar la carpeta de trabajo (archivos nuevos + el último Documentos ya procesado)
+        if: steps.chk.outputs.hay == 'true'
         run: |
           mkdir -p work
           cp -r inbox/nuevos/. work/ 2>/dev/null || true
+          rm -f work/LISTO work/REVISAR work/.gitkeep
           # Documentos de la semana anterior: los pedidos viejos se resuelven con él
           prev=$(ls -1 inbox/procesados/*DOCUMENTOS* 2>/dev/null | sort | tail -n 1 || true)
           [ -n "$prev" ] && cp "$prev" work/ || true
@@ -49,9 +84,9 @@ jobs:
           cp prod/cierres.json snap_cierres.json
           cp prod/overrides.json snap_overrides.json
           ls -la work
-          [ -n "$(ls -A inbox/nuevos 2>/dev/null | grep -v '^.gitkeep$')" ] || { echo "No hay archivos en nuevos/"; exit 1; }
 
       - name: Correr refresh.py
+        if: steps.chk.outputs.hay == 'true'
         id: run
         continue-on-error: true
         run: |
@@ -63,28 +98,29 @@ jobs:
           exit ${PIPESTATUS[0]}
 
       - name: Resumen en la pantalla de la corrida
-        if: always()
+        if: always() && steps.chk.outputs.hay == 'true'
         run: |
           [ -f out/reporte.md ] && cat out/reporte.md >> "$GITHUB_STEP_SUMMARY" || echo "refresh.py no generó reporte" >> "$GITHUB_STEP_SUMMARY"
 
       - name: Guardar el reporte (siempre, en el repo privado)
-        if: always()
+        if: always() && steps.chk.outputs.hay == 'true'
         run: |
           [ -f out/reporte.md ] || exit 0
           mkdir -p inbox/reportes
           cp out/reporte.md "inbox/reportes/reporte_$(date -u +%Y%m%d_%H%M).md"
           cd inbox
           git config user.name "github-actions[bot]"; git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add reportes && git commit -m "reporte de refresh" && git push || true
+          git add reportes && git commit -qm "reporte de refresh" && git pull -q --rebase && git push || true
 
       - name: Detener si requiere revisión o es solo prueba
-        if: steps.run.outcome != 'success' || github.event.inputs.aplicar != 'true'
+        if: steps.chk.outputs.hay == 'true' && (steps.run.outcome != 'success' || steps.chk.outputs.aplicar != 'true')
         run: |
-          if [ "${{ steps.run.outcome }}" != "success" ]; then echo "::error::El refresh requiere revisión o falló. No se publicó nada. Revisa el reporte."; exit 1; fi
-          echo "Modo prueba: no se publicó nada."
+          if [ "${{ steps.run.outcome }}" != "success" ]; then echo "::error::El refresh requiere revisión o falló. No se publicó nada. Revisa el reporte (aquí abajo y en matex-inbox/reportes). Cuando lo resuelvas, corre el flujo a mano."; exit 1; fi
+          echo "Modo prueba: no se publicó nada. Si el reporte está bien, corre este flujo a mano con aplicar = true."
+          echo "PRUEBA (no se publicó nada). Si el reporte está bien, corre el flujo a mano con aplicar = true." >> "$GITHUB_STEP_SUMMARY"
 
       - name: Publicar en los dos repos
-        if: steps.run.outcome == 'success' && github.event.inputs.aplicar == 'true'
+        if: steps.chk.outputs.hay == 'true' && steps.run.outcome == 'success' && steps.chk.outputs.aplicar == 'true'
         run: |
           set -e
           # Si alguien subió index/matex mientras corría, no pisarlo
@@ -105,6 +141,7 @@ jobs:
           publicar mtx matex.html historico.json
           # archivos recibidos -> procesados/
           cd inbox
+          git pull -q --rebase
           mkdir -p procesados
           find nuevos -type f ! -name .gitkeep -exec git mv {} procesados/ \;
           git config user.name "github-actions[bot]"; git config user.email "github-actions[bot]@users.noreply.github.com"
