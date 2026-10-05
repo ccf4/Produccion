@@ -95,11 +95,14 @@ jobs:
           done
           python prod/tools/refresh/publish.py --out out --prod-repo prod --mtx-repo mtx \
             --snap-cierres snap_cierres.json --snap-overrides snap_overrides.json
-          for r in prod mtx; do
+          publicar() {   # $1 = carpeta del repo, resto = archivos que le tocan a ese repo
+            r=$1; shift
             git -C $r config user.name "github-actions[bot]"; git -C $r config user.email "github-actions[bot]@users.noreply.github.com"
-            git -C $r add -A index.html matex.html historico.json cierres.json overrides.json
+            git -C $r add -A -- "$@"
             git -C $r diff --cached --quiet || { git -C $r commit -m "Refresh semanal $(date -u +%F)"; git -C $r push; }
-          done
+          }
+          publicar prod index.html cierres.json overrides.json
+          publicar mtx matex.html historico.json
           # archivos recibidos -> procesados/
           cd inbox
           mkdir -p procesados
