@@ -1,0 +1,108 @@
+name: Refresh semanal
+
+# Se dispara a mano (o desde el lector de correo). Lee los archivos de la carpeta
+# nuevos/ del repo PRIVADO ccf4/matex-inbox, corre tools/refresh/refresh.py y,
+# si el reporte sale limpio, publica index.html (Produccion) y matex.html +
+# historico.json (consulta_produccion). Si hay algo que revisar NO publica nada.
+
+on:
+  workflow_dispatch:
+    inputs:
+      aplicar:
+        description: 'true = publicar si sale limpio · false = solo prueba (genera el reporte y no toca nada)'
+        required: true
+        default: 'false'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: refresh-semanal
+  cancel-in-progress: false
+
+env:
+  TOKEN: ${{ secrets.MATEX_TOKEN }}   # el mismo token fine-grained, con acceso a los 3 repos
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: { path: prod, token: '${{ secrets.MATEX_TOKEN }}' }
+      - uses: actions/checkout@v4
+        with: { repository: ccf4/consulta_produccion, path: mtx, token: '${{ secrets.MATEX_TOKEN }}' }
+      - uses: actions/checkout@v4
+        with: { repository: ccf4/matex-inbox, path: inbox, token: '${{ secrets.MATEX_TOKEN }}' }
+
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.12' }
+      - run: pip install openpyxl
+
+      - name: Armar la carpeta de trabajo (archivos nuevos + el último Documentos ya procesado)
+        run: |
+          mkdir -p work
+          cp -r inbox/nuevos/. work/ 2>/dev/null || true
+          # Documentos de la semana anterior: los pedidos viejos se resuelven con él
+          prev=$(ls -1 inbox/procesados/*DOCUMENTOS* 2>/dev/null | sort | tail -n 1 || true)
+          [ -n "$prev" ] && cp "$prev" work/ || true
+          # cierres/overrides tal como están ahora (para saber cuáles se hornearon)
+          cp prod/cierres.json snap_cierres.json
+          cp prod/overrides.json snap_overrides.json
+          ls -la work
+          [ -n "$(ls -A inbox/nuevos 2>/dev/null | grep -v '^.gitkeep$')" ] || { echo "No hay archivos en nuevos/"; exit 1; }
+
+      - name: Correr refresh.py
+        id: run
+        continue-on-error: true
+        run: |
+          python prod/tools/refresh/refresh.py \
+            --index prod/index.html --matex mtx/matex.html --historico mtx/historico.json \
+            --cierres snap_cierres.json --overrides snap_overrides.json \
+            --decisiones prod/tools/refresh/decisiones.json \
+            --inbox work --out out | tee salida.txt
+          exit ${PIPESTATUS[0]}
+
+      - name: Resumen en la pantalla de la corrida
+        if: always()
+        run: |
+          [ -f out/reporte.md ] && cat out/reporte.md >> "$GITHUB_STEP_SUMMARY" || echo "refresh.py no generó reporte" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Guardar el reporte (siempre, en el repo privado)
+        if: always()
+        run: |
+          [ -f out/reporte.md ] || exit 0
+          mkdir -p inbox/reportes
+          cp out/reporte.md "inbox/reportes/reporte_$(date -u +%Y%m%d_%H%M).md"
+          cd inbox
+          git config user.name "github-actions[bot]"; git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add reportes && git commit -m "reporte de refresh" && git push || true
+
+      - name: Detener si requiere revisión o es solo prueba
+        if: steps.run.outcome != 'success' || github.event.inputs.aplicar != 'true'
+        run: |
+          if [ "${{ steps.run.outcome }}" != "success" ]; then echo "::error::El refresh requiere revisión o falló. No se publicó nada. Revisa el reporte."; exit 1; fi
+          echo "Modo prueba: no se publicó nada."
+
+      - name: Publicar en los dos repos
+        if: steps.run.outcome == 'success' && github.event.inputs.aplicar == 'true'
+        run: |
+          set -e
+          # Si alguien subió index/matex mientras corría, no pisarlo
+          for r in prod mtx; do
+            git -C $r fetch -q origin
+            [ "$(git -C $r rev-parse HEAD)" = "$(git -C $r rev-parse origin/HEAD)" ] || git -C $r diff --quiet HEAD origin/HEAD -- index.html matex.html historico.json || { echo "::error::$r cambió durante la corrida; vuelve a correr."; exit 1; }
+            git -C $r pull -q --rebase
+          done
+          python prod/tools/refresh/publish.py --out out --prod-repo prod --mtx-repo mtx \
+            --snap-cierres snap_cierres.json --snap-overrides snap_overrides.json
+          for r in prod mtx; do
+            git -C $r config user.name "github-actions[bot]"; git -C $r config user.email "github-actions[bot]@users.noreply.github.com"
+            git -C $r add -A index.html matex.html historico.json cierres.json overrides.json
+            git -C $r diff --cached --quiet || { git -C $r commit -m "Refresh semanal $(date -u +%F)"; git -C $r push; }
+          done
+          # archivos recibidos -> procesados/
+          cd inbox
+          mkdir -p procesados
+          find nuevos -type f ! -name .gitkeep -exec git mv {} procesados/ \;
+          git config user.name "github-actions[bot]"; git config user.email "github-actions[bot]@users.noreply.github.com"
+          git commit -qm "archivos procesados" && git push
