@@ -315,7 +315,14 @@ def read_prod(path):
         for k in ('MESH','MAT'): row[k] = '' if row[k] is None else str(row[k]) if not isinstance(row[k], str) else row[k]
         if row['OP'] == '31234': row['VENDEDOR'] = 'EM'
         out.append({k: row[k] for k in RAW_KEYS})
-    return out
+    # El ERP repite la partida con CANT=0 y GOLPE=0 (movimientos extra): se descartan si existe la fila con cantidad.
+    kk = lambda r: (r['OP'], r['PART'], (norm_sub(r['SUBAREA']) or '').upper())
+    con_cant = {kk(r) for r in out if str(r['CANT']) not in ('0', '', '0.0') or str(r['GOLPE']) not in ('0', '', '0.0')}
+    limpio = [r for r in out if not (str(r['CANT']) in ('0', '', '0.0') and str(r['GOLPE']) in ('0', '', '0.0') and kk(r) in con_cant)]
+    READ_PROD_INFO['fantasmas'] = len(out) - len(limpio)
+    return limpio
+
+READ_PROD_INFO = {}
 
 # ----------------------------------------------------------------------------- merge PROD
 def merge_prod(current, xrows, restruct_dec):
@@ -502,6 +509,10 @@ def run(a):
         mh = re.search(r'PROD:</span><span[^>]*>(\d{2})/(\w{3})/(\d{2})</span>', idx_html)
         hdate = date(2000 + int(mh.group(3)), MESES.index(mh.group(2)) + 1, int(mh.group(1))) if mh else None
         prod_rows = read_prod(inputs['prod'])
+        for r in prod_rows:
+            al = decisions.get('alias_part', {}).get(r['OP'], {})
+            if r['PART'] in al: r['PART'] = al[r['PART']]
+        if READ_PROD_INFO.get('fantasmas'): notes.append('PROD: se descartaron %d fila(s) repetidas con CANT=0 y GOLPE=0 (el ERP repite la partida; se queda la que trae cantidad).' % READ_PROD_INFO['fantasmas'])
         prod_info = {'archivo': os.path.basename(inputs['prod']), 'fecha': pdate, 'header': hdate,
                      'aplicar': bool(a.force_prod or (pdate and (not hdate or pdate > hdate)))}
     prod_ops = {r['OP'] for r in (prod_rows or [])}
