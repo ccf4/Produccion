@@ -66,6 +66,22 @@ def set_header(html, label, text):
     if not pat.search(html): raise ValueError('no encontré el encabezado ' + label)
     return pat.sub(lambda m: m.group(1) + text + m.group(2), html, count=1)
 
+
+ENT_PAT = re.compile(r'(class="entregas-row">Entregas:</span><span[^>]*class="entregas-row">)(\d{2})/(\w{3})/(\d{2})(</span><span[^>]*class="entregas-row">)(\d{2}):(\d{2})(</span>)')
+def set_entregas(html, timestamps):
+    """Encabezado 'Entregas: DD/mmm/AA HH:MM' (hora de México, UTC-6, en bloques de 15 min): solo avanza, nunca retrocede."""
+    if not timestamps: return html, None
+    from datetime import datetime, timedelta
+    best = max(datetime.strptime(t[:19], '%Y-%m-%dT%H:%M:%S') for t in timestamps) - timedelta(hours=6)
+    best = best.replace(minute=best.minute // 15 * 15, second=0, microsecond=0)
+    m = ENT_PAT.search(html)
+    if not m: return html, None
+    try: cur = datetime(2000 + int(m.group(4)), MESES.index(m.group(3)) + 1, int(m.group(2)), int(m.group(6)), int(m.group(7)))
+    except ValueError: cur = datetime(2000, 1, 1)
+    if best <= cur: return html, None
+    txt = ('%02d/%s/%02d' % (best.day, MESES[best.month-1], best.year % 100), '%02d:%02d' % (best.hour, best.minute))
+    return ENT_PAT.sub(lambda mm: mm.group(1) + txt[0] + mm.group(5) + txt[1] + mm.group(8), html, count=1), txt
+
 def fmt_hdr(d): return '%02d/%s/%02d' % (d.day, MESES[d.month-1], d.year % 100)
 def fmt_md(d): return '%d/%d/%d' % (d.month, d.day, d.year)
 def parse_md(s):
@@ -588,6 +604,13 @@ def run(a):
         for o in restr:
             if o not in dec: pending.append({'tipo': 'OP reestructurada (decidir: reemplazar V con PROD o mantener)', 'op': o, 'detalle': ''})
         raw[:] = merged
+        for op_f, campos in decisions.get('forzar', {}).items():       # valores que el PROD trae mal y se corrigen a mano
+            if op_f.startswith('_'): continue
+            for r in raw:
+                if r['OP'] == op_f and r['STATUS'] == 'V':
+                    for f, v in campos.items():
+                        if f != 'nota' and str(r[f]) != str(v):
+                            notes.append('OP %s (%s): %s del PROD (%s) reemplazado por %s según decisiones.json.' % (op_f, r['PART'], f, r[f], v)); r[f] = str(v)
         for r in raw:
             if r['OP'] in {x['OP'] for x in prod_rows} and r['OP'] not in full['TOOLTIP_DATA']:
                 full['TOOLTIP_DATA'][r['OP']] = {'tq': r['TROQUEL1'], 'ms': r['MESH'], 'mt': r['MAT'], 'sub': norm_sub(r['SUBAREA'])}
@@ -604,6 +627,9 @@ def run(a):
     out_mtx = mtx_html
     for n in ('RAW','PEDIDOS','ARTICULOS','MNET_FECHAS','TOOLTIP_DATA','CLIENTES'): out_mtx = set_const(out_mtx, n, act[n])
     out_mtx = set_const(out_mtx, 'MISSING', full['MISSING'])
+    ts_c = [c['timestamp'] for c in cierres if c.get('timestamp')]
+    out_idx, ent1 = set_entregas(out_idx, ts_c); out_mtx, ent2 = set_entregas(out_mtx, ts_c)
+    if ent1 or ent2: notes.append('Encabezado "Entregas" actualizado a %s %s (último cierre horneado).' % (ent1 or ent2))
     out_hist = {k: his[k] for k in ('RAW','ARTICULOS','TOOLTIP_DATA','PEDIDOS','CLIENTES','MNET_FECHAS')}
 
     # 6) validaciones automáticas

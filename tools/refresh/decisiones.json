@@ -24,5 +24,11 @@
    "2/2|3000": "2c/2",
    "nota": "PROD parte el PACK pendiente en 2500 (10/12) y 3000 (10/22); el panel ya tenía 2a/2 entregada (Chato, 06/oct/2026)"
   }
+ },
+ "forzar": {
+  "31459": {
+   "GOLPE": "500",
+   "nota": "El PROD trae 100 golpes por error; son 500 (Chato, 06/oct/2026). Quitar cuando el ERP lo corrija."
+  }
  }
 }
