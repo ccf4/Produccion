@@ -143,6 +143,11 @@ jobs:
           cd inbox
           git pull -q --rebase
           mkdir -p procesados
-          find nuevos -type f ! -name .gitkeep -exec git mv {} procesados/ \;
+          # si ya existe un archivo con ese nombre en procesados/ (p. ej. archivo.zip de la semana pasada), se le antepone la fecha
+          for f in $(find nuevos -type f ! -name .gitkeep); do
+            b=$(basename "$f"); d="procesados/$b"
+            [ -e "$d" ] && d="procesados/$(date -u +%Y%m%d_%H%M)_$b"
+            git mv "$f" "$d"
+          done
           git config user.name "github-actions[bot]"; git config user.email "github-actions[bot]@users.noreply.github.com"
           git commit -qm "archivos procesados" && git push
