@@ -29,6 +29,11 @@
   "31459": {
    "GOLPE": "500",
    "nota": "El PROD trae 100 golpes por error; son 500 (Chato, 06/oct/2026). Quitar cuando el ERP lo corrija."
+  },
+  "31463": {
+   "CANT": "100",
+   "GOLPE": "500",
+   "nota": "El PROD trajo 10 piezas por error; son 100 (Chato, 06/oct/2026). Quitar cuando el ERP lo corrija."
   }
  }
 }
