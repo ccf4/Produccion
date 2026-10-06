@@ -511,7 +511,8 @@ def run(a):
         prod_rows = read_prod(inputs['prod'])
         for r in prod_rows:
             al = decisions.get('alias_part', {}).get(r['OP'], {})
-            if r['PART'] in al: r['PART'] = al[r['PART']]
+            nuevo = al.get('%s|%s' % (r['PART'], r['CANT'])) or al.get(r['PART'])   # "2/2|2500" (por cantidad) o "2/2" (todas)
+            if nuevo: r['PART'] = nuevo
         if READ_PROD_INFO.get('fantasmas'): notes.append('PROD: se descartaron %d fila(s) repetidas con CANT=0 y GOLPE=0 (el ERP repite la partida; se queda la que trae cantidad).' % READ_PROD_INFO['fantasmas'])
         prod_info = {'archivo': os.path.basename(inputs['prod']), 'fecha': pdate, 'header': hdate,
                      'aplicar': bool(a.force_prod or (pdate and (not hdate or pdate > hdate)))}

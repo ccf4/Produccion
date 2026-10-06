@@ -20,7 +20,9 @@
  },
  "alias_part": {
   "31361": {
-   "2/2": "2b/2"
+   "2/2|2500": "2b/2",
+   "2/2|3000": "2c/2",
+   "nota": "PROD parte el PACK pendiente en 2500 (10/12) y 3000 (10/22); el panel ya tenía 2a/2 entregada (Chato, 06/oct/2026)"
   }
  }
 }
