@@ -55,10 +55,11 @@ main{padding:22px 28px;max-width:1600px;margin:0 auto;}
 .nb:disabled{opacity:.35;cursor:default;}
 .nb:hover{border-color:var(--accent);color:var(--accent);} .nb:disabled{opacity:.3;cursor:not-allowed;}
 .nb.has-match{border-color:#fb923c;color:#fb923c;animation:nbPulse 1.4s ease-in-out infinite;}
-.hdr-pdf{margin-left:14px;}
+.hdr-refresh{margin-left:14px;} .hdr-pdf{margin-left:8px;}
 @media (max-width:640px){
   .hdr-pdf{position:absolute;top:8px;right:12px;margin:0;}
-  .hdr-brand{padding-right:44px;}
+  .hdr-refresh{position:absolute;top:8px;right:52px;margin:0;}
+  .hdr-brand{padding-right:84px;}
 }
 /* App instalada en celular: las fechas de actualización solo se ven en vertical */
 @media (display-mode:standalone) and (orientation:landscape) and (pointer:coarse){.hdr-info{display:none;}}
@@ -171,6 +172,9 @@ select{background:var(--surface2);border:1px solid var(--border);color:var(--tex
       <span style="opacity:.75" class="entregas-row">Entregas:</span><span style="text-align:right" class="entregas-row">06/oct/26</span><span class="entregas-row">10:20</span>
     </div>
   </div>
+  <button class="nb hdr-refresh" id="refreshBtn" title="Actualizar datos" aria-label="Actualizar datos" onclick="refrescarApp()">
+    <svg viewBox="0 0 32 32" fill="none"><path d="M26 16a10 10 0 1 1-3.2-7.3" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/><path d="M24 4v6h-6" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+  </button>
   <button class="nb hdr-pdf" id="pdfBtn" title="Generar resumen ejecutivo (PDF)" aria-label="Generar resumen ejecutivo" onclick="generarResumen(this)">
     <svg viewBox="0 0 32 32" fill="none"><path d="M9 4h9l7 7v17a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"/><path d="M18 4v7h7" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"/><line x1="11" y1="18" x2="21" y2="18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><line x1="11" y1="22" x2="21" y2="22" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><line x1="11" y1="26" x2="17" y2="26" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
   </button>
@@ -3040,6 +3044,10 @@ function init(){
 }
 init();
 </script><div id="op-tooltip"></div><div id="hm-tooltip"></div><button onclick="showRapidaForm()" onmouseenter="this.style.opacity=1" onmouseleave="this.style.opacity=.7" title="Agregar OP rápida" style="position:fixed;bottom:16px;right:16px;width:34px;height:34px;border-radius:50%;background:var(--surface2);color:var(--muted);border:1px solid var(--border);font-size:16px;font-weight:600;box-shadow:0 2px 6px rgba(0,0,0,.3);cursor:pointer;z-index:200;line-height:1;opacity:.7;transition:opacity .15s">+</button>
+<script>
+/* Botón de actualizar: recarga la página con un parámetro nuevo para saltarse la copia guardada y conserva los demás parámetros (p. ej. ?editor=1). */
+function refrescarApp(){var u=new URL(location.href);u.searchParams.set('t',Date.now());location.href=u.toString();}
+</script>
 <script>if("serviceWorker" in navigator){window.addEventListener("load",function(){navigator.serviceWorker.register("sw.js?v1").catch(function(){});});}</script>
 </body></html>
 
