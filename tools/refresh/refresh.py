@@ -596,6 +596,24 @@ def run(a):
                 full['CLIENTES'][p] = {'num': num, 'nombre': d['nombre']}; nuevos_cli += 1
         log.append('CLIENTES: %d pedido(s) nuevo(s).' % nuevos_cli)
 
+    # 2b) Lote con solo Documentos (sin archivo de OPs): también se completan vendedores y clientes
+    if docs and not inputs['ops']:
+        ya = {(o, p) for o, p, v in vend_fill}
+        for r in raw:
+            if r['VENDEDOR']: continue
+            ref = full['PEDIDOS'].get(r['OP'])
+            v = (decisions.get('vendedor_pedido', {}).get(ref) or docs.get(ref, {}).get('vendedor')) if ref else ''
+            if v and (r['OP'], r['PART']) not in ya:
+                r['VENDEDOR'] = v; vend_fill.append((r['OP'], r['PART'], v))
+        by_name = collections.defaultdict(collections.Counter)
+        for p, v in full['CLIENTES'].items(): by_name[re.sub(r'\s+', ' ', v['nombre']).upper()][v['num']] += 1
+        nuevos_cli = 0
+        for p, d in docs.items():
+            if p not in full['CLIENTES']:
+                num = by_name[d['nombre'].upper()].most_common(1)[0][0] if by_name.get(d['nombre'].upper()) else ''
+                full['CLIENTES'][p] = {'num': num, 'nombre': d['nombre']}; nuevos_cli += 1
+        log.append('CLIENTES: %d pedido(s) nuevo(s).' % nuevos_cli)
+
     # 3) PROD
     prod_stats = prod_changes = restr = None
     if prod_info and prod_info['aplicar']:
