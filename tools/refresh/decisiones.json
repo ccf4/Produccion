@@ -35,5 +35,11 @@
    "GOLPE": "500",
    "nota": "El PROD trajo 10 piezas por error; son 100 (Chato, 06/oct/2026). Quitar cuando el ERP lo corrija."
   }
+ },
+ "descartar_prod": {
+  "31456": [
+   "SUSTITUCION"
+  ],
+  "_nota": "el PROD trae la 31456 como SUSTITUCION; no existe esa clasificación, se queda solo la partida Pack del ERP (Chato, 06/oct/2026)"
  }
 }

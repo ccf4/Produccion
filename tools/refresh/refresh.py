@@ -529,6 +529,11 @@ def run(a):
             al = decisions.get('alias_part', {}).get(r['OP'], {})
             nuevo = al.get('%s|%s' % (r['PART'], r['CANT'])) or al.get(r['PART'])   # "2/2|2500" (por cantidad) o "2/2" (todas)
             if nuevo: r['PART'] = nuevo
+        desc = decisions.get('descartar_prod', {})   # {"31456": ["SUSTITUCION"]}: filas del PROD que no deben existir en el panel
+        if desc:
+            antes = len(prod_rows)
+            prod_rows = [r for r in prod_rows if (norm_sub(r['SUBAREA']) or '').upper() not in {x.upper() for x in desc.get(r['OP'], []) if not str(x).startswith('_')}]
+            if len(prod_rows) != antes: notes.append('PROD: se descartaron %d fila(s) según decisiones.json (descartar_prod): %s.' % (antes - len(prod_rows), ', '.join(sorted(k for k in desc if not k.startswith('_')))))
         if READ_PROD_INFO.get('fantasmas'): notes.append('PROD: se descartaron %d fila(s) repetidas con CANT=0 y GOLPE=0 (el ERP repite la partida; se queda la que trae cantidad).' % READ_PROD_INFO['fantasmas'])
         prod_info = {'archivo': os.path.basename(inputs['prod']), 'fecha': pdate, 'header': hdate,
                      'aplicar': bool(a.force_prod or (pdate and (not hdate or pdate > hdate)))}
