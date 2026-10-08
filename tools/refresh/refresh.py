@@ -419,9 +419,46 @@ def derive_matex(full, today, days=90):
     return out_a, out_h, arch
 
 # ----------------------------------------------------------------------------- bake cierres / overrides
-def bake(raw, cierres, overrides):
+BAKE_INFO = []   # entregas parciales horneadas en esta corrida (para avisos y para revisar el PROD después)
+
+def letra_part(raw, op, part):
+    """'1/1' -> '1a/1' (primera letra libre dentro de la OP). Igual que el panel."""
+    m = re.match(r'^(\d+)([a-z]*)/(.+)$', str(part), re.I)
+    usadas = {r['PART'] for r in raw if r['OP'] == op}
+    if not m: return str(part) + 'a'
+    for i in range(26):
+        p = '%s%s/%s' % (m.group(1), chr(97 + i), m.group(3))
+        if p not in usadas: return p
+    return str(part) + 'x'
+
+def _entrega_partida(raw, c, notes):
+    """Entrega de una partida: completa (cant vacía o >= pendiente) o parcial (se parte en T entregada + V pendiente)."""
+    op, part = str(c['op']), c['part']
+    idx = next((i for i, r in enumerate(raw) if r['OP'] == op and r['PART'] == part and r['STATUS'] == 'V'), None)
+    if idx is None:
+        notes.append('Entrega de OP %s partida %s: no encontré esa partida pendiente en el panel (¿ya estaba cerrada?); se ignora.' % (op, part)); return 0
+    r = raw[idx]
+    cant = float(r['CANT'] or 0); q = c.get('cant')
+    q = cant if q in (None, '') else float(q)
+    if q <= 0: return 0
+    if q >= cant:
+        r['STATUS'] = 'T'; r['FTERM'] = c['fecha']; return 1
+    golpe = float(r['GOLPE'] or cant)
+    t = dict(r); t['STATUS'] = 'T'; t['FTERM'] = c['fecha']
+    t['CANT'] = fmt_qty(q); t['GOLPE'] = fmt_qty(round(golpe * q / cant)); t['PART'] = letra_part(raw, op, part)
+    r['CANT'] = fmt_qty(cant - q); r['GOLPE'] = fmt_qty(round(golpe * (cant - q) / cant))
+    raw.insert(idx, t)
+    BAKE_INFO.append({'op': op, 'part': part, 'tpart': t['PART'], 'q': q, 'c': cant, 'golpe_c': golpe})
+    notes.append('Entrega parcial OP %s partida %s: %s de %s entregadas el %s (quedan %s pendientes; la entregada queda como %s).' % (op, part, fmt_qty(q), fmt_qty(cant), c['fecha'], fmt_qty(cant - q), t['PART']))
+    return 1
+
+def bake(raw, cierres, overrides, parciales=True, notes=None):
     n_c = n_o = 0
-    for c in cierres:
+    notes = notes if notes is not None else []
+    for c in sorted(cierres, key=lambda e: e.get('timestamp') or ''):
+        if c.get('part'):
+            if parciales: n_c += _entrega_partida(raw, c, notes)
+            continue
         for r in raw:
             if r['OP'] == str(c['op']) and r['STATUS'] == 'V':
                 r['STATUS'] = 'T'; r['FTERM'] = c['fecha']; n_c += 1
@@ -430,6 +467,14 @@ def bake(raw, cierres, overrides):
             if r['OP'] == str(o['op']) and r['STATUS'] == 'V':
                 r['Fprod'] = o['fecha']; r['FTERM'] = o['fecha']; n_o += 1
     return n_c, n_o
+
+def revisar_parciales(raw, notes):
+    """Si el PROD vuelve a traer la partida con la cantidad completa, se descuenta lo ya entregado."""
+    for b in BAKE_INFO:
+        v = next((r for r in raw if r['OP'] == b['op'] and r['PART'] == b['part'] and r['STATUS'] == 'V'), None)
+        if v is not None and float(v['CANT'] or 0) == b['c']:
+            v['CANT'] = fmt_qty(b['c'] - b['q']); v['GOLPE'] = fmt_qty(round(b['golpe_c'] * (b['c'] - b['q']) / b['c']))
+            notes.append('OP %s partida %s: el PROD aún trae la cantidad completa (%s); se descontó la entrega parcial de %s (quedan %s).' % (b['op'], b['part'], fmt_qty(b['c']), fmt_qty(b['q']), v['CANT']))
 
 # ----------------------------------------------------------------------------- ERP -> RAW
 def erp_to_rows(op, lines, decisions, docs, vend_by_pedido, pending):
@@ -494,8 +539,7 @@ def run(a):
     for c in cierres:
         if str(c['op']) not in raw0_ops: pending.append({'tipo': 'cierre de una OP que no existe en el panel', 'op': c['op'], 'detalle': ''})
         elif str(c['op']) not in v_ops: notes.append('cierre OP %s: ya estaba cerrada en el panel (no cambia nada).' % c['op'])
-        if c.get('part'): notes.append('cierre OP %s trae partida %s: el panel cierra la OP completa, se hornea igual.' % (c['op'], c['part']))
-    n_c, n_o = bake(raw, cierres, overrides)
+    n_c, n_o = bake(raw, cierres, overrides, notes=notes)
     log.append('Cierres horneados: %d fila(s) de %d entrada(s); overrides: %d fila(s) de %d entrada(s).' % (n_c, len(cierres), n_o, len(overrides)))
 
     # 2) ERP
@@ -637,7 +681,8 @@ def run(a):
         for r in raw:
             if r['OP'] in {x['OP'] for x in prod_rows} and r['OP'] not in full['TOOLTIP_DATA']:
                 full['TOOLTIP_DATA'][r['OP']] = {'tq': r['TROQUEL1'], 'ms': r['MESH'], 'mt': r['MAT'], 'sub': norm_sub(r['SUBAREA'])}
-    bake(raw, cierres, overrides)       # por si una OP nueva ya estaba cerrada en cierres.json
+    bake(raw, cierres, overrides, parciales=False)       # por si una OP nueva ya estaba cerrada en cierres.json
+    revisar_parciales(raw, notes)
 
     # 4) encabezado (solo index)
     out_idx = idx_html
@@ -652,6 +697,14 @@ def run(a):
     out_mtx = set_const(out_mtx, 'MISSING', full['MISSING'])
     ts_c = [c['timestamp'] for c in cierres if c.get('timestamp')]
     out_idx, ent1 = set_entregas(out_idx, ts_c); out_mtx, ent2 = set_entregas(out_mtx, ts_c)
+    if ts_c:
+        for _nm in ('out_idx', 'out_mtx'):
+            _h = out_idx if _nm == 'out_idx' else out_mtx
+            _old = (get_const(_h, 'CIERRES_META') or {}).get('hasta', '') if 'const CIERRES_META=' in _h else None
+            if _old is not None:
+                _h = set_const(_h, 'CIERRES_META', {'hasta': max([_old] + ts_c)})
+                if _nm == 'out_idx': out_idx = _h
+                else: out_mtx = _h
     if ent1 or ent2: notes.append('Encabezado "Entregas" actualizado a %s %s (último cierre horneado).' % (ent1 or ent2))
     out_hist = {k: his[k] for k in ('RAW','ARTICULOS','TOOLTIP_DATA','PEDIDOS','CLIENTES','MNET_FECHAS')}
 
