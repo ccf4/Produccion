@@ -156,7 +156,10 @@ select{background:var(--surface2);border:1px solid var(--border);color:var(--tex
 .trab-pill .trab-dot{width:8px;height:8px;border-radius:50%;background:var(--c);box-shadow:0 0 0 3px rgba(var(--crgb),.22);}
 .trab-pill .trab-cnt{color:var(--muted);font-weight:400;text-transform:none;letter-spacing:0;font-size:10.5px;}
 .trab-children{margin:6px 0 0 24px;border-left:1px solid rgba(var(--crgb),.32);}
-#hm-tooltip{position:fixed;z-index:9999;display:none;background:#0d1523;border:1px solid #1e3050;border-radius:8px;padding:10px 14px;min-width:260px;max-width:320px;font-family:'IBM Plex Sans',sans-serif;line-height:1.4;pointer-events:none;box-shadow:0 6px 20px rgba(0,0,0,.6);color:#b0c4de;}</style>
+#hm-tooltip{position:fixed;z-index:9999;display:none;background:#0d1523;border:1px solid #1e3050;border-radius:8px;padding:10px 14px;min-width:260px;max-width:320px;font-family:'IBM Plex Sans',sans-serif;line-height:1.4;pointer-events:none;box-shadow:0 6px 20px rgba(0,0,0,.6);color:#b0c4de;}
+/* iOS hace zoom al enfocar campos con letra menor a 16px; en pantallas táctiles se fija en 16px para evitarlo */
+@media (pointer:coarse){input,select,textarea{font-size:16px !important;}}
+</style>
 </head>
 <body>
 <header>
