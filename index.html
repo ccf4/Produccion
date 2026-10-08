@@ -162,7 +162,7 @@ select{background:var(--surface2);border:1px solid var(--border);color:var(--tex
 <header>
   <div class="hdr-brand"><div class="logo">Panel de Control</div><div class="title">Ordenes de Produccion</div></div>
   <div class="hdr-search">
-    <input id="searchBox" class="search-input" type="text" placeholder="Buscar OP o pedido..." oninput="refreshAll()">
+    <input id="searchBox" class="search-input" type="text" inputmode="numeric" pattern="[0-9]*" enterkeyhint="search" autocomplete="off" placeholder="Buscar OP o pedido..." oninput="refreshAll()">
   </div>
   <div class="hdr-info">
     <div style="display:grid;grid-template-columns:auto auto auto;gap:2px 6px;font-size:10px;color:var(--muted);font-family:'IBM Plex Mono',monospace">
