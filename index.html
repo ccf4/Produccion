@@ -1641,7 +1641,7 @@ function _parcialHtml(parts){
   return v.map(function(p){
     var esPack=normSub(p.SUBAREA)==='Pack';
     var c=parseFloat(p.CANT)||0,g=parseFloat(p.GOLPE)||c;
-    var max=esPack?g:c,unidad=esPack?'golpes':'pzas';
+    var max=c,unidad='pzas';   // siempre en piezas (también Pack)
     return '<div class="dr"><label style="cursor:pointer;display:flex;align-items:center;gap:6px"><input type="checkbox" class="parChk" data-part="'+p.PART+'"><span>'+p.PART+' <span style="color:var(--muted);font-size:10px">'+(p.SUBAREA||'')+'</span></span></label>'+
       '<span style="display:inline-flex;align-items:center;gap:4px"><input type="number" class="parCant" data-part="'+p.PART+'" data-max="'+max+'" data-cant="'+c+'" data-golpe="'+g+'" data-unidad="'+unidad+'" min="1" max="'+max+'" value="'+max+'" style="width:76px;background:var(--surface);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:3px 4px;font-family:inherit;text-align:right">'+
       '<span style="font-size:10px;color:var(--muted)">de '+fmtNum(max)+' '+unidad+'</span></span></div>';
