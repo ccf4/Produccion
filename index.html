@@ -327,42 +327,70 @@ function applyOverrides(){
 }
 
 // ===== Cierres de OP en vivo (sin pasar por chat) =====
-// Igual que OVERRIDES pero para marcar una OP completa como entregada
-// (STATUS V->T, FTERM=fecha). Es permanente: STATUS=T siempre le gana a un
-// V que venga del PROD.xlsx en el refresh semanal, asi que no hace falta
-// resetear cierres.json cada semana (a diferencia de overrides.json).
-var CIERRES = {};
-function applyCierres(){
-  Object.keys(CIERRES).forEach(function(op){
-    var info=CIERRES[op];
-    RAW.forEach(function(r){
-      if(String(r.OP)===String(op)&&r.STATUS==='V'){
-        r.STATUS='T';
-        r.FTERM=info.fecha;
-        // mover de "abiertas" a "cerradas" para que el calendario y
-        // Cerradas recientemente reflejen el cierre correctamente
-        if(umap[r.OP]===r){
-          delete umap[r.OP];
-          var idx=DATA.indexOf(r);
-          if(idx>=0)DATA.splice(idx,1);
-        }
-        if(!tmap[r.OP]){
-          tmap[r.OP]=r;
-          TERM.push(r);
-        } else if((pd(r.FTERM)||new Date(0))>(pd(tmap[r.OP].FTERM)||new Date(0))){
-          var _oldIdx=TERM.indexOf(tmap[r.OP]);
-          if(_oldIdx>=0)TERM.splice(_oldIdx,1,r);
-          tmap[r.OP]=r;
-        }
-      }
-    });
+// cierres.json trae entradas {op, part, cant, fecha, timestamp}:
+//   sin part          -> se cierra la OP completa (todas sus partidas V pasan a T)
+//   part, sin cant    -> se cierra esa partida completa
+//   part y cant       -> entrega parcial: la partida se parte en una T (lo entregado) y la V (lo pendiente)
+// Es permanente: STATUS=T siempre le gana a un V que venga del PROD.xlsx en el refresh semanal.
+// CIERRES_META.hasta = ultima entrada que el refresh ya horneo en RAW; lo anterior se ignora para no aplicarlo dos veces.
+const CIERRES_META={"hasta":""};
+var CIERRES = {};          // OP completa: CIERRES[op]={fecha,timestamp}
+var CIERRES_LISTA = [];    // todas las entradas de cierres.json (y las hechas en esta sesion)
+var _cierresHechos = {};
+function _letraPart(op,part){
+  var m=String(part).match(/^(\d+)([a-z]*)\/(.+)$/i);
+  if(!m)return part+'a';
+  var usadas={};
+  RAW.forEach(function(r){if(String(r.OP)===String(op))usadas[r.PART]=1;});
+  for(var i=0;i<26;i++){var p=m[1]+String.fromCharCode(97+i)+'/'+m[3];if(!usadas[p])return p;}
+  return part+'x';
+}
+function _rebuildMaps(){
+  Object.keys(umap).forEach(function(k){delete umap[k];});
+  Object.keys(tmap).forEach(function(k){delete tmap[k];});
+  RAW.forEach(function(r){
+    if(!r.OP)return;
+    var rs=(r.STATUS||'').trim().toUpperCase();
+    if(rs==='T'||rs==='C'){if(!tmap[r.OP]||(pd(r.FTERM)||new Date(0))>(pd(tmap[r.OP].FTERM)||new Date(0)))tmap[r.OP]=r;}
+    else{if(!umap[r.OP])umap[r.OP]=r;}
   });
+  DATA.length=0;TERM.length=0;
+  Object.keys(umap).forEach(function(k){DATA.push(umap[k]);});
+  Object.keys(tmap).forEach(function(k){TERM.push(tmap[k]);});
+}
+function _entregarPartida(e){
+  var r=null;
+  RAW.forEach(function(x){if(!r&&String(x.OP)===String(e.op)&&x.PART===e.part&&(x.STATUS||'').trim().toUpperCase()==='V')r=x;});
+  if(!r)return;
+  var c=parseFloat(r.CANT)||0,q=(e.cant==null||e.cant==='')?c:parseFloat(e.cant);
+  if(!(q>0))return;
+  if(q>=c){r.STATUS='T';r.FTERM=e.fecha;return;}
+  var g=parseFloat(r.GOLPE)||c;
+  var t={};Object.keys(r).forEach(function(k){t[k]=r[k];});
+  t.STATUS='T';t.FTERM=e.fecha;t.CANT=String(q);t.GOLPE=String(Math.round(g*q/c));t.PART=_letraPart(e.op,e.part);
+  r.CANT=String(c-q);r.GOLPE=String(Math.round(g*(c-q)/c));
+  RAW.splice(RAW.indexOf(r),0,t);
+}
+function applyCierres(){
+  var hasta=CIERRES_META.hasta||'';
+  CIERRES_LISTA.slice().sort(function(a,b){return String(a.timestamp||'')<String(b.timestamp||'')?-1:1;}).forEach(function(e){
+    var k=[e.op,e.part||'',e.cant==null?'':e.cant,e.timestamp||''].join('|');
+    if(_cierresHechos[k])return;
+    _cierresHechos[k]=1;
+    if(hasta&&e.timestamp&&e.timestamp<=hasta)return;
+    if(!e.part){
+      RAW.forEach(function(r){
+        if(String(r.OP)===String(e.op)&&(r.STATUS||'').trim().toUpperCase()==='V'){r.STATUS='T';r.FTERM=e.fecha;}
+      });
+    }else _entregarPartida(e);
+  });
+  _rebuildMaps();
   updateEntregasHeader();
 }
 function updateEntregasHeader(){
   var latest=null;
-  Object.keys(CIERRES).forEach(function(op){
-    var ts=CIERRES[op].timestamp;
+  CIERRES_LISTA.forEach(function(e){
+    var ts=e.timestamp;
     if(ts&&(!latest||ts>latest))latest=ts;
   });
   if(!latest)return;
@@ -380,20 +408,32 @@ function loadCierres(){
   fetch('https://raw.githubusercontent.com/ccf4/Produccion/main/cierres.json?t='+Date.now(),{cache:'no-store'})
     .then(function(r){return r.ok?r.json():[];})
     .then(function(arr){
-      (arr||[]).forEach(function(o){CIERRES[String(o.op)]={fecha:o.fecha,timestamp:o.timestamp};});
+      (arr||[]).forEach(function(o){
+        CIERRES_LISTA.push({op:String(o.op),part:o.part||null,cant:(o.cant==null?null:o.cant),fecha:o.fecha,timestamp:o.timestamp});
+        if(!o.part)CIERRES[String(o.op)]={fecha:o.fecha,timestamp:o.timestamp};
+      });
       applyCierres();
       if(document.getElementById('ganttScroll'))renderGantt();
       renderSemana(today());
     })
     .catch(function(){});
 }
-function saveCierre(op){
+function _fechaCierre(){
   var dia=parseInt(document.getElementById('cierreFechaDia').value,10);
   var mes=parseInt(document.getElementById('cierreFechaMes').value,10);
   var ano=parseInt(document.getElementById('cierreFechaAno').value,10);
+  if(!dia||!mes||!ano||dia<1||dia>31||mes<1||mes>12||ano<2020)return null;
+  return mes+'/'+dia+'/'+ano;
+}
+function _refrescarTrasCierre(op){
+  showDetail(op);
+  if(document.getElementById('ganttScroll'))renderGantt();
+  renderSemana(today());
+}
+function saveCierre(op){
   var msgEl=document.getElementById('cierreMsg');
-  if(!dia||!mes||!ano||dia<1||dia>31||mes<1||mes>12||ano<2020){msgEl.textContent='Revisa la fecha (formato DD/MM/AAAA).';msgEl.style.color='var(--danger)';return;}
-  var cierreFecha=mes+'/'+dia+'/'+ano;
+  var cierreFecha=_fechaCierre();
+  if(!cierreFecha){msgEl.textContent='Revisa la fecha (formato DD/MM/AAAA).';msgEl.style.color='var(--danger)';return;}
   if(!confirm('¿Confirmas que la OP '+op+' se entregó el '+cierreFecha+'?'))return;
   msgEl.textContent='Guardando...';msgEl.style.color='var(--muted)';
   fetch(EDIT_WORKER_URL,{
@@ -403,12 +443,57 @@ function saveCierre(op){
   }).then(function(r){return r.text().then(function(t){return {ok:r.ok,text:t};});})
   .then(function(res){
     if(!res.ok){msgEl.textContent='Error: '+res.text;msgEl.style.color='var(--danger)';return;}
-    CIERRES[String(op)]={fecha:cierreFecha,timestamp:new Date().toISOString()};
+    var ts=new Date().toISOString();
+    CIERRES[String(op)]={fecha:cierreFecha,timestamp:ts};
+    CIERRES_LISTA.push({op:String(op),part:null,cant:null,fecha:cierreFecha,timestamp:ts});
     applyCierres();
     msgEl.textContent='OP marcada como entregada.';msgEl.style.color='var(--accent3)';
-    showDetail(op);
-    if(document.getElementById('ganttScroll'))renderGantt();
-    renderSemana(today());
+    _refrescarTrasCierre(op);
+  }).catch(function(){msgEl.textContent='Error de conexión.';msgEl.style.color='var(--danger)';});
+}
+// Entrega parcial: se palomean las partidas entregadas y se captura la cantidad de cada una.
+function toggleParcial(){
+  var on=document.getElementById('parcialChk').checked;
+  document.getElementById('parcialBox').style.display=on?'block':'none';
+  document.getElementById('cierreBtnTodo').style.display=on?'none':'inline-block';
+  document.getElementById('parcialBtn').style.display=on?'inline-block':'none';
+}
+function saveEntregaParcial(op){
+  var msgEl=document.getElementById('cierreMsg');
+  var cierreFecha=_fechaCierre();
+  if(!cierreFecha){msgEl.textContent='Revisa la fecha (formato DD/MM/AAAA).';msgEl.style.color='var(--danger)';return;}
+  var entregas=[],resumen=[],error='';
+  document.querySelectorAll('.parChk').forEach(function(chk){
+    if(!chk.checked||error)return;
+    var part=chk.getAttribute('data-part');
+    var inp=document.querySelector('.parCant[data-part="'+part+'"]');
+    var max=parseFloat(inp.getAttribute('data-max'))||0,val=parseFloat(inp.value);
+    var unidad=inp.getAttribute('data-unidad');
+    if(!(val>0)||val>max){error='Partida '+part+': la cantidad debe ser entre 1 y '+max+' '+unidad+'.';return;}
+    var c=parseFloat(inp.getAttribute('data-cant'))||0,g=parseFloat(inp.getAttribute('data-golpe'))||c;
+    var completa=val>=max;
+    var q=unidad==='golpes'?Math.round(val*c/g):val;      // en el archivo siempre va en piezas
+    entregas.push({part:part,cant:completa?null:q});
+    resumen.push(part+': '+(completa?'completa ('+max+' '+unidad+')':val+' de '+max+' '+unidad));
+  });
+  if(error){msgEl.textContent=error;msgEl.style.color='var(--danger)';return;}
+  if(!entregas.length){msgEl.textContent='Palomea al menos una partida.';msgEl.style.color='var(--danger)';return;}
+  if(!confirm('Entrega parcial de la OP '+op+' el '+cierreFecha+':\n\n'+resumen.join('\n')+'\n\n¿Confirmas?'))return;
+  msgEl.textContent='Guardando...';msgEl.style.color='var(--muted)';
+  fetch(EDIT_WORKER_URL,{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({op:String(op),cierreFecha:cierreFecha,entregas:entregas})
+  }).then(function(r){return r.text().then(function(t){return {ok:r.ok,text:t};});})
+  .then(function(res){
+    if(!res.ok){msgEl.textContent='Error: '+res.text;msgEl.style.color='var(--danger)';return;}
+    var base=Date.now();
+    entregas.forEach(function(e,i){
+      CIERRES_LISTA.push({op:String(op),part:e.part,cant:e.cant,fecha:cierreFecha,timestamp:new Date(base+i).toISOString()});
+    });
+    applyCierres();
+    msgEl.textContent='Entrega registrada.';msgEl.style.color='var(--accent3)';
+    _refrescarTrasCierre(op);
   }).catch(function(){msgEl.textContent='Error de conexión.';msgEl.style.color='var(--danger)';});
 }
 function loadOverrides(){
@@ -1551,6 +1636,17 @@ function toggleReprogSection(){
 }
 function refreshAll(){var T=today();renderSemana(T);renderTable();if(document.getElementById('ganttScroll'))renderGantt();}
 
+function _parcialHtml(parts){
+  var v=parts.filter(function(p){return (p.STATUS||'').trim().toUpperCase()==='V';});
+  return v.map(function(p){
+    var esPack=normSub(p.SUBAREA)==='Pack';
+    var c=parseFloat(p.CANT)||0,g=parseFloat(p.GOLPE)||c;
+    var max=esPack?g:c,unidad=esPack?'golpes':'pzas';
+    return '<div class="dr"><label style="cursor:pointer;display:flex;align-items:center;gap:6px"><input type="checkbox" class="parChk" data-part="'+p.PART+'"><span>'+p.PART+' <span style="color:var(--muted);font-size:10px">'+(p.SUBAREA||'')+'</span></span></label>'+
+      '<span style="display:inline-flex;align-items:center;gap:4px"><input type="number" class="parCant" data-part="'+p.PART+'" data-max="'+max+'" data-cant="'+c+'" data-golpe="'+g+'" data-unidad="'+unidad+'" min="1" max="'+max+'" value="'+max+'" style="width:76px;background:var(--surface);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:3px 4px;font-family:inherit;text-align:right">'+
+      '<span style="font-size:10px;color:var(--muted)">de '+fmtNum(max)+' '+unidad+'</span></span></div>';
+  }).join('');
+}
 function showDetail(op){
   var r=DATA.find(function(d){return String(d.OP)===String(op);})||TERM.find(function(d){return String(d.OP)===String(op);});
   if(!r)return;
@@ -1597,7 +1693,12 @@ function showDetail(op){
           '<input type="number" id="cierreFechaAno" min="2020" max="2100" placeholder="AAAA" value="'+today().getFullYear()+'" style="width:64px;background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:4px 4px;font-family:inherit;text-align:center">'+
           '<span style="font-size:10px;color:var(--muted);margin-left:2px">DD/MM/AAAA</span>'+
         '</span></div>'+
-        '<div style="display:flex;justify-content:flex-end;margin-top:6px"><button onclick="saveCierre(\''+op+'\')" style="background:var(--accent3);color:#fff;border:none;border-radius:6px;padding:6px 14px;font-weight:600;cursor:pointer">Cerrar OP</button></div>'+
+        '<div style="margin-top:8px"><label style="font-size:11px;cursor:pointer"><input type="checkbox" id="parcialChk" onchange="toggleParcial()"> Entrega parcial (elegir partidas y cantidad)</label></div>'+
+        '<div id="parcialBox" style="display:none;margin-top:6px;padding:6px 8px;background:var(--surface2);border-radius:6px">'+_parcialHtml(parts)+'</div>'+
+        '<div style="display:flex;justify-content:flex-end;gap:6px;margin-top:6px">'+
+          '<button id="cierreBtnTodo" onclick="saveCierre(\''+op+'\')" style="background:var(--accent3);color:#fff;border:none;border-radius:6px;padding:6px 14px;font-weight:600;cursor:pointer">Cerrar OP</button>'+
+          '<button id="parcialBtn" onclick="saveEntregaParcial(\''+op+'\')" style="display:none;background:var(--accent4);color:#111;border:none;border-radius:6px;padding:6px 14px;font-weight:600;cursor:pointer">Registrar entrega parcial</button>'+
+        '</div>'+
         '<div id="cierreMsg" style="font-size:11px;text-align:right;margin-top:4px;min-height:14px"></div>'+
       '</div>'
       :''));
