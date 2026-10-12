@@ -37,10 +37,10 @@
   },
   "31449": {
    "3/3": {
-    "CANT": "100",
-    "GOLPE": "100"
+    "CANT": "200",
+    "GOLPE": "200"
    },
-   "nota": "El PROD trae 200 en la partida 3/3 por error; son 100 (Chato, 12/oct/2026). Quitar cuando el ERP lo corrija."
+   "nota": "El PROD trae 100 en la partida 3/3 por error; son 200 (Chato, 12/oct/2026). Quitar cuando el ERP lo corrija."
   }
  },
  "descartar_prod": {
