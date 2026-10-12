@@ -673,11 +673,20 @@ def run(a):
         raw[:] = merged
         for op_f, campos in decisions.get('forzar', {}).items():       # valores que el PROD trae mal y se corrigen a mano
             if op_f.startswith('_'): continue
+            # Forma simple: {"CANT": "100"} -> todas las partidas ABIERTAS (V) de la OP.
+            # Forma por partida: {"3/3": {"CANT": "100"}} -> solo esa partida, abierta o cerrada.
             for r in raw:
-                if r['OP'] == op_f and r['STATUS'] == 'V':
-                    for f, v in campos.items():
-                        if f != 'nota' and str(r[f]) != str(v):
-                            notes.append('OP %s (%s): %s del PROD (%s) reemplazado por %s según decisiones.json.' % (op_f, r['PART'], f, r[f], v)); r[f] = str(v)
+                if r['OP'] != op_f: continue
+                aplicar = {}
+                for f, v in campos.items():
+                    if f == 'nota': continue
+                    if isinstance(v, dict):
+                        if f == r['PART']: aplicar.update({k: x for k, x in v.items() if k != 'nota'})
+                    elif r['STATUS'] == 'V':
+                        aplicar[f] = v
+                for f, v in aplicar.items():
+                    if str(r[f]) != str(v):
+                        notes.append('OP %s (%s): %s del PROD (%s) reemplazado por %s según decisiones.json.' % (op_f, r['PART'], f, r[f], v)); r[f] = str(v)
         for r in raw:
             if r['OP'] in {x['OP'] for x in prod_rows} and r['OP'] not in full['TOOLTIP_DATA']:
                 full['TOOLTIP_DATA'][r['OP']] = {'tq': r['TROQUEL1'], 'ms': r['MESH'], 'mt': r['MAT'], 'sub': norm_sub(r['SUBAREA'])}
