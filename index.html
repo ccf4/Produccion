@@ -340,6 +340,18 @@ const CIERRES_META={"hasta":""};
 var CIERRES = {};          // OP completa: CIERRES[op]={fecha,timestamp}
 var CIERRES_LISTA = [];    // todas las entradas de cierres.json (y las hechas en esta sesion)
 var _cierresHechos = {};
+function cierreTs(op){
+  var m='';
+  CIERRES_LISTA.forEach(function(e){if(String(e.op)===String(op)&&e.timestamp&&e.timestamp>m)m=e.timestamp;});
+  return m;
+}
+// Orden de cerradas: dia de cierre (FTERM) mas reciente primero; dentro del mismo dia, la hora real del cierre (cierres.json), la ultima arriba.
+function cmpCerradas(refA,refB){
+  var d=(pd(refB.FTERM)||new Date(0))-(pd(refA.FTERM)||new Date(0));
+  if(d)return d;
+  var ta=cierreTs(refA.OP),tb=cierreTs(refB.OP);
+  return ta===tb?0:(ta<tb?1:-1);
+}
 function _letraPart(op,part){
   var m=String(part).match(/^(\d+)([a-z]*)\/(.+)$/i);
   if(!m)return part+'a';
@@ -575,7 +587,7 @@ function getResumenData(){
     seenClosed[r.OP]=true;
     closedRecent.push(r);
   });
-  closedRecent.sort(function(a,b){return (pd(b.FTERM)||new Date(0))-(pd(a.FTERM)||new Date(0));});
+  closedRecent.sort(cmpCerradas);
   var diasCerradasVentana=2;
 
   // Proximas: segun _proximasModo ('hoy_manana' o 'manana_pasado')
@@ -2040,7 +2052,7 @@ function renderSemana(T){
       }
     }
   });
-  closedRecent.sort(function(a,b){return (pd(b._ref.FTERM)||new Date(0))-(pd(a._ref.FTERM)||new Date(0));});
+  closedRecent.sort(function(a,b){return cmpCerradas(a._ref,b._ref);});
   document.getElementById('cc').textContent=' - '+Object.keys(seenClosed).length+' OP';
   if(!closedRecent.length){
     document.getElementById('cl').innerHTML='<span style="color:var(--muted);font-size:12px">Sin ordenes cerradas recientemente.</span>';
