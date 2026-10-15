@@ -200,6 +200,7 @@ CLASIF = [  # (prefijo, AREA, SUBAREA) — el orden importa (más específico pr
     ('PACKS','Disco','Pack'), ('PACK ','Disco','Pack'), ('CRIBA','Telar','Criba'),
     ('RUMBA','Varios','Rumba'), ('ARO ','Aros','Nuevo'),
 ]
+TIRA_DIM = r'(\d+(?:\.\d+)?)\s*CMS?\.?\s*(?:ANCHO\s*)?X\s*(\d+(?:\.\d+)?)\s*CMS?\b'
 EXTERNAS = ('LAMINA', 'SOLERA')   # producción externa: no entra al RAW (va a MISSING/ARTICULOS)
 
 def clean_desc(d):
@@ -212,6 +213,13 @@ def classify(desc):
         if u.startswith(p): return 'EXT', None
     for p, a, s in CLASIF:
         if u.startswith(p): return a, s
+    # Descripciones que empiezan con MALLA (Chato, 15/oct/2026):
+    #   - "DE CLARO" (malla de claro grande) o "ANCHO ... MT" (rollo por metro)  -> Telar / Criba
+    #   - todo lo demás (medidas de corte en CM, etc.) -> Disco / Manual (así lo clasifica siempre el PROD)
+    if u.startswith('MALLA'):
+        if 'CLARO' in u or re.search(r'ANCHO\s*[\d.,]+\s*(?:MTS?|M)\b', u):
+            return 'Telar', 'Criba'
+        return 'Disco', 'Manual'
     return None, None
 
 def parse_mat(desc, sub):
@@ -249,6 +257,9 @@ def parse_mesh(desc, sub):
 
 def parse_troquel(desc, area, sub):
     u = clean_desc(desc).upper()
+    if sub in ('Tiras', 'Manual') and re.search(TIRA_DIM, u):
+        m = re.search(TIRA_DIM, u)
+        if m: return '%s X %s cm' % (m.group(1), m.group(2))
     if sub == 'Manual':
         m = re.search(r'(\d+(?:\.\d+)?)\s*MM\s*X\s*(\d+(?:\.\d+)?)\s*MM', u)
         if m: return '%s X %s mm' % (m.group(1), m.group(2))
