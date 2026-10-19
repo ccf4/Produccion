@@ -1645,21 +1645,23 @@ function switchTab(t){
   if(t==='historico')renderHistorico();
 }
 function filterAll(s,btn){sflt=s;document.querySelectorAll('#view-todas .fb').forEach(function(b){b.classList.remove('active');});btn.classList.add('active');renderTable();}
-function maxWeekOff(T){
-  var src=activeData(),mnetSrc=activeMissing(),maxOff=0;
-  function chk(dt){if(!dt)return;var diff=Math.floor((dt-wkS(T,0))/86400000);var off=Math.floor(diff/7);if(off>maxOff)maxOff=off;}
-  src.forEach(function(d){chk(pd(d.Fprod||d.FProm));});
-  mnetSrc.forEach(function(m){chk(pd(m.FProm));});
-  return Math.max(0,Math.min(maxOff,52));
+function weekAllowed(T){
+  // Semanas navegables: la actual + las que tienen OPs abiertas (o externas) dentro del filtro de 100 días.
+  var ok={0:1},src=activeData(),mnetSrc=activeMissing();
+  function add(dt){if(!dt)return;var off=Math.floor(Math.floor((dt-wkS(T,0))/86400000)/7);if(off>=-52&&off<=52)ok[off]=1;}
+  src.forEach(function(d){var fe=pd(d.FEMIT);if(fe&&Math.floor((T-fe)/86400000)>100)return;add(pd(d.Fprod||d.FProm));});
+  mnetSrc.forEach(function(m){var fe=pd(m.FECHA||m.FEMIT);if(fe&&Math.floor((T-fe)/86400000)>100)return;add(pd(m.FProm));});
+  return Object.keys(ok).map(Number).sort(function(a,b){return a-b;});
 }
-function minWeekOff(T){
-  var src=activeData(),mnetSrc=activeMissing(),minOff=0;
-  function chk(dt){if(!dt)return;var diff=Math.floor((dt-wkS(T,0))/86400000);var off=Math.floor(diff/7);if(off<minOff)minOff=off;}
-  src.forEach(function(d){chk(pd(d.Fprod||d.FProm));});
-  mnetSrc.forEach(function(m){chk(pd(m.FProm));});
-  return Math.min(0,Math.max(minOff,-52));
+function maxWeekOff(T){var a=weekAllowed(T);return a[a.length-1];}
+function minWeekOff(T){return weekAllowed(T)[0];}
+function changeWeek(d){
+  var T=today(),a=weekAllowed(T),n=null;
+  if(d>0){for(var i=0;i<a.length;i++)if(a[i]>proxOff){n=a[i];break;}}
+  else{for(var j=a.length-1;j>=0;j--)if(a[j]<proxOff){n=a[j];break;}}
+  if(n!==null)proxOff=n;
+  renderSemana(T);
 }
-function changeWeek(d){var T=today(),mx=maxWeekOff(T),mn=minWeekOff(T);proxOff=Math.max(mn,Math.min(mx,proxOff+d));renderSemana(T);}
 function toggleLateSection(){
   var card=document.getElementById('loCard'),chev=document.getElementById('lcChevron'),label=document.getElementById('lcLabel');
   var open=card.style.display!=='none';
