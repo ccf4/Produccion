@@ -349,6 +349,37 @@ def read_prod(path):
     READ_PROD_INFO['fantasmas'] = len(out) - len(limpio)
     return limpio
 
+def limpiar_prod_contra_actual(prod_rows, raw, notes):
+    """Regla de limpieza del PROD comparando contra los datos actuales del panel:
+    1) PART truncada (ej. '6/' en lugar de '6/7'): se completa con la partida que ya existe en el panel
+       (o, si no existe, con el total que usan las demás partidas de esa OP en el PROD).
+    2) Filas con CANT=0 y GOLPE=0 en una OP que ya tiene partidas con cantidad: se descartan
+       (el ERP deja partidas vacías al reestructurar; solo deben quedar las que tienen cantidad)."""
+    cur_by = collections.defaultdict(list)
+    for r in raw: cur_by[r['OP']].append(r['PART'])
+    x_by = collections.defaultdict(list)
+    for r in prod_rows: x_by[r['OP']].append(r['PART'])
+    vacia = lambda r: str(r['CANT']) in ('0', '', '0.0') and str(r['GOLPE']) in ('0', '', '0.0')
+    con_cant = {r['OP'] for r in prod_rows if not vacia(r)} | {r['OP'] for r in raw if str(r['CANT']) not in ('0', '', '0.0')}
+    out = []
+    for r in prod_rows:
+        m = re.match(r'^(\d+[a-z]*)/$', r['PART'])
+        if m:
+            num = m.group(1)
+            cands = {p for p in cur_by[r['OP']] if re.match(r'^' + num + r'/\d+$', p)}
+            if len(cands) == 1: nueva = cands.pop()
+            else:
+                tot = collections.Counter(p.split('/')[1] for p in x_by[r['OP']] + cur_by[r['OP']] if re.match(r'^\d+[a-z]*/\d+$', p))
+                nueva = '%s/%s' % (num, tot.most_common(1)[0][0]) if tot else None
+            if nueva:
+                notes.append('PROD: la partida %s de la OP %s venía incompleta; se corrigió a %s (según los datos del panel).' % (r['PART'], r['OP'], nueva))
+                r = dict(r, PART=nueva)
+        if vacia(r) and r['OP'] in con_cant:
+            notes.append('PROD: se descartó la partida %s de la OP %s (cantidad 0; la OP ya tiene partidas con cantidad).' % (r['PART'], r['OP']))
+            continue
+        out.append(r)
+    return out
+
 READ_PROD_INFO = {}
 
 # ----------------------------------------------------------------------------- merge PROD
@@ -584,6 +615,7 @@ def run(a):
             al = decisions.get('alias_part', {}).get(r['OP'], {})
             nuevo = al.get('%s|%s' % (r['PART'], r['CANT'])) or al.get(r['PART'])   # "2/2|2500" (por cantidad) o "2/2" (todas)
             if nuevo: r['PART'] = nuevo
+        prod_rows = limpiar_prod_contra_actual(prod_rows, raw, notes)
         desc = decisions.get('descartar_prod', {})   # {"31456": ["SUSTITUCION"]}: filas del PROD que no deben existir en el panel
         if desc:
             antes = len(prod_rows)
