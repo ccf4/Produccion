@@ -576,8 +576,9 @@ function getResumenData(){
     seen2[d.OP]=true;return true;
   });
   mnetWarn.sort(function(a,b){var fa=pd(a.Fprod||a.FProm),fb=pd(b.Fprod||b.FProm);return (fa||new Date(0))-(fb||new Date(0));});
-  // Cerradas: hoy + 2 dias hacia atras (3 dias de calendario en total)
-  var cutoff2=new Date(T);cutoff2.setDate(cutoff2.getDate()-1);
+  // Cerradas: hoy + 2 dias habiles anteriores (el lunes cuenta jueves y viernes)
+  var bizD2=0,cutoff2=new Date(T);
+  while(bizD2<2){cutoff2.setDate(cutoff2.getDate()-1);var dow2=cutoff2.getDay();if(dow2!==0&&dow2!==6)bizD2++;}
   var seenClosed={},closedRecent=[];
   TERM.forEach(function(r){
     if(r.STATUS==='C')return;
@@ -768,7 +769,7 @@ function filasParaVendedor(d,vendCode){
     late:d.late.filter(esDe),
     mnetWarn:[],
     closedRecent:d.closedRecent.filter(esDe),
-    proximas:d.proximas4.map(function(dia){return {label:dia.label,fecha:dia.fecha,rows:dia.rows.filter(esDe)};})
+    proximas:d.proximas4.map(function(dia){return {label:/^(HOY|MA\u00d1ANA|PASADO)/.test(dia.label)?dia.label:dia.label+' '+dia.fecha.getDate(),fecha:dia.fecha,rows:dia.rows.filter(esDe)};})
   };
 }
 function buildCorreoVendedor(vendCode,filas,T){
@@ -777,7 +778,7 @@ function buildCorreoVendedor(vendCode,filas,T){
   var nombreMostrado=esSinVendedor?'Sin vendedor asignado / Stock':(info?info.nombre:vendCode);
   var to=esSinVendedor?'clientes@matexsa.com.mx':(info?info.email:'clientes@matexsa.com.mx');
   var subject='Estatus de tus pedidos en producci\u00f3n \u2014 '+nombreMostrado+' \u2014 '+fd(T);
-  var lines=['Hola '+nombreMostrado+',','','Estatus de tus \u00f3rdenes de producci\u00f3n al '+fd(T)+':',''];
+  var lines=['Hola '+nombreMostrado+',','','Este es el estatus de tus \u00f3rdenes de producci\u00f3n al '+T.toLocaleDateString('es-MX',{day:'numeric',month:'long',year:'numeric'})+':',''];
   if(filas.late.length){
     lines.push(textoNegrita('VENCIDAS')+' (pedir informaci\u00f3n al \u00e1rea de Producci\u00f3n):');
     filas.late.forEach(function(r){var fp=pd(r.Fprod||r.FProm),dl=fp?daysDiff(fp,T):0;lines.push(lineaOPSinVend(r,dl+'d vencido'));});
@@ -1047,7 +1048,7 @@ function dibujarResumenCanvas(d,opciones){
     drawSubSection(dia.label+' \u2014 '+fd(dia.fecha),'#3b82f6',dia.rows,'Sin \u00f3rdenes programadas.');
   });
 
-  drawSection('CERRADAS \u00daLTIMOS '+(d.diasCerradas!==undefined?d.diasCerradas:2)+' D\u00cdAS','#10b981',closedRows,'Sin \u00f3rdenes cerradas recientemente.',pal.title);
+  drawSection('CERRADAS \u00daLTIMOS '+(d.diasCerradas!==undefined?d.diasCerradas:2)+' D\u00cdAS H\u00c1BILES','#10b981',closedRows,'Sin \u00f3rdenes cerradas recientemente.',pal.title);
 
   return canvas.toDataURL('image/png');
 }
