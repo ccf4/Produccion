@@ -3194,6 +3194,7 @@ init();
 function refrescarApp(){var u=new URL(location.href);u.searchParams.set('t',Date.now());location.href=u.toString();}
 </script>
 <script>if("serviceWorker" in navigator){window.addEventListener("load",function(){navigator.serviceWorker.register("sw.js?v1").catch(function(){});});}</script>
+<script>document.addEventListener('keydown',function(e){if(e.key!=='Escape')return;var m=document.getElementById('modal');if(m&&m.classList.contains('open')){m.classList.remove('open');e.preventDefault();}});</script>
 </body></html>
 
 
