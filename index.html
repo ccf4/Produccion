@@ -2263,8 +2263,8 @@ function renderSemana(T){
         var otrasPend=!isCancelled&&doneCant>0&&RAW.some(function(x){return String(x.OP)===String(opId)&&x.STATUS==='V'&&rparts.indexOf(x)<0;});
         var isPartial=!isCancelled && doneCant>0 && (doneCant<totalCant||otrasPend);
         var arts=getArts(opId);
-        var cardBg=isCancelled?'rgba(107,114,128,.05)':(isPartial?'rgba(251,146,60,.04)':'rgba(52,211,153,.04)');
-        var cardBorder=isCancelled?'rgba(107,114,128,.2)':(isPartial?'rgba(251,146,60,.25)':'rgba(52,211,153,.2)');
+        var cardBg=isCancelled?'rgba(107,114,128,.05)':('rgba(52,211,153,.04)');
+        var cardBorder=isCancelled?'rgba(107,114,128,.2)':('rgba(52,211,153,.2)');
         var cardAccent=isCancelled?'#9ca3af':(isPartial?'#fb923c':'var(--accent3)');
         var badgeBg=isCancelled?'rgba(107,114,128,.15)':(isPartial?'rgba(251,146,60,.15)':'rgba(52,211,153,.12)');
         var badgeColor=isCancelled?'#9ca3af':(isPartial?'#fb923c':'var(--accent3)');
@@ -2272,7 +2272,7 @@ function renderSemana(T){
         var pzasText=(isPartial&&doneCant<totalCant)?(fmtNum(doneCant)+' de '+fmtNum(totalCant)+' pzas'):(fmtNum(totalCant)+' pzas');
         var subDisp=normSub(r._sub)||r._sub;
         var areaSubLabel=r._scope==='area'?r._area:((r._area==='Aros'&&(r._sub==='NUEVO'||subDisp==='Nuevo'))?'Aro nuevo':r._area+' / '+subDisp);
-        return '<div class="late-card" style="background:'+cardBg+';border:1px solid '+cardBorder+';border-left:4px solid '+cardAccent+'" onclick="showDetail(\''+opId+'\')">'+
+        return '<div class="late-card" style="background:'+cardBg+';border:1px solid '+cardBorder+'" onclick="showDetail(\''+opId+'\')">'+
           '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px"><span style="font-family:IBM Plex Mono,monospace;font-weight:700;font-size:13px">OP '+opId+'</span><span style="background:'+badgeBg+';color:'+badgeColor+';font-size:10px;font-weight:700;padding:2px 7px;border-radius:10px">'+badgeText+'</span></div>'+
           '<div style="display:flex;align-items:center;gap:4px;font-size:11px;font-weight:700;color:'+ac(r._area)+';margin-bottom:4px">'+(r._scope==='area'&&r._subs&&r._subs.length>1?r._subs.map(function(sk){return subIcon(sk,r._area);}).join('')+areaSubLabel:(r._scope==='op'&&opSubMulti(r._parts)||subIcon(r._sub||r._area,r._area)+areaSubLabel))+'</div>'+
           (ped(opId)?'<div style="font-size:9px;color:var(--accent4);font-family:IBM Plex Mono,monospace;margin-bottom:4px">'+ped(opId)+'</div>':'')+
