@@ -182,7 +182,8 @@ body.big>div[style*="opacity:.35"]{display:none!important}
 .sh-wrap.has-l.has-r>[id$="Badges"]{-webkit-mask-image:linear-gradient(to right,transparent,#000 38px,#000 calc(100% - 38px),transparent);mask-image:linear-gradient(to right,transparent,#000 38px,#000 calc(100% - 38px),transparent)}
 .op-ped,.op-cant,.op-num{white-space:nowrap}
 @media (max-width:640px){
-  header{position:static}
+  header{position:sticky;top:0}
+  header.hc .hdr-info{display:none}
   .hdr-info>div>div:first-child{display:none}
   /* fichas de Vencidas / Reprogramadas / Stock / Cerradas: dos por fila */
   #lo>div,#rp>div,#sk>div{gap:8px!important}
@@ -327,7 +328,7 @@ body.big.hasSel #bigView{padding-bottom:130px}
 <body>
 <header>
   <button class="nb hdr-big" id="bigBtn" title="Letra grande" aria-label="Activar modo letra grande" onclick="bigSet(true)"><svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="19" r="5.5"/><circle cx="23" cy="19" r="5.5"/><path d="M14.5 18.5c1-1.2 2-1.2 3 0"/><path d="M3.5 18.5L5 10M28.5 18.5L27 10"/></svg></button>
-  <div class="hdr-brand"><div class="logo">Panel de Control <span style="opacity:.6;letter-spacing:0;text-transform:none">· v22oct-1245</span></div><div class="title">Ordenes de Produccion</div></div>
+  <div class="hdr-brand"><div class="logo">Panel de Control <span style="opacity:.6;letter-spacing:0;text-transform:none">· v1300</span></div><div class="title">Ordenes de Produccion</div></div>
   <div class="hdr-search">
     <input id="searchBox" class="search-input" type="text" inputmode="numeric" pattern="[0-9]*" enterkeyhint="search" autocomplete="off" placeholder="Buscar OP o pedido..." oninput="refreshAll()">
   </div>
@@ -3807,6 +3808,10 @@ document.addEventListener('keydown',function(e){if(e.key==='Escape'&&document.bo
 function toggleMailMenu(e){e.stopPropagation();var m=document.getElementById('mailMenu');m.style.display=m.style.display==='block'?'none':'block';}
 function closeMailMenu(){document.getElementById('mailMenu').style.display='none';}
 document.addEventListener('click',function(e){if(!e.target.closest||!e.target.closest('.hdr-mailw'))closeMailMenu();});
+</script>
+<script>
+// En celular el encabezado (título + buscador) queda fijo arriba como en matex; las fechas se ocultan al bajar
+(function(){var h=null,c=false;function u(){h=h||document.querySelector('header');if(!h)return;var y=window.pageYOffset||0;if(!c&&y>60){c=true;h.classList.add('hc');}else if(c&&y<5){c=false;h.classList.remove('hc');}}window.addEventListener('scroll',u,{passive:true});})();
 </script>
 </body></html>
 
