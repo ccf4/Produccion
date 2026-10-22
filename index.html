@@ -169,6 +169,7 @@ select{background:var(--surface2);border:1px solid var(--border);color:var(--tex
 /* iPhone: el contenido nunca queda debajo de la barra de estado (ahí iOS difumina lo que pasa por abajo) */
 html{background:var(--bg)}
 body{padding-top:env(safe-area-inset-top)}
+body::before{content:'';position:fixed;top:0;left:0;right:0;height:env(safe-area-inset-top);background:var(--bg);z-index:450;pointer-events:none}
 body.big #bigView .bTop{padding-top:max(12px,env(safe-area-inset-top))}
 body.big #bigView,body.big>div[style*="opacity:.35"]{margin-top:0}
 body.big>div[style*="opacity:.35"]{display:none!important}
@@ -260,6 +261,67 @@ body.big #bigView{display:block;min-height:100vh;background:var(--bg);font-size:
 #bigDet #cierreMsg{font-size:22px!important;text-align:center!important;min-height:30px;margin-top:10px}
 #bigToast{position:fixed;left:50%;bottom:26px;transform:translateX(-50%);background:var(--accent3);color:#fff;font-size:26px;font-weight:800;padding:18px 28px;border-radius:18px;z-index:400;display:none;box-shadow:0 8px 30px rgba(0,0,0,.4)}
 @media (max-width:360px){#bigDet .bFecha{gap:4px;font-size:22px}#bigDet .bFecha input{width:62px!important;font-size:24px!important}#bigDet .bFecha input.y{width:92px!important}#bigDet .bHead{font-size:44px}#bigView .bOp{font-size:34px}}
+
+/* selección múltiple (letra grande) */
+#bigView .bItem{display:flex;align-items:stretch;padding:0;overflow:hidden;cursor:default}
+#bigView .bItem.sel{background:rgba(52,211,153,.13);border-color:var(--accent3);border-left-color:var(--accent3)}
+#bigView .bChk{flex:none;width:78px;border:none;border-right:2px solid var(--border);background:transparent;display:flex;align-items:center;justify-content:center;cursor:pointer;padding:0;-webkit-tap-highlight-color:transparent}
+#bigView .bItem.sel .bChk{border-right-color:var(--accent3)}
+#bigView .bChk i{width:42px;height:42px;border:3px solid var(--muted);border-radius:12px;display:flex;align-items:center;justify-content:center;font-style:normal;color:transparent;font-size:30px;font-weight:800;line-height:1;background:var(--surface)}
+#bigView .bItem.sel .bChk i{background:var(--accent3);border-color:var(--accent3);color:#fff}
+#bigView .bBody{flex:1;min-width:0;padding:16px 18px;background:none;border:none;text-align:left;color:var(--text);font:inherit;cursor:pointer}
+#bigView .bBody:active{background:var(--surface2)}
+#bigView .bSec .bAll{margin-left:auto;font-size:20px;font-weight:700;padding:8px 14px;border-radius:12px;border:2px solid var(--border);background:var(--surface2);color:var(--text);cursor:pointer;font-family:inherit}
+#bigView .bHint{font-size:19px;color:var(--muted);margin:2px 4px 6px}
+#bigSelBar{display:none;position:fixed;left:0;right:0;bottom:0;z-index:60;background:var(--surface);border-top:3px solid var(--accent3);padding:12px 14px calc(12px + env(safe-area-inset-bottom));gap:10px;align-items:center;box-shadow:0 -8px 24px rgba(0,0,0,.35)}
+body.big.hasSel #bigSelBar{display:flex}
+body.big.hasSel #bigView{padding-bottom:130px}
+#bigSelBar .sbN{font-size:21px;font-weight:800;line-height:1.1;white-space:nowrap;flex:none}
+#bigSelBar .sbN small{display:block;font-size:17px;font-weight:600;color:var(--muted)}
+#bigSelBar .sbClr{font-size:18px;font-weight:700;padding:12px 10px;flex:none;border-radius:14px;border:2px solid var(--border);background:var(--surface2);color:var(--text);cursor:pointer;font-family:inherit}
+#bigSelBar .sbGo{flex:1;min-width:0;white-space:nowrap;font-size:22px;font-weight:800;padding:16px 8px;border-radius:16px;border:none;background:var(--accent3);color:#fff;cursor:pointer;font-family:inherit}
+#bigConf{display:none;position:fixed;inset:0;z-index:320;background:var(--bg);overflow-y:auto;font-size:22px;-webkit-overflow-scrolling:touch}
+#bigConf.open{display:block}
+#bigConf .bWrap{padding:14px 16px 60px;max-width:760px;margin:0 auto}
+#bigConf .bBack{font-size:26px;font-weight:700;padding:14px 22px;border-radius:16px;border:2px solid var(--border);background:var(--surface2);color:var(--text);cursor:pointer;margin-bottom:14px;font-family:inherit}
+#bigConf .cTitle{font-size:34px;font-weight:800;line-height:1.15;margin-bottom:4px}
+#bigConf .cSub{font-size:20px;color:var(--muted);margin-bottom:10px}
+#bigConf .cRow{display:flex;align-items:center;gap:10px;background:var(--surface);border:2px solid var(--border);border-radius:14px;padding:12px 14px;margin-bottom:10px}
+#bigConf .cRow.ok{border-color:var(--accent3);background:rgba(52,211,153,.12)}
+#bigConf .cRow.err{border-color:var(--danger);background:rgba(239,68,68,.1)}
+#bigConf .cOp{font-family:'IBM Plex Mono',monospace;font-size:30px;font-weight:700;line-height:1.1}
+#bigConf .cInf{font-size:19px;color:var(--muted);margin-top:2px}
+#bigConf .cMain{flex:1;min-width:0}
+#bigConf .cX{flex:none;width:52px;height:52px;border-radius:14px;border:2px solid var(--border);background:var(--surface2);color:var(--text);font-size:26px;cursor:pointer;font-family:inherit}
+#bigConf .cSt{flex:none;font-size:30px;font-weight:800}
+#bigConf .cBox{background:var(--surface);border:2px solid var(--border);border-radius:16px;padding:14px 18px;margin:14px 0}
+#bigConf .cTot{display:flex;justify-content:space-between;font-size:24px;font-weight:800;padding:6px 0}
+#bigConf .bFecha{display:flex;align-items:center;gap:8px;font-size:28px;justify-content:space-between}
+#bigConf input[type=number]{font-size:28px!important;width:76px!important;padding:10px 6px!important;text-align:center;background:var(--surface2)!important;color:var(--text)!important;border:2px solid var(--border)!important;border-radius:12px!important}
+#bigConf input.y{width:112px!important}
+#bigConf .bBtn{width:100%;font-size:28px;font-weight:800;padding:22px;border-radius:18px;border:none;cursor:pointer;margin-top:12px;font-family:inherit;background:var(--accent3);color:#fff}
+#bigConf .bBtn:disabled{opacity:.55}
+#bigConf #cMsg{font-size:21px;text-align:center;min-height:28px;margin-top:10px}
+@media (max-width:360px){#bigView .bChk{width:64px}#bigSelBar .sbN{font-size:20px}#bigSelBar .sbGo{font-size:20px}#bigConf .bFecha{gap:4px;font-size:22px}#bigConf input[type=number]{width:62px!important;font-size:24px!important}#bigConf input.y{width:92px!important}}
+
+#bigConf .cRow{display:block}
+#bigConf .cTop{display:flex;align-items:center;gap:10px}
+#bigConf .cSeg{display:flex;gap:0;margin-top:10px;border:2px solid var(--border);border-radius:14px;overflow:hidden}
+#bigConf .cSeg button{flex:1;font-size:22px;font-weight:700;padding:12px 6px;border:none;background:var(--surface2);color:var(--muted);cursor:pointer;font-family:inherit}
+#bigConf .cSeg button.on{background:var(--accent3);color:#fff}
+#bigConf .cRow.par .cSeg button.on:last-child{background:var(--accent4);color:#111}
+#bigConf .cRow.par{border-color:var(--accent4)}
+#bigConf .cRow.par.ok{border-color:var(--accent3)}
+#bigConf .cRow.par.err{border-color:var(--danger)}
+#bigConf .cParH{font-size:19px;color:var(--muted);margin:10px 0 4px}
+#bigConf .cpRow{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 0;border-top:1px solid var(--border)}
+#bigConf .cpL{display:flex;align-items:center;gap:10px;font-size:24px;font-weight:700;min-width:0}
+#bigConf .cpL small{font-size:17px;color:var(--muted);font-weight:500}
+#bigConf .cpL input{width:34px;height:34px;accent-color:var(--accent3);flex:none}
+#bigConf .cpQ{display:flex;align-items:center;gap:6px;flex:none}
+#bigConf .cpQ small{font-size:17px;color:var(--muted)}
+#bigConf .cpQ input{width:96px!important}
+#bigConf .cSum{font-size:19px;margin-top:6px}
 @media (max-width:640px){.hdr-big{position:absolute;top:8px;left:12px;margin:0}.hdr-brand{padding-left:46px}}
 </style>
 </head>
@@ -389,6 +451,8 @@ _r.send();
   <div class="bWrap" id="bigList"></div>
 </div>
 <div id="bigDet"><div class="bWrap" id="bigDetBody"></div></div>
+<div id="bigSelBar"><div class="sbN" id="sbN"></div><button class="sbClr" onclick="bigSelClear()">Limpiar</button><button class="sbGo" id="sbGo" onclick="bigConfOpen()"></button></div>
+<div id="bigConf"><div class="bWrap" id="bigConfBody"></div></div>
 <div id="bigToast"></div>
 <div class="mo" id="modal" onclick="if(event.target===this)this.classList.remove('open')">
   <div class="md"><button class="mc" onclick="document.getElementById('modal').classList.remove('open')">&#x2715;</button><h2 id="mt"></h2><div id="mb"></div></div>
@@ -3437,11 +3501,11 @@ function refrescarApp(){var u=new URL(location.href);u.searchParams.set('t',Date
 <script>document.addEventListener('keydown',function(e){if(e.key!=='Escape')return;var m=document.getElementById('modal');if(m&&m.classList.contains('open')){m.classList.remove('open');e.preventDefault();}});</script>
 <script>
 // ===== Modo letra grande: lista simple de OPs abiertas + cierre con botones grandes =====
-var _bigShown=40;
+var _bigShown=40,_bigSel={},_bigSecs={};
 function bigSet(on){
   document.body.classList.toggle('big',!!on);
   try{localStorage.setItem('bigMode',on?'1':'0');}catch(e){}
-  if(on){_bigShown=40;bigRender();window.scrollTo(0,0);}else bigClose();
+  if(on){_bigShown=40;bigRender();window.scrollTo(0,0);}else{bigClose();_bigSel={};document.body.classList.remove('hasSel');}
 }
 function _bigOps(){
   var T=today(),q=((document.getElementById('bigSearch')||{}).value||'').trim().toLowerCase(),qc=q.replace(/-/g,'');
@@ -3465,13 +3529,15 @@ function _bigOps(){
   return out;
 }
 function _bigCard(e,T,cls){
-  var late=e.f&&e.f<T,d=late?daysDiff(e.f,T):0;
+  var late=e.f&&e.f<T,d=late?daysDiff(e.f,T):0,sel=!!_bigSel[e.op];
   var fecha=e.f?e.f.toLocaleDateString('es-MX',{weekday:'short',day:'numeric',month:'short'}):'--';
-  return '<button class="bCard '+cls+'" onclick="bigOpen(\''+e.op+'\')"><div class="bOp">'+e.op+'</div>'+
+  return '<div class="bCard bItem '+cls+(sel?' sel':'')+'" data-op="'+e.op+'">'+
+    '<button class="bChk" onclick="bigToggleSel(\''+e.op+'\')" aria-label="Seleccionar OP '+e.op+'" aria-pressed="'+(sel?'true':'false')+'"><i>\u2713</i></button>'+
+    '<button class="bBody" onclick="bigOpen(\''+e.op+'\')"><div class="bOp">'+e.op+'</div>'+
     '<div class="bSub">'+(e.subs.join(' · ')||e.areas.join(' · ')||'--')+'</div>'+
     '<div class="bRow"><span class="bPz">'+fmtNum(e.pz)+' pzas</span><span class="'+(late?'bLate':'')+'">'+(late?'Vencida hace '+d+' d':'Entrega '+fecha)+'</span></div>'+
     (ped(e.op)?'<div class="bRow" style="color:var(--muted);font-size:19px"><span>Pedido '+ped(e.op)+'</span>'+(late?'<span>Era '+fecha+'</span>':'')+'</div>':(late?'<div class="bRow" style="color:var(--muted);font-size:19px"><span>Era '+fecha+'</span></div>':''))+
-    '</button>';
+    '</button></div>';
 }
 function bigRender(){
   var T=today(),ops=_bigOps(),el=document.getElementById('bigList');if(!el)return;
@@ -3481,10 +3547,13 @@ function bigRender(){
   late.sort(function(a,b){return (parseInt(a.op)||0)-(parseInt(b.op)||0);});
   soon.sort(function(a,b){return (a.f-b.f)||((parseInt(a.op)||0)-(parseInt(b.op)||0));});
   later.sort(function(a,b){return ((a.f||0)-(b.f||0))||((parseInt(a.op)||0)-(parseInt(b.op)||0));});
-  var h='',shown=0,lim=_bigShown;
+  var h=ops.length?'<div class="bHint">Toca el cuadro \u2610 para marcar varias y entregarlas juntas. Toca la orden para ver el detalle.</div>':'',shown=0,lim=_bigShown;
+  _bigSecs={};
   function sec(t,col,arr,cls){
     if(!arr.length)return;
-    h+='<div class="bSec"><span class="dot" style="background:'+col+';width:14px;height:14px"></span>'+t+' <small>'+arr.length+'</small></div>';
+    var key=cls||'later';_bigSecs[key]=arr.map(function(x){return x.op;});
+    var all=arr.every(function(x){return _bigSel[x.op];});
+    h+='<div class="bSec"><span class="dot" style="background:'+col+';width:14px;height:14px"></span>'+t+' <small>'+arr.length+'</small><button class="bAll" onclick="bigSelSec(\''+key+'\')">'+(all?'Quitar todas':'Marcar todas')+'</button></div>';
     arr.forEach(function(e){if(shown>=lim)return;shown++;h+=_bigCard(e,T,cls);});
   }
   sec('Vencidas','var(--danger)',late,'late');
@@ -3493,6 +3562,177 @@ function bigRender(){
   if(!ops.length)h='<div class="bEmpty">No hay órdenes abiertas'+(((document.getElementById('bigSearch')||{}).value)?' con esa búsqueda':'')+'</div>';
   else if(shown<ops.length)h+='<button class="bMore" onclick="_bigShown+=40;bigRender()">Ver más ('+(ops.length-shown)+')</button>';
   el.innerHTML=h;
+  bigSelBarUpd();
+}
+function _bigVrows(op){return RAW.filter(function(r){return String(r.OP)===String(op)&&(r.STATUS||'').trim().toUpperCase()==='V';});}
+function bigSelBarUpd(){
+  var ks=Object.keys(_bigSel).filter(function(o){return _bigVrows(o).length;});
+  ks.length!==Object.keys(_bigSel).length&&(_bigSel=ks.reduce(function(m,o){m[o]=1;return m;},{}));
+  var n=ks.length,pz=0;ks.forEach(function(o){_bigVrows(o).forEach(function(r){pz+=parseInt(r.CANT)||0;});});
+  document.body.classList.toggle('hasSel',n>0);
+  var a=document.getElementById('sbN'),g=document.getElementById('sbGo');
+  if(a)a.innerHTML=n+(n===1?' marcada':' marcadas')+'<small>'+fmtNum(pz)+' pzas</small>';
+  if(g)g.textContent='Entregar '+n+'…';
+}
+function bigToggleSel(op){
+  if(_bigSel[op])delete _bigSel[op];else _bigSel[op]=1;
+  var el=document.querySelector('#bigList .bItem[data-op="'+op+'"]');
+  if(el){el.classList.toggle('sel',!!_bigSel[op]);var b=el.querySelector('.bChk');if(b)b.setAttribute('aria-pressed',_bigSel[op]?'true':'false');}
+  Object.keys(_bigSecs).forEach(function(k){
+    var all=_bigSecs[k].every(function(o){return _bigSel[o];});
+    var btns=document.querySelectorAll('#bigList .bSec .bAll');
+  });
+  bigRefreshAllBtns();bigSelBarUpd();
+}
+function bigRefreshAllBtns(){
+  var names={late:1,soon:1,later:1};
+  document.querySelectorAll('#bigList .bAll').forEach(function(b){
+    var m=/bigSelSec\('(\w+)'\)/.exec(b.getAttribute('onclick')||'');if(!m)return;
+    var arr=_bigSecs[m[1]]||[];b.textContent=(arr.length&&arr.every(function(o){return _bigSel[o];}))?'Quitar todas':'Marcar todas';
+  });
+}
+function bigSelSec(k){
+  var arr=_bigSecs[k]||[],all=arr.every(function(o){return _bigSel[o];});
+  arr.forEach(function(o){if(all)delete _bigSel[o];else _bigSel[o]=1;});
+  bigRender();
+}
+function bigSelClear(){_bigSel={};bigRender();}
+function _bigConfDate(){var T=today();return {d:T.getDate(),m:T.getMonth()+1,y:T.getFullYear()};}
+var _bigSnap=null;
+function _bigSnapshot(){
+  var m={};
+  document.querySelectorAll('#bigConf .cRow[data-op]').forEach(function(r){
+    var o=r.getAttribute('data-op'),e={mode:r.getAttribute('data-mode')||'c',parts:{}};
+    r.querySelectorAll('.cpChk').forEach(function(c){var p=c.getAttribute('data-part'),inp=r.querySelector('.cpCant[data-part="'+p+'"]');e.parts[p]={on:c.checked,val:inp?inp.value:''};});
+    m[o]=e;
+  });
+  return m;
+}
+function _bigRowHtml(o,snap){
+  var v=_bigVrows(o).sort(function(a,b){return (parseInt((a.PART||'0/0').split('/')[0])||0)-(parseInt((b.PART||'0/0').split('/')[0])||0);});
+  var p=v.reduce(function(s,r){return s+(parseInt(r.CANT)||0);},0),subs=[];
+  v.forEach(function(r){var sb=normSub(r.SUBAREA||'');if(sb&&subs.indexOf(sb)<0)subs.push(sb);});
+  var st=snap&&snap[o]?snap[o]:{mode:'c',parts:{}},par=st.mode==='p';
+  var pr=v.map(function(r){
+    var c=parseInt(r.CANT)||0,ps=st.parts[r.PART]||{on:!par?false:false,val:c};
+    return '<div class="cpRow"><label class="cpL"><input type="checkbox" class="cpChk" data-part="'+r.PART+'"'+(ps.on?' checked':'')+' onchange="bigConfCalc()"><span>'+(r.PART||'')+' <small>'+normSub(r.SUBAREA||'')+'</small></span></label>'+
+      '<span class="cpQ"><input type="number" inputmode="numeric" class="cpCant" data-part="'+r.PART+'" data-max="'+c+'" min="1" max="'+c+'" value="'+(ps.val===''?c:ps.val)+'" oninput="bigConfCalc()"><small>de '+fmtNum(c)+'</small></span></div>';
+  }).join('');
+  return '<div class="cRow'+(par?' par':'')+'" id="cr_'+o+'" data-op="'+o+'" data-mode="'+(par?'p':'c')+'" data-pz="'+p+'">'+
+    '<div class="cTop"><div class="cMain"><div class="cOp">'+o+'</div><div class="cInf">'+(subs.join(' · ')||'--')+' · '+fmtNum(p)+' pzas'+(v.length>1?' · '+v.length+' partidas':'')+(ped(o)?' · Pedido '+ped(o):'')+'</div></div>'+
+    '<button class="cX" onclick="bigConfRemove(\''+o+'\')" aria-label="Quitar">✕</button><span class="cSt" id="cs_'+o+'"></span></div>'+
+    '<div class="cSeg"><button class="'+(par?'':'on')+'" onclick="bigConfMode(\''+o+'\',\'c\')">Completa</button><button class="'+(par?'on':'')+'" onclick="bigConfMode(\''+o+'\',\'p\')">Parcial</button></div>'+
+    '<div class="cPar"'+(par?'':' style="display:none"')+'><div class="cParH">Palomea lo que se entregó y ajusta la cantidad:</div>'+pr+'</div>'+
+    '<div class="cSum" id="csum_'+o+'"></div></div>';
+}
+function bigConfMode(o,m){
+  var r=document.getElementById('cr_'+o);if(!r)return;
+  r.setAttribute('data-mode',m);r.classList.toggle('par',m==='p');
+  var b=r.querySelectorAll('.cSeg button');b[0].classList.toggle('on',m==='c');b[1].classList.toggle('on',m==='p');
+  r.querySelector('.cPar').style.display=m==='p'?'block':'none';
+  bigConfCalc();
+}
+// Lee lo que hay en pantalla: por OP, qué se entrega (completa o lista de partidas) y valida
+function _bigConfRead(){
+  var out=[],err='';
+  document.querySelectorAll('#bigConf .cRow[data-op]').forEach(function(r){
+    var o=r.getAttribute('data-op');
+    if(r.getAttribute('data-mode')!=='p'){out.push({op:o,full:true,pz:parseInt(r.getAttribute('data-pz'))||0});return;}
+    var ent=[],pz=0,bad='';
+    r.querySelectorAll('.cpChk').forEach(function(c){
+      if(!c.checked)return;
+      var p=c.getAttribute('data-part'),inp=r.querySelector('.cpCant[data-part="'+p+'"]');
+      var max=parseFloat(inp.getAttribute('data-max'))||0,val=parseFloat(inp.value);
+      if(!(val>0)||val>max){bad='Partida '+p+': entre 1 y '+max+' pzas.';return;}
+      ent.push({part:p,cant:val>=max?null:val});pz+=val;
+    });
+    if(!bad&&!ent.length)bad='Palomea al menos una partida.';
+    if(bad&&!err)err='OP '+o+': '+bad;
+    out.push({op:o,full:false,ent:ent,pz:pz,bad:bad});
+  });
+  return {items:out,err:err};
+}
+function bigConfCalc(){
+  var rd=_bigConfRead(),n=rd.items.length,pz=0,np=0;
+  rd.items.forEach(function(it){
+    pz+=it.pz||0;if(!it.full)np++;
+    var sm=document.getElementById('csum_'+it.op);
+    if(sm){if(it.full){sm.textContent='';sm.style.color='';}else if(it.bad){sm.textContent=it.bad;sm.style.color='var(--danger)';}else{var tot=parseInt(document.getElementById('cr_'+it.op).getAttribute('data-pz'))||0;sm.textContent='Se entregan '+fmtNum(it.pz)+' de '+fmtNum(tot)+' pzas'+(it.pz<tot?' · el resto sigue abierto':'');sm.style.color='var(--muted)';}}
+  });
+  var a=document.getElementById('cN'),b=document.getElementById('cPz'),g=document.getElementById('cGo'),pp=document.getElementById('cNp');
+  if(a)a.textContent=n;if(b)b.textContent=fmtNum(pz);
+  if(pp)pp.textContent=np?(n-np)+' completas · '+np+' parciales':'';
+  if(g&&!g.disabled)g.textContent='✔ Confirmar entrega de '+n+(n===1?' OP':' OPs');
+}
+function bigConfOpen(){
+  var ks=Object.keys(_bigSel).filter(function(o){return _bigVrows(o).length;});
+  if(!ks.length)return;
+  ks.sort(function(a,b){return (parseInt(a)||0)-(parseInt(b)||0);});
+  var dt=_bigConfDate(),snap=_bigSnap;
+  var h='<button class="bBack" id="cBack" onclick="bigConfClose()">← Regresar</button>'+
+    '<div class="cTitle">Confirmar entrega</div><div class="cSub">Cada orden se entrega <b>completa</b> o <b>parcial</b>. En parcial eliges qué partidas y cuántas piezas; lo demás sigue abierto.</div>'+
+    '<div id="cList">'+ks.map(function(o){return _bigRowHtml(o,snap);}).join('')+'</div>'+
+    '<div class="cBox"><div class="cTot"><span>Órdenes</span><span id="cN"></span></div><div class="cInf" id="cNp" style="margin:-4px 0 6px"></div><div class="cTot"><span>Piezas</span><span id="cPz"></span></div></div>'+
+    '<div class="cBox"><div class="dk" style="color:var(--muted);font-size:20px;margin-bottom:8px">Fecha de entrega (para todas)</div><div class="bFecha">'+
+      '<input type="number" inputmode="numeric" id="bcDia" min="1" max="31" value="'+dt.d+'"><span>/</span><input type="number" inputmode="numeric" id="bcMes" min="1" max="12" value="'+dt.m+'"><span>/</span><input type="number" inputmode="numeric" class="y" id="bcAno" min="2020" max="2100" value="'+dt.y+'"></div>'+
+      '<div style="color:var(--muted);font-size:18px;text-align:right;margin-top:6px">Día / Mes / Año — hoy por defecto</div></div>'+
+    '<button class="bBtn" id="cGo" onclick="bigConfRun()"></button><div id="cMsg"></div>';
+  document.getElementById('bigConfBody').innerHTML=h;
+  var c=document.getElementById('bigConf');c.classList.add('open');c.scrollTop=0;
+  bigConfCalc();
+}
+function bigConfClose(){_bigSnap=null;var c=document.getElementById('bigConf');if(c)c.classList.remove('open');bigRender();}
+function bigConfRemove(o){
+  delete _bigSel[o];var r=document.getElementById('cr_'+o);if(r)r.remove();
+  if(!Object.keys(_bigSel).length){bigConfClose();return;}
+  bigConfCalc();
+}
+function bigConfRun(){
+  var msg=document.getElementById('cMsg'),btn=document.getElementById('cGo');
+  var dia=parseInt(document.getElementById('bcDia').value,10),mes=parseInt(document.getElementById('bcMes').value,10),ano=parseInt(document.getElementById('bcAno').value,10);
+  if(!dia||!mes||!ano||dia<1||dia>31||mes<1||mes>12||ano<2020){msg.textContent='Revisa la fecha (DD/MM/AAAA).';msg.style.color='var(--danger)';return;}
+  var fecha=mes+'/'+dia+'/'+ano;
+  var rd=_bigConfRead();
+  if(rd.err){msg.textContent=rd.err;msg.style.color='var(--danger)';return;}
+  var items=rd.items;if(!items.length)return;
+  _bigSnap=_bigSnapshot();
+  btn.disabled=true;document.getElementById('cBack').disabled=true;
+  document.querySelectorAll('#bigConf .cX,#bigConf .cSeg,#bigConf .cPar').forEach(function(x){x.style.pointerEvents='none';});
+  document.querySelectorAll('#bigConf .cX').forEach(function(x){x.style.display='none';});
+  var ok=0,fail=0,i=0;
+  function paint(o,st){var r=document.getElementById('cr_'+o),s=document.getElementById('cs_'+o);if(!r)return;r.classList.remove('ok','err');if(st==='ok')r.classList.add('ok');if(st==='err')r.classList.add('err');if(s){s.textContent=st==='ok'?'✔':st==='err'?'✖':st==='...'?'⏳':'';s.style.color=st==='ok'?'var(--accent3)':st==='err'?'var(--danger)':'var(--muted)';}}
+  function next(){
+    if(i>=items.length){fin();return;}
+    var it=items[i++],o=it.op;msg.textContent='Guardando '+i+' de '+items.length+'…';msg.style.color='var(--muted)';paint(o,'...');
+    var body={op:String(o),cierreFecha:fecha};if(!it.full)body.entregas=it.ent;
+    fetch(EDIT_WORKER_URL,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)})
+    .then(function(r){return r.text().then(function(t){return {ok:r.ok,text:t};});})
+    .then(function(res){
+      if(!res.ok){fail++;paint(o,'err');return;}
+      var base=Date.now();
+      if(it.full){
+        var ts=new Date().toISOString();
+        CIERRES[String(o)]={fecha:fecha,timestamp:ts};
+        CIERRES_LISTA.push({op:String(o),part:null,cant:null,fecha:fecha,timestamp:ts});
+      }else{
+        it.ent.forEach(function(e,k){CIERRES_LISTA.push({op:String(o),part:e.part,cant:e.cant,fecha:fecha,timestamp:new Date(base+k).toISOString()});});
+      }
+      applyCierres();ok++;delete _bigSel[o];paint(o,'ok');
+    }).catch(function(){fail++;paint(o,'err');}).then(next);
+  }
+  function fin(){
+    document.getElementById('cBack').disabled=false;
+    if(!fail){
+      bigConfClose();
+      var t=document.getElementById('bigToast');t.textContent='✔ '+ok+(ok===1?' OP registrada':' OPs registradas');t.style.display='block';
+      setTimeout(function(){t.style.display='none';},3200);
+    }else{
+      msg.textContent=ok+' registradas, '+fail+' con error. Las que fallaron siguen marcadas: reintenta.';msg.style.color='var(--danger)';
+      btn.disabled=false;btn.textContent='Reintentar las '+fail+' pendientes';
+      btn.onclick=function(){bigConfOpen();};
+    }
+  }
+  next();
 }
 function bigOpen(op){
   var parts=RAW.filter(function(d){return String(d.OP)===String(op);});
