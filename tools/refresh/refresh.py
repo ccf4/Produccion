@@ -324,13 +324,15 @@ def read_erp_docs(path):
 def read_prod(path):
     hdr, rows = read_table(path)
     cm = colmap(hdr, {k:[k] for k in ['OP','XSTATUS','FEMIT','FVALE','FProm','Fprod','FTERM','PART','AREA','SUBAREA',
-                                      'CANT','TROQUEL1','MAT','MESH','TRAB','GOLPE','VENDEDOR']},
+                                      'CANT','TROQUEL1','MAT','MESH','TRAB','GOLPE','VENDEDOR','TIPORD']},
                 required=('OP','PART','AREA','CANT'))
     out = []
+    READ_PROD_INFO['stock'] = set()   # OPs de stock: TIPORD S (stock) o H (filtros tubulares) en el PROD
     for r in rows:
         op = r[cm['OP']]
         if op is None or str(op).strip() == '': continue
         g = lambda k: r[cm[k]] if k in cm else ''
+        if str(g('TIPORD') or '').strip().upper() in ('S', 'H'): READ_PROD_INFO['stock'].add(str(op).strip().split('.')[0])
         row = {'OP': str(op).strip().split('.')[0], 'STATUS': 'V', 'XSTATUS': g('XSTATUS') or '',
                'FEMIT': fmt_cell_date(g('FEMIT')), 'FVALE': fmt_cell_date(g('FVALE')),
                'FProm': fmt_cell_date(g('FProm')), 'Fprod': fmt_cell_date(g('Fprod')),
@@ -560,7 +562,7 @@ def run(a):
     overrides = json.load(open(a.overrides, encoding='utf-8')) if a.overrides and os.path.exists(a.overrides) else []
     decisions = json.load(open(a.decisiones, encoding='utf-8')) if a.decisiones and os.path.exists(a.decisiones) else {}
 
-    names = ['RAW','PEDIDOS','ARTICULOS','MNET_FECHAS','MISSING','TOOLTIP_DATA','CLIENTES']
+    names = ['RAW','PEDIDOS','ARTICULOS','MNET_FECHAS','MISSING','TOOLTIP_DATA','CLIENTES','STOCK_OPS']
     full = {n: get_const(idx_html, n) for n in names}
     for n in names:
         if full[n] is None: raise SystemExit('index.html no trae const ' + n)
@@ -733,6 +735,14 @@ def run(a):
         for r in raw:
             if r['OP'] in {x['OP'] for x in prod_rows} and r['OP'] not in full['TOOLTIP_DATA']:
                 full['TOOLTIP_DATA'][r['OP']] = {'tq': r['TROQUEL1'], 'ms': r['MESH'], 'mt': r['MAT'], 'sub': norm_sub(r['SUBAREA'])}
+    if prod_info and prod_info['aplicar']:      # stock: OPs con TIPORD S/H en el PROD; las que ya no vienen se conservan mientras sigan abiertas
+        v_ops = {r['OP'] for r in raw if r['STATUS'] == 'V'}
+        viejo = set(map(str, full['STOCK_OPS']))
+        nuevo = (READ_PROD_INFO.get('stock') or set()) | {o for o in viejo if o not in prod_ops and o in v_ops}
+        nuevo = {o for o in nuevo if o in v_ops and o not in {k for k in decisions.get('stock_excluir', {}) if not k.startswith('_')}}   # excepciones puntuales: stock que se descarta
+        full['STOCK_OPS'] = sorted(nuevo, key=lambda x: int(x))
+        if nuevo != viejo:
+            notes.append('Stock (TIPORD S/H en PROD): %d OP(s) abiertas; entran %s; salen %s.' % (len(nuevo), ', '.join(sorted(nuevo - viejo, key=int)) or 'ninguna', ', '.join(sorted(viejo - nuevo, key=int)) or 'ninguna'))
     bake(raw, cierres, overrides, parciales=False)       # por si una OP nueva ya estaba cerrada en cierres.json
     revisar_parciales(raw, notes)
 
@@ -747,6 +757,7 @@ def run(a):
     out_mtx = mtx_html
     for n in ('RAW','PEDIDOS','ARTICULOS','MNET_FECHAS','TOOLTIP_DATA','CLIENTES'): out_mtx = set_const(out_mtx, n, act[n])
     out_mtx = set_const(out_mtx, 'MISSING', full['MISSING'])
+    if 'const STOCK_OPS=' in out_mtx: out_mtx = set_const(out_mtx, 'STOCK_OPS', full['STOCK_OPS'])
     ts_c = [c['timestamp'] for c in cierres if c.get('timestamp')]
     out_idx, ent1 = set_entregas(out_idx, ts_c); out_mtx, ent2 = set_entregas(out_mtx, ts_c)
     if ts_c:

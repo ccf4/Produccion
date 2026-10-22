@@ -48,5 +48,10 @@
    "SUSTITUCION"
   ],
   "_nota": "el PROD trae la 31456 como SUSTITUCION; no existe esa clasificación, se queda solo la partida Pack del ERP (Chato, 06/oct/2026)"
+ },
+ "stock_excluir": {
+  "9098": "stock pero se descarta (Chato, 22/oct/2026)",
+  "26121": "stock pero se descarta (Chato, 22/oct/2026)",
+  "29841": "stock pero se descarta (Chato, 22/oct/2026)"
  }
 }
