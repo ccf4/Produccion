@@ -161,6 +161,36 @@ select{background:var(--surface2);border:1px solid var(--border);color:var(--tex
 @media (pointer:coarse){input,select,textarea{font-size:16px !important;}}
 .sec-empty{display:none!important}
 
+
+.hdr-mail{margin-left:8px}
+.mmItem{display:block;width:100%;text-align:left;background:transparent;border:none;color:var(--text);font-family:inherit;font-size:13px;padding:10px 12px;border-radius:7px;cursor:pointer;white-space:nowrap}
+.mmItem:hover{background:var(--surface2)}
+@media (max-width:640px){.hdr-mailw{position:absolute!important;top:8px;right:92px}.hdr-mail{margin:0}#mailMenu{right:-80px!important}.hdr-brand{padding-right:128px!important}.hdr-brand .title{font-size:15px;white-space:nowrap}.hdr-brand .logo{letter-spacing:1.5px}}
+/* ===== Ajustes versión móvil ===== */
+.sh-wrap{position:relative;display:flex;align-items:center;flex:1;min-width:0}
+.sh-wrap>[id$="Badges"]{flex:1 1 auto!important;min-width:0;scrollbar-width:none}
+.sh-wrap>[id$="Badges"]::-webkit-scrollbar{display:none}
+.sh-wrap.has-r>[id$="Badges"]{-webkit-mask-image:linear-gradient(to right,#000 calc(100% - 38px),transparent);mask-image:linear-gradient(to right,#000 calc(100% - 38px),transparent)}
+.sh-wrap.has-l>[id$="Badges"]{-webkit-mask-image:linear-gradient(to right,transparent,#000 38px);mask-image:linear-gradient(to right,transparent,#000 38px)}
+.sh-wrap.has-l.has-r>[id$="Badges"]{-webkit-mask-image:linear-gradient(to right,transparent,#000 38px,#000 calc(100% - 38px),transparent);mask-image:linear-gradient(to right,transparent,#000 38px,#000 calc(100% - 38px),transparent)}
+.op-ped,.op-cant,.op-num{white-space:nowrap}
+@media (max-width:640px){
+  header{position:static}
+  .hdr-info>div>div:first-child{display:none}
+  main{padding-bottom:84px}
+  #wg{overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+  #wg::-webkit-scrollbar{display:none}
+  #wg .week-days,#wg .week-row{grid-template-columns:122px repeat(6,92px);min-width:676px}
+  #wg .week-days>div:first-child,#wg .week-row>.row-label{position:sticky;left:0;z-index:4}
+  #wg .week-row .row-label{padding:5px 6px;font-size:12px;overflow:hidden}
+  #wg .week-row .row-label *{max-width:100%}
+  .st:has(#wgBadges)>span:nth-child(2){flex-wrap:wrap;row-gap:8px;overflow:visible!important}
+  .st:has(#wgBadges)>span:nth-child(2)>span:first-child{flex-shrink:1!important}
+  .st:has(#wgBadges)>.dot{align-self:flex-start;margin-top:8px}
+  #wg .row-label>div>div:first-child{white-space:normal!important;flex-wrap:wrap;row-gap:2px}
+  .st:has(#wgBadges) .sh-wrap{flex:1 1 100%}
+  #fabRapida{opacity:.55!important;transform:scale(.85)}
+}
 /* ===== Modo letra grande ===== */
 .hdr-big{margin-right:12px;flex-shrink:0}
 #bigView{display:none}
@@ -236,6 +266,7 @@ body.big #bigView{display:block;min-height:100vh;background:var(--bg);font-size:
   <button class="nb hdr-refresh" id="refreshBtn" title="Actualizar datos" aria-label="Actualizar datos" onclick="refrescarApp()">
     <svg viewBox="0 0 32 32" fill="none"><path d="M26 16a10 10 0 1 1-3.2-7.3" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/><path d="M24 4v6h-6" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
   </button>
+  <span class="hdr-mailw" style="position:relative;display:inline-flex"><button class="nb hdr-mail" id="mailBtn" title="Enviar resumen" aria-label="Enviar resumen" onclick="toggleMailMenu(event)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><polyline points="3 7 12 13 21 7"/></svg></button><div id="mailMenu" style="display:none;position:absolute;top:40px;right:0;z-index:250;background:var(--surface);border:1px solid var(--border);border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.4);padding:6px;min-width:190px"><button class="mmItem" onclick="closeMailMenu();enviarResumenPorVendedor()">&#9993; Resumen por vendedor</button><button class="mmItem" onclick="closeMailMenu();enviarResumenCorreo()">&#9993; Resumen general</button></div></span>
   <button class="nb hdr-pdf" id="pdfBtn" title="Generar resumen ejecutivo (PDF)" aria-label="Generar resumen ejecutivo" onclick="generarResumen(this)">
     <svg viewBox="0 0 32 32" fill="none"><path d="M9 4h9l7 7v17a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"/><path d="M18 4v7h7" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"/><line x1="11" y1="18" x2="21" y2="18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><line x1="11" y1="22" x2="21" y2="22" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><line x1="11" y1="26" x2="17" y2="26" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
   </button>
@@ -249,7 +280,7 @@ body.big #bigView{display:block;min-height:100vh;background:var(--bg);font-size:
 </div>
 <main>
   <div class="view" id="view-semana">
-    <div class="st"><span class="dot" style="background:var(--danger)"></span><span onclick="toggleLateSection()" style="cursor:pointer;display:flex;align-items:center;gap:8px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:6px 10px;transition:background .1s;overflow:hidden;flex:1 1 260px;min-width:0;min-height:44px;box-sizing:border-box" onmouseenter="this.style.background='var(--surface)'" onmouseleave="this.style.background='var(--surface2)'"><span style="flex-shrink:0">Vencidas</span><span id="lcBadges" style="display:flex;align-items:center;gap:6px;overflow-x:auto;flex:1;min-width:0;-webkit-overflow-scrolling:touch"></span><span style="flex-shrink:0;display:flex;align-items:center;gap:4px;color:var(--accent);font-size:11px;font-weight:600"><span id="lcLabel" class="lc-label">Ver detalle</span><svg id="lcChevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px;transition:transform .15s"><polyline points="6 9 12 15 18 9"></polyline></svg></span></span><button onclick="enviarResumenPorVendedor()" style="margin-left:auto;background:var(--surface2);border:1px solid var(--border);color:var(--muted);border-radius:6px;padding:4px 10px;font-size:11px;cursor:pointer;font-weight:400;flex-shrink:0">&#9993; Enviar resumen</button><a onclick="enviarResumenCorreo()" style="margin-left:8px;color:var(--muted);font-size:10px;text-decoration:underline;cursor:pointer;font-weight:400;flex-shrink:0">resumen general</a></div>
+    <div class="st"><span class="dot" style="background:var(--danger)"></span><span onclick="toggleLateSection()" style="cursor:pointer;display:flex;align-items:center;gap:8px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:6px 10px;transition:background .1s;overflow:hidden;flex:1 1 260px;min-width:0;min-height:44px;box-sizing:border-box" onmouseenter="this.style.background='var(--surface)'" onmouseleave="this.style.background='var(--surface2)'"><span style="flex-shrink:0">Vencidas</span><span id="lcBadges" style="display:flex;align-items:center;gap:6px;overflow-x:auto;flex:1;min-width:0;-webkit-overflow-scrolling:touch"></span><span style="flex-shrink:0;display:flex;align-items:center;gap:4px;color:var(--accent);font-size:11px;font-weight:600"><span id="lcLabel" class="lc-label">Ver detalle</span><svg id="lcChevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px;transition:transform .15s"><polyline points="6 9 12 15 18 9"></polyline></svg></span></span></div>
     <div class="card" id="loCard" style="display:none;margin-top:8px"><div class="card-body" id="lo" style="padding:12px"></div></div>
     <div class="st" style="margin-top:4px"><span class="dot" style="background:var(--warn)"></span><span onclick="toggleReprogSection()" style="cursor:pointer;display:flex;align-items:center;gap:8px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:6px 10px;transition:background .1s;overflow:hidden;flex:1 1 260px;min-width:0" onmouseenter="this.style.background='var(--surface)'" onmouseleave="this.style.background='var(--surface2)'"><span style="flex-shrink:0">Reprogramadas</span><span id="rpBadges" style="display:flex;align-items:center;gap:6px;overflow-x:auto;flex:1;min-width:0;-webkit-overflow-scrolling:touch"></span><span style="flex-shrink:0;display:flex;align-items:center;gap:4px;color:var(--accent);font-size:11px;font-weight:600"><span id="rpLabel" class="lc-label">Ver detalle</span><svg id="rpChevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px;transition:transform .15s"><polyline points="6 9 12 15 18 9"></polyline></svg></span></span></div>
     <div class="card" id="rpCard" style="display:none;margin-top:8px"><div class="card-body" id="rp" style="padding:12px"></div></div>
@@ -3492,6 +3523,36 @@ function bigDone(op){
 }
 document.addEventListener('keydown',function(e){if(e.key==='Escape'&&document.body.classList.contains('big')){var d=document.getElementById('bigDet');if(d&&d.classList.contains('open'))bigClose();}});
 (function(){var on=false;try{on=localStorage.getItem('bigMode')==='1';}catch(e){}if(/[?&]grande=1/.test(location.search))on=true;if(on){document.addEventListener('DOMContentLoaded',function(){setTimeout(function(){bigSet(true);},0);});window.addEventListener('load',function(){if(document.body.classList.contains('big'))bigRender();});}})();
+</script>
+<script>
+// Barras de resumen: degradado en el borde cuando hay más contenido por desplazar
+(function(){
+  ['lcBadges','wgBadges','rpBadges','skBadges','clBadges','tdBadges'].forEach(function(id){
+    var el=document.getElementById(id);
+    if(!el||el.parentNode.classList.contains('sh-wrap'))return;
+    var w=document.createElement('span');w.className='sh-wrap';el.parentNode.insertBefore(w,el);w.appendChild(el);
+    function upd(){var max=el.scrollWidth-el.clientWidth,sl=el.scrollLeft;w.classList.toggle('has-l',sl>2);w.classList.toggle('has-r',max>2&&sl<max-2);}
+    el.addEventListener('scroll',upd,{passive:true});window.addEventListener('resize',upd);
+    if(window.MutationObserver)new MutationObserver(upd).observe(el,{childList:true,subtree:true});
+    if(window.ResizeObserver)new ResizeObserver(upd).observe(el);
+    upd();
+  });
+  // en celular, la grilla semanal abre ya desplazada al día de hoy
+  function irHoy(){
+    if(innerWidth>640)return;var g=document.getElementById('wg');if(!g)return;
+    var t=g.querySelector('.week-days .today-col');
+    if(t&&g.scrollLeft<2)g.scrollLeft=Math.max(0,t.getBoundingClientRect().left-g.getBoundingClientRect().left+g.scrollLeft-122-4);
+  }
+  document.querySelectorAll('.tab').forEach(function(t){t.addEventListener('click',function(){setTimeout(irHoy,80);});});
+  setTimeout(irHoy,400);
+  var g=document.getElementById('wg');
+  if(g&&window.MutationObserver){var busy=false;new MutationObserver(function(){if(busy)return;busy=true;setTimeout(function(){irHoy();busy=false;},0);}).observe(g,{childList:true});}
+})();
+</script>
+<script>
+function toggleMailMenu(e){e.stopPropagation();var m=document.getElementById('mailMenu');m.style.display=m.style.display==='block'?'none':'block';}
+function closeMailMenu(){document.getElementById('mailMenu').style.display='none';}
+document.addEventListener('click',function(e){if(!e.target.closest||!e.target.closest('.hdr-mailw'))closeMailMenu();});
 </script>
 </body></html>
 
