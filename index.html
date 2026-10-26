@@ -680,6 +680,8 @@ function loadCierres(){
       applyCierres();
       if(document.getElementById('ganttScroll'))renderGantt();
       renderSemana(today());
+
+      if(document.body.classList.contains('big'))bigRender();
     })
     .catch(function(){});
 }
@@ -3851,7 +3853,7 @@ function bigDone(op){
   setTimeout(function(){t.style.display='none';},3200);
 }
 document.addEventListener('keydown',function(e){if(e.key==='Escape'&&document.body.classList.contains('big')){var d=document.getElementById('bigDet');if(d&&d.classList.contains('open'))bigClose();}});
-(function(){var on=false;try{on=localStorage.getItem('bigMode')==='1';}catch(e){}if(/[?&]grande=1/.test(location.search))on=true;if(on){document.addEventListener('DOMContentLoaded',function(){setTimeout(function(){bigSet(true);},0);});window.addEventListener('load',function(){if(document.body.classList.contains('big'))bigRender();});}})();
+(function(){var on=false;try{on=localStorage.getItem('bigMode')==='1';}catch(e){}if(/[?&]grande=1/.test(location.search))on=true;try{if(window.matchMedia&&matchMedia('(max-width:640px)').matches)on=true;}catch(e){}if(on){document.addEventListener('DOMContentLoaded',function(){setTimeout(function(){bigSet(true);},0);});window.addEventListener('load',function(){if(document.body.classList.contains('big'))bigRender();});}})();
 </script>
 <script>
 // Barras de resumen: degradado en el borde cuando hay más contenido por desplazar
