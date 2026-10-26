@@ -3828,23 +3828,9 @@ function bigOpen(op){
       '<div class="dr"><span class="dk">Entrega</span><b class="'+(late?'bLate':'')+'">'+(f?f.toLocaleDateString('es-MX',{weekday:'short',day:'numeric',month:'short'}):'--')+(late?' ('+daysDiff(f,T)+' d tarde)':'')+'</b></div>'+
       (v.length>1?'<div class="dr" style="display:block"><div class="dk" style="margin-bottom:6px">Partidas</div>'+v.map(function(p){return '<div style="display:flex;justify-content:space-between;padding:4px 0"><span>'+(p.PART||'')+' <span style="color:var(--muted);font-size:15px">'+normSub(p.SUBAREA||'')+'</span></span><b class="bPz">'+fmtNum(parseInt(p.CANT)||0)+'</b></div>';}).join('')+'</div>':'')+
     '</div>'+
-    '<div class="bBox"><div class="dr fechaRow"><span class="dk">Fecha de entrega</span><span class="bFecha">'+
-      '<input type="number" inputmode="numeric" id="cierreFechaDia" min="1" max="31" value="'+T.getDate()+'"><span>/</span>'+
-      '<input type="number" inputmode="numeric" id="cierreFechaMes" min="1" max="12" value="'+(T.getMonth()+1)+'"><span>/</span>'+
-      '<input type="number" inputmode="numeric" class="y" id="cierreFechaAno" min="2020" max="2100" value="'+T.getFullYear()+'"></span></div>'+
-      '<div style="color:var(--muted);font-size:14px;text-align:right">Día / Mes / Año — hoy por defecto</div></div>'+
-    '<button class="bBtn ok" id="cierreBtnTodo" onclick="saveCierre(\''+op+'\')">✔ Entregar OP completa</button>'+
-    (v.length>=1?'<button class="bBtn alt" id="bigParBtn" onclick="bigTogglePar()">Entrega parcial…</button>':'')+
-    '<div id="parcialBox" class="bBox" style="display:none">'+_parcialHtml(parts)+'</div>'+
-    '<input type="checkbox" id="parcialChk" style="display:none">'+
-    '<button class="bBtn par" id="parcialBtn" style="display:none" onclick="saveEntregaParcial(\''+op+'\')">Registrar entrega parcial</button>'+
-    '<div id="cierreMsg"></div>';
+    '<div class="bHint" style="margin:10px 4px 0">Para registrar la entrega, regresa a la lista y marca la casilla de la OP.</div>';
   document.getElementById('bigDetBody').innerHTML=h;
   var d=document.getElementById('bigDet');d.classList.add('open');d.scrollTop=0;
-}
-function bigTogglePar(){
-  var c=document.getElementById('parcialChk');c.checked=!c.checked;toggleParcial();
-  document.getElementById('bigParBtn').textContent=c.checked?'Cancelar entrega parcial':'Entrega parcial…';
 }
 function bigClose(){var d=document.getElementById('bigDet');if(d)d.classList.remove('open');}
 function bigDone(op){
