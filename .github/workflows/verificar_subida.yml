@@ -1,0 +1,27 @@
+name: Verificar subida
+
+# Cada vez que cambia index.html (subida a mano o refresh) compara contra la versión anterior.
+# Si la nueva BORRA datos que ya estaban (OPs, pedidos, clientes, artículos) o reabre OPs cerradas,
+# esta corrida sale en rojo y GitHub te manda un correo. Así una subida armada sobre una versión
+# vieja se detecta el mismo día, no semanas después.
+
+on:
+  push:
+    paths: [ 'index.html' ]
+  workflow_dispatch:
+
+jobs:
+  verificar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 2 }
+      - name: Comparar contra la versión anterior
+        shell: bash   # con pipefail, para que el tee no esconda el fallo
+        run: |
+          git show HEAD~1:index.html > /tmp/index_anterior.html
+          python tools/refresh/verificar_subida.py /tmp/index_anterior.html index.html | tee /tmp/res.txt
+          # (si falla, el comando anterior ya marcó la corrida en rojo)
+      - name: Resumen
+        if: always()
+        run: cat /tmp/res.txt >> "$GITHUB_STEP_SUMMARY" 2>/dev/null || true
