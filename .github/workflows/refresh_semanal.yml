@@ -71,15 +71,34 @@ jobs:
       - if: steps.chk.outputs.hay == 'true'
         run: pip install openpyxl
 
-      - name: Armar la carpeta de trabajo (archivos nuevos + el último Documentos ya procesado)
+      - name: Armar la carpeta de trabajo (archivos nuevos + TODOS los Documentos ya procesados)
         if: steps.chk.outputs.hay == 'true'
         run: |
           mkdir -p work
           cp -r inbox/nuevos/. work/ 2>/dev/null || true
           rm -f work/LISTO work/REVISAR work/.gitkeep
-          # Documentos de la semana anterior: los pedidos viejos se resuelven con él
-          prev=$(ls -1 inbox/procesados/*DOCUMENTOS* 2>/dev/null | sort | tail -n 1 || true)
-          [ -n "$prev" ] && cp "$prev" work/ || true
+          # Todos los Documentos de lotes anteriores (sueltos o dentro de un .zip): un pedido que no vino
+          # en el archivo de su semana se completa con cualquiera de los otros. Solo Documentos:
+          # los archivos de OPs/PROD viejos NO se vuelven a leer.
+          python - <<'PY'
+          import glob, os, shutil, zipfile
+          n = 0
+          for f in sorted(glob.glob('inbox/procesados/*')):
+              b = os.path.basename(f)
+              if b.lower().endswith('.xlsx') and 'DOCUMENTOS' in b.upper():
+                  if not os.path.exists('work/' + b): shutil.copy(f, 'work/' + b); n += 1
+              elif b.lower().endswith('.zip'):
+                  try:
+                      with zipfile.ZipFile(f) as z:
+                          for m in z.namelist():
+                              mb = os.path.basename(m)
+                              if mb.lower().endswith('.xlsx') and 'DOCUMENTOS' in mb.upper() and not os.path.exists('work/' + mb):
+                                  with z.open(m) as src, open('work/' + mb, 'wb') as dst: shutil.copyfileobj(src, dst)
+                                  n += 1
+                  except zipfile.BadZipFile:
+                      pass
+          print('Documentos anteriores agregados:', n)
+          PY
           # cierres/overrides tal como están ahora (para saber cuáles se hornearon)
           cp prod/cierres.json snap_cierres.json
           cp prod/overrides.json snap_overrides.json
