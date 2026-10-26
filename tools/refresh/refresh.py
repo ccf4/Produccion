@@ -744,6 +744,16 @@ def run(a):
         if nuevo != viejo:
             notes.append('Stock (TIPORD S/H en PROD): %d OP(s) abiertas; entran %s; salen %s.' % (len(nuevo), ', '.join(sorted(nuevo - viejo, key=int)) or 'ninguna', ', '.join(sorted(viejo - nuevo, key=int)) or 'ninguna'))
     bake(raw, cierres, overrides, parciales=False)       # por si una OP nueva ya estaba cerrada en cierres.json
+
+    # aviso: OPs abiertas cuyo pedido no tiene cliente (ni en este lote ni en los Documentos anteriores)
+    _sin = {}
+    for r in full['RAW']:
+        if r['STATUS'] != 'V': continue
+        p = full['PEDIDOS'].get(r['OP'])
+        if p and p not in full['CLIENTES']: _sin.setdefault(p, set()).add(r['OP'])
+    if _sin:
+        notes.append('SIN CLIENTE: %d pedido(s) de OPs abiertas no están en ningún Documentos leído: %s. El texto del resumen por vendedor saldrá sin cliente hasta que se capturen a mano.' %
+                     (len(_sin), '; '.join('%s (OP %s)' % (p, ', '.join(sorted(o, key=int))) for p, o in sorted(_sin.items()))))
     revisar_parciales(raw, notes)
 
     # 4) encabezado (solo index)
