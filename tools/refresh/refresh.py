@@ -398,9 +398,14 @@ def merge_prod(current, xrows, restruct_dec):
             parts = {r['PART'] for r in cr}
             if not any(r['PART'] in parts for r in x_by[op]): restructured.append(op)
     comp = set()
-    seen = collections.Counter()
-    for r in current + xrows: seen[(r['OP'], r['PART'])] += 1
-    comp = {k[0] for k, c in seen.items() if c > 1}
+    # Clave compuesta (OP,PART,SUBAREA) solo si ESA OP trae partidas repetidas dentro de una misma fuente
+    # (panel actual o xlsx). Si el panel trae una fila y el PROD trae otra con el mismo (OP,PART) pero distinta
+    # subárea (el ERP adivinó "Pack", el PROD dice "Oblongo / Manual"), es LA MISMA partida: el PROD la reemplaza.
+    # (Antes se contaban las dos fuentes juntas y esa pareja se tomaba por dos partidas: salían duplicadas — OPs 31468, 31467, 31515, 31460, 31466.)
+    comp = set()
+    for src in (current, xrows):
+        seen = collections.Counter((r['OP'], r['PART']) for r in src)
+        comp |= {k[0] for k, c in seen.items() if c > 1}
     key = lambda r: (r['OP'], r['PART'], (norm_sub(r['SUBAREA']) or '').upper()) if r['OP'] in comp else (r['OP'], r['PART'])
     rx_xlsx = {o for o in restructured if restruct_dec.get(o) == 'xlsx'}
     rx_keep = {o for o in restructured if restruct_dec.get(o) != 'xlsx'}
@@ -745,6 +750,14 @@ def run(a):
         if nuevo != viejo:
             notes.append('Stock (TIPORD S/H en PROD): %d OP(s) abiertas; entran %s; salen %s.' % (len(nuevo), ', '.join(sorted(nuevo - viejo, key=int)) or 'ninguna', ', '.join(sorted(viejo - nuevo, key=int)) or 'ninguna'))
     bake(raw, cierres, overrides, parciales=False)       # por si una OP nueva ya estaba cerrada en cierres.json
+
+    # aviso: misma OP y partida con la misma cantidad en dos filas = probable duplicado
+    _dup = collections.defaultdict(list)
+    for r in full['RAW']: _dup[(r['OP'], r['PART'], r['CANT'])].append(r['SUBAREA'])
+    _dups = sorted(k for k, v in _dup.items() if len(v) > 1)
+    if _dups:
+        notes.append('POSIBLE DUPLICADO: %s tienen dos filas con la misma OP, partida y cantidad (subáreas: %s). Revísalas.' %
+                     ('; '.join('OP %s %s' % (o, p) for o, p, c in _dups[:12]), '; '.join('/'.join(_dup[k]) for k in _dups[:6])))
 
     # aviso: OPs abiertas cuyo pedido no tiene cliente (ni en este lote ni en los Documentos anteriores)
     _sin = {}
