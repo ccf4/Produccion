@@ -966,7 +966,9 @@ function lineaOPSinVend(r,extra,statusFiltro){
   var cliStr=nombreLegible(cli&&cli.nombre);
   var arts=getArts(r.OP);
   var artStr=(arts&&arts.length&&arts[0])?arts[0]:((r.SUBAREA||'')+(r.MESH?' '+r.MESH:''));
-  return '- '+(pedStr?pedStr+' \u00b7 ':'')+'OP '+r.OP+(cliStr?' \u00b7 '+cliStr:'')+' \u00b7 '+fmtNum(totalCant)+' pzas'+(artStr?' \u00b7 '+artStr:'')+(extra?' \u00b7 '+extra:'');
+  // Orden: pedido · cliente · piezas · OP · artículo · fecha/extra (la OP va después de las piezas para no confundirla con el pedido)
+  var seg=[];if(pedStr)seg.push(pedStr);if(cliStr)seg.push(cliStr);seg.push(fmtNum(totalCant)+' pzas');seg.push('OP '+r.OP);if(artStr)seg.push(artStr);if(extra)seg.push(extra);
+  return '- '+seg.join(' \u00b7 ');
 }
 // Vendedor "efectivo" de una fila: si la OP no trae VENDEDOR (caso frecuente en OPs recien creadas
 // que aun no se cruzan con el archivo de Documentos del ERP), se busca el vendedor mas frecuente entre
