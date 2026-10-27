@@ -199,8 +199,9 @@ CLASIF = [  # (prefijo, AREA, SUBAREA) — el orden importa (más específico pr
     ('OBLONGO','Disco','Oblongo'), ('DISCOS','Disco','Disco'), ('DISCO ','Disco','Disco'),
     ('PACKS','Disco','Pack'), ('PACK ','Disco','Pack'), ('CRIBA','Telar','Criba'),
     ('RUMBA','Varios','Rumba'), ('ARO ','Aros','Nuevo'),
+    ('TIRAS','Disco','Tiras'),   # Chato, 27/oct/2026: "TIRAS MALLA 12-60-20, MEDIDA 8 CMS..." (como la OP 31315)
 ]
-TIRA_DIM = r'(\d+(?:\.\d+)?)\s*CMS?\.?\s*(?:ANCHO\s*)?X\s*(\d+(?:\.\d+)?)\s*CMS?\b'
+TIRA_DIM = r'(\d+(?:\.\d+)?)\s*CMS?\.?\s*(?:DE\s+)?(?:ANCHO\s*)?X\s*(\d+(?:\.\d+)?)\s*CMS?\b'
 EXTERNAS = ('LAMINA', 'SOLERA')   # producción externa: no entra al RAW (va a MISSING/ARTICULOS)
 
 def clean_desc(d):
