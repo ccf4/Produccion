@@ -112,8 +112,8 @@ main{padding:22px 28px;max-width:1600px;margin:0 auto;}
 .wgg-r{display:grid;grid-template-columns:260px 1fr;border-bottom:1px solid var(--border);cursor:pointer;min-height:30px}
 .wgg-r:hover{background:var(--surface2)}
 .dpill{font-size:10px;font-weight:700;font-family:'IBM Plex Mono',monospace;border-radius:10px;padding:1px 8px;white-space:nowrap}
-.dpill.r{color:#fecaca;background:rgba(239,68,68,.30)}.dpill.a{color:#fde68a;background:rgba(245,158,11,.28)}.dpill.g{color:#e2e8f0;background:rgba(148,163,184,.26)}
-:root[data-theme=light] .dpill.r{color:#991b1b;background:rgba(239,68,68,.16)}:root[data-theme=light] .dpill.a{color:#92400e;background:rgba(245,158,11,.22)}:root[data-theme=light] .dpill.g{color:#334155;background:rgba(100,116,139,.18)}
+.dpill.r{color:#fecaca;background:rgba(239,68,68,.30)}.dpill.o{color:#fed7aa;background:rgba(249,115,22,.34)}.dpill.a{color:#fde68a;background:rgba(245,158,11,.28)}.dpill.g{color:#e2e8f0;background:rgba(148,163,184,.26)}
+:root[data-theme=light] .dpill.o{color:#9a3412;background:rgba(249,115,22,.22)}:root[data-theme=light] .dpill.r{color:#991b1b;background:rgba(239,68,68,.16)}:root[data-theme=light] .dpill.a{color:#92400e;background:rgba(245,158,11,.22)}:root[data-theme=light] .dpill.g{color:#334155;background:rgba(100,116,139,.18)}
 .wgg-l{display:flex;align-items:center;gap:8px;padding:4px 10px;font-size:11px;min-width:0;white-space:nowrap}
 .wgg-l b{font-family:'IBM Plex Mono',monospace;font-size:12px}.wgg-l .pd{font-family:'IBM Plex Mono',monospace;color:var(--accent4)}.wgg-l .dy{margin-left:auto;color:var(--muted);font-family:'IBM Plex Mono',monospace;font-size:10px}
 .wgg-t{position:relative;border-left:1px solid var(--border);background-image:repeating-linear-gradient(to right,transparent 0,transparent calc(100%/6 - 1px),var(--border) calc(100%/6 - 1px),var(--border) calc(100%/6))}
@@ -494,9 +494,9 @@ body.big.hasSel #bigView{padding-bottom:130px}
   </button>
 </header>
 <div class="tabs">
-  <div class="tab active" onclick="switchTab('areas')">Gantt</div>
+  <div class="tab active" onclick="switchTab('areas')">Gantt abiertas</div>
+  <div class="tab" onclick="switchTab('todas')">Antigüedad y lista</div>
   <div class="tab" onclick="switchTab('semana')">Semanal</div>
-  <div class="tab" onclick="switchTab('todas')">Todas OP Abiertas</div>
   <div class="tab" onclick="switchTab('historico')">Histórico</div>
 </div>
 <main>
@@ -2031,7 +2031,7 @@ function renderWeekGantt(WS,T){
       se.forEach(function(e){
         var ei=Math.max(0,Math.min(5,Math.floor((e.end-WS)/DAY))),si=Math.floor((e.st-WS)/DAY),before=si<0;si=Math.max(0,Math.min(ei,si));
         var late=e.end<T,w=(ei-si+1)/6*100;
-        h+='<div class="wgg-r" onclick="showDetail(\''+e.op+'\')" title="'+(e.dias!==null?e.dias+' d\u00edas abierta':'')+'"><div class="wgg-l"><b>OP '+e.op+'</b>'+((!EDITOR_MODE&&e.ped)?'<span class="pd">'+e.ped+'</span>':'')+(e.stock?'<span style="font-size:9px;font-weight:700;color:var(--accent4)">STOCK</span>':'')+(e.dias!==null?'<span class="dpill '+(e.dias>=30?'r':e.dias>=14?'a':'g')+'" style="margin-left:auto">'+e.dias+' d</span>':'')+'</div>'+
+        h+='<div class="wgg-r" onclick="showDetail(\''+e.op+'\')" title="'+(e.dias!==null?e.dias+' d\u00edas abierta':'')+'"><div class="wgg-l"><b>OP '+e.op+'</b>'+((!EDITOR_MODE&&e.ped)?'<span class="pd">'+e.ped+'</span>':'')+(e.stock?'<span style="font-size:9px;font-weight:700;color:var(--accent4)">STOCK</span>':'')+(e.dias!==null?'<span class="dpill '+(e.dias>60?'r':e.dias>=30?'o':e.dias>=14?'a':'g')+'" style="margin-left:auto">'+e.dias+' d</span>':'')+'</div>'+
           '<div class="wgg-t"><div class="wgg-b" style="left:calc('+(si/6*100)+'% + 2px);width:calc('+w+'% - 8.333% - 2px);background:color-mix(in srgb,'+col+' 70%,#0f172a);'+(late?'box-shadow:inset -5px 0 0 #ef4444;':'')+'">'+(before?'\u25c2 ':'')+fmtNum(e.q)+(e.pack?' gol.':' pzas')+'</div></div></div>';
       });
     });
@@ -2919,7 +2919,7 @@ function renderGantt(){
         var barHtml='<div class="gantt-bar-wrap" data-start="'+(startDay*dayW)+'" data-w="'+barW+'" data-op="'+r.OP+'" onclick="showDetail(\''+r.OP+'\')" style="position:absolute;left:'+(startDay*dayW)+'px;width:'+barW+'px;top:4px;bottom:4px;border-radius:4px;background:'+barCol+';opacity:'+(_stk?'1':'.88')+';cursor:pointer;z-index:1;transition:opacity .15s;'+lateStyle+'" onmouseenter="this.style.opacity=1;showGanttTip(this,\''+r.OP+'\')" onmouseleave="this.style.opacity='+(_stk?'1':'.88')+';hideOpTip()">'+editedDot+
           '<div class="gantt-bar-label" style="position:absolute;left:8px;top:0;right:0;font-size:11px;font-family:IBM Plex Mono,monospace;font-weight:600;color:#fff;white-space:nowrap;line-height:'+(ROW_H-8)+'px;pointer-events:none;overflow:hidden;text-overflow:ellipsis">'+(_stk?stkTag:'')+(_editedOp?calIcon:'')+_daysIn+barLabelText+'</div></div>';
         var _dc=_dAb===null?'#94a3b8':_dAb>=30?'#ef4444':_dAb>=14?'#f59e0b':'#94a3b8';
-        var _dcls=_dAb===null?'g':_dAb>=30?'r':_dAb>=14?'a':'g';
+        var _dcls=_dAb===null?'g':_dAb>60?'r':_dAb>=30?'o':_dAb>=14?'a':'g';
         var _mLab=_dTxt?'<span class="dpill '+_dcls+'" title="D\u00edas abierta">'+_dAb+' d abierta</span>':'';
         rows.push({h:ROW_H,pad:'0 4px',center:true,flex:true,labelStyle:'',border:'var(--ov)',bg:'transparent',label:_mLab,content:wkBands()+todayLine()+_daysOut+barHtml});
       });
@@ -2932,7 +2932,7 @@ function renderGantt(){
   }).join('');
   var _eBtns=[['g','Menos de 14 d'],['a','14 a 29 d'],['r','30 a 60 d'],['rr','M\u00e1s de 60 d']].map(function(x){
     var on=!!_eSel[x[0]];
-    return '<button onclick="toggleGanttEdad(\''+x[0]+'\')" title="'+(on?'Quitar filtro de antig\u00fcedad':'Filtrar por antig\u00fcedad de la OP')+'" style="display:inline-flex;align-items:center;gap:4px;background:'+(on?'var(--surface)':'var(--surface2)')+';border:1px solid '+(on?'var(--text)':'var(--border)')+';color:var(--text);border-radius:6px;padding:2px 8px;font-size:11px;font-weight:600;cursor:pointer;opacity:'+(_eAny&&!on?'.55':'1')+'"><span class="dpill '+(x[0]==='rr'?'r':x[0])+'" style="padding:0 6px">'+x[1]+'</span></button>';
+    return '<button onclick="toggleGanttEdad(\''+x[0]+'\')" title="'+(on?'Quitar filtro de antig\u00fcedad':'Filtrar por antig\u00fcedad de la OP')+'" style="display:inline-flex;align-items:center;gap:4px;background:'+(on?'var(--surface)':'var(--surface2)')+';border:1px solid '+(on?'var(--text)':'var(--border)')+';color:var(--text);border-radius:6px;padding:2px 8px;font-size:11px;font-weight:600;cursor:pointer;opacity:'+(_eAny&&!on?'.55':'1')+'"><span class="dpill '+(x[0]==='rr'?'r':x[0]==='r'?'o':x[0])+'" style="padding:0 6px">'+x[1]+'</span></button>';
   }).join('');
   var topBarHtml='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;gap:8px;flex-wrap:wrap">'+
     '<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">'+_aBtns+'<span style="width:1px;height:18px;background:var(--border);margin:0 4px"></span><span style="font-size:10px;color:var(--muted)">Antig\u00fcedad:</span>'+_eBtns+'<span style="font-size:10px;color:var(--muted);margin-left:4px">'+src.length+' OP abiertas (vigentes y vencidas recientes)</span></div>'+
