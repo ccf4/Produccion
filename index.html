@@ -2629,9 +2629,11 @@ function renderGantt(){
   });
   var areaMap={};
   var _gSel=window._ganttAreas||{},_gAny=Object.keys(_gSel).some(function(k){return _gSel[k];});
+  var _eSel=window._ganttEdades||{},_eAny=Object.keys(_eSel).some(function(k){return _eSel[k];});
   src.forEach(function(r){
     if(!r.AREA)return;
     if(_gAny&&!_gSel[r.AREA])return;
+    if(_eAny&&!_eSel[ganttEdadBucket(r.OP)])return;
     var _sk=normSub(r.SUBAREA);
     if(!areaMap[r.AREA])areaMap[r.AREA]={};
     if(!areaMap[r.AREA][_sk])areaMap[r.AREA][_sk]=[];
@@ -2716,8 +2718,12 @@ function renderGantt(){
     var on=!!_gSel[a],c=ac(a);
     return '<button onclick="toggleGanttArea(\''+a+'\')" title="'+(on?'Quitar filtro ':'Filtrar ')+a+'" style="display:inline-flex;align-items:center;gap:4px;background:'+(on?'color-mix(in srgb,'+c+' 22%,var(--surface2))':'var(--surface2)')+';border:1px solid '+(on?c:'var(--border)')+';color:var(--text);border-radius:6px;padding:2px 8px 2px 4px;font-size:11px;font-weight:600;cursor:pointer;opacity:'+(_gAny&&!on?'.55':'1')+'">'+areaIcon(a,16)+aLbl(a)+'</button>';
   }).join('');
+  var _eBtns=[['g','Menos de 14 d'],['a','14 a 29 d'],['r','30 d o m\u00e1s']].map(function(x){
+    var on=!!_eSel[x[0]];
+    return '<button onclick="toggleGanttEdad(\''+x[0]+'\')" title="'+(on?'Quitar filtro de antig\u00fcedad':'Filtrar por antig\u00fcedad de la OP')+'" style="display:inline-flex;align-items:center;gap:4px;background:'+(on?'var(--surface)':'var(--surface2)')+';border:1px solid '+(on?'var(--text)':'var(--border)')+';color:var(--text);border-radius:6px;padding:2px 8px;font-size:11px;font-weight:600;cursor:pointer;opacity:'+(_eAny&&!on?'.55':'1')+'"><span class="dpill '+x[0]+'" style="padding:0 6px">'+x[1]+'</span></button>';
+  }).join('');
   var topBarHtml='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;gap:8px;flex-wrap:wrap">'+
-    '<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">'+_aBtns+'<span style="font-size:10px;color:var(--muted);margin-left:4px">'+src.length+' OP abiertas (vigentes y vencidas recientes)</span></div>'+
+    '<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">'+_aBtns+'<span style="width:1px;height:18px;background:var(--border);margin:0 4px"></span><span style="font-size:10px;color:var(--muted)">Antig\u00fcedad:</span>'+_eBtns+'<span style="font-size:10px;color:var(--muted);margin-left:4px">'+src.length+' OP abiertas (vigentes y vencidas recientes)</span></div>'+
     '</div>';
   if(_mobileGantt){
     var labelsHtml='<div style="height:'+(H1+H2)+'px;border-bottom:2px solid var(--border);box-sizing:border-box"></div>';
@@ -2801,6 +2807,12 @@ function ganttDiasAbierta(op){
   var rows=RAW.filter(function(r){return String(r.OP)===String(op)&&r.STATUS!=='T'&&r.STATUS!=='C';});
   var fe=rows.length?pd(rows[0].FEMIT):null;
   return fe?daysDiff(fe,today()):null;
+}
+function ganttEdadBucket(op){var d=ganttDiasAbierta(op);return d===null||d<14?'g':d<30?'a':'r';}
+function toggleGanttEdad(k){
+  var s=window._ganttEdades=window._ganttEdades||{};
+  s[k]=!s[k];
+  renderGantt();
 }
 function toggleGanttArea(a){
   var s=window._ganttAreas=window._ganttAreas||{};
