@@ -948,7 +948,19 @@ function getResumenData(){
     return {label:diaLabels4[i],fecha:fecha,rows:rows};
   });
 
-  return {T:T,late:late,mnetWarn:mnetWarn,closedRecent:closedRecent,diasCerradas:diasCerradasVentana,proximas:proximas,proximas4:proximas4};
+  // Siguientes semanas: el resto de las OP activas (no vencidas ni en la ventana de proximas4), ordenadas por fecha.
+  // Solo las usa el correo por vendedor.
+  var _usadas={};
+  late.forEach(function(r){_usadas[r.OP]=1;});
+  proximas4.forEach(function(dia){dia.rows.forEach(function(r){_usadas[r.OP]=1;});});
+  var siguientes=[],_segS={};
+  src.forEach(function(r){
+    if(r.STATUS!=='V'||_usadas[r.OP]||_segS[r.OP]||seen1[r.OP])return;
+    if(!pd(r.Fprod||r.FProm))return;
+    _segS[r.OP]=true;siguientes.push(r);
+  });
+  siguientes.sort(function(a,b){return pd(a.Fprod||a.FProm)-pd(b.Fprod||b.FProm)||(+a.OP)-(+b.OP);});
+  return {T:T,late:late,mnetWarn:mnetWarn,closedRecent:closedRecent,diasCerradas:diasCerradasVentana,proximas:proximas,proximas4:proximas4,siguientes:siguientes};
 }
 function lineaOP(r,extra){
   var parts=RAW.filter(function(x){return String(x.OP)===String(r.OP);});
@@ -1059,6 +1071,7 @@ function filasParaVendedor(d,vendCode){
     late:d.late.filter(esDe),
     mnetWarn:[],
     closedRecent:d.closedRecent.filter(esDe),
+    siguientes:(d.siguientes||[]).filter(esDe),
     proximas:d.proximas4.map(function(dia){return {label:/^(HOY|MA\u00d1ANA|PASADO)/.test(dia.label)?dia.label:dia.label+' '+dia.fecha.getDate(),fecha:dia.fecha,rows:dia.rows.filter(esDe)};})
   };
 }
@@ -1083,6 +1096,11 @@ function buildCorreoVendedor(vendCode,filas,T){
     dia.rows.forEach(function(r){lines.push(lineaOPSinVend(r,fd(pd(r.Fprod||r.FProm))));});
     lines.push('');
   });
+  if((filas.siguientes||[]).length){
+    lines.push(textoNegrita('ENTREGAS PROGRAMADAS SIGUIENTES SEMANAS')+' ('+filas.siguientes.length+' OP'+(filas.siguientes.length!==1?'s':'')+', por fecha):');
+    filas.siguientes.forEach(function(r){lines.push(lineaOPSinVend(r,fd(pd(r.Fprod||r.FProm))));});
+    lines.push('');
+  }
   if(filas.closedRecent.length){
     lines.push(textoNegrita('CERRADAS RECIENTEMENTE')+':');
     filas.closedRecent.forEach(function(r){lines.push(lineaOPSinVend(r,fd(pd(r.FTERM)),'T'));});
@@ -1093,7 +1111,7 @@ function buildCorreoVendedor(vendCode,filas,T){
   var body=lines.join('\n');
   var mailto='mailto:'+to+'?subject='+encodeURIComponent(subject)+'&body='+encodeURIComponent(body);
   var gmail='https://mail.google.com/mail/?view=cm&fs=1&to='+encodeURIComponent(to)+'&su='+encodeURIComponent(subject)+'&body='+encodeURIComponent(body);
-  var count=filas.late.length+filas.closedRecent.length+filas.proximas.reduce(function(s,dia){return s+dia.rows.length;},0);
+  var count=filas.late.length+filas.closedRecent.length+(filas.siguientes||[]).length+filas.proximas.reduce(function(s,dia){return s+dia.rows.length;},0);
   var img=dibujarResumenCanvas(filas,{titulo:'Estatus de '+nombreMostrado+' \u2014 '+fd(T),temaClaro:true,simplificado:true});
   return {vendCode:vendCode,nombre:nombreMostrado,to:to,subject:subject,body:body,mailto:mailto,gmail:gmail,count:count,img:img};
 }
@@ -1108,6 +1126,7 @@ function enviarResumenPorVendedor(){
   d.late.forEach(agregar);
   d.closedRecent.forEach(agregar);
   d.proximas4.forEach(function(dia){dia.rows.forEach(agregar);});
+  (d.siguientes||[]).forEach(agregar);
   var correos=vendCodes.map(function(v){return buildCorreoVendedor(v,filasParaVendedor(d,v),d.T);}).filter(function(c){return c.count>0;});
   correos.sort(function(a,b){return b.count-a.count;});
   if(!correos.length){alert('No hay OPs pendientes/recientes para enviar por vendedor.');return;}
@@ -1372,313 +1391,6 @@ function generarCapturaResumen(forceDownload){
     if(btn){btn.textContent=prevBtnTxt||'Descargar captura';btn.disabled=false;}
     if(msg){msg.textContent='No se pudo generar la captura: '+e.message;msg.style.color='var(--danger)';}
   }
-}
-// ===== Resumen general por área (botón en Gantt) =====
-// A diferencia del resumen por vendedor/general (listas de OPs), esta vista agrupa TODO lo
-// pendiente (V) por área y lo reparte en el tiempo: vencidas, cada día hábil próximo, y
-// "después" (lo que cae más adelante) — para ver de un vistazo dónde está la carga de cada área.
-// Desde hoy hasta el viernes de la semana SIGUIENTE (saltando domingos), igual criterio
-// Lun-Sáb que usa el resto del panel para definir una "semana".
-function _diasHastaViernesSemanaSiguiente(T){
-  var day=T.getDay();
-  var diffToMonday=day===0?-6:1-day;
-  var mondayThisWeek=new Date(T);mondayThisWeek.setDate(mondayThisWeek.getDate()+diffToMonday);
-  var friNextWeek=new Date(mondayThisWeek);friNextWeek.setDate(friNextWeek.getDate()+7+4);
-  var result=[],cur=new Date(T),guard=0;
-  while(cur<=friNextWeek&&guard<30){
-    if(cur.getDay()!==0)result.push(new Date(cur));
-    cur.setDate(cur.getDate()+1);guard++;
-  }
-  return result;
-}
-function getResumenGeneralData(){
-  var T=today();
-  var DIAS_SEM2=['DOM','LUN','MAR','MIÉ','JUE','VIE','SÁB'];
-  var dias=_diasHastaViernesSemanaSiguiente(T);
-  var diaLabels=dias.map(function(d){
-    var off=daysDiff(T,d);
-    if(off===0)return {l1:'HOY',l2:''};
-    if(off===1)return {l1:'MAÑ.',l2:''};
-    return {l1:DIAS_SEM2[d.getDay()],l2:String(d.getDate())};
-  });
-  function bucketsDeFilas(rows){
-    var vencRows=rows.filter(function(r){var fp=pd(r.Fprod||r.FProm);return fp&&fp<T;});
-    var vencidasCant=vencRows.reduce(function(s,r){return s+(parseInt(r.CANT)||0);},0);
-    var vencidasOps=new Set(vencRows.map(function(r){return r.OP;})).size;
-    var totalCant=rows.reduce(function(s,r){return s+(parseInt(r.CANT)||0);},0);
-    var opsCount=new Set(rows.map(function(r){return r.OP;})).size;
-    var dayBuckets=dias.map(function(fecha){
-      var dr=rows.filter(function(r){
-        var fp=pd(r.Fprod||r.FProm);
-        return fp&&fp.getFullYear()===fecha.getFullYear()&&fp.getMonth()===fecha.getMonth()&&fp.getDate()===fecha.getDate();
-      });
-      return dr.reduce(function(s,r){return s+(parseInt(r.CANT)||0);},0);
-    });
-    var bucketedCant=vencidasCant+dayBuckets.reduce(function(s,v){return s+v;},0);
-    var despuesCant=Math.max(0,totalCant-bucketedCant);
-    return {totalCant:totalCant,opsCount:opsCount,vencidasCant:vencidasCant,vencidasOps:vencidasOps,dayBuckets:dayBuckets,despuesCant:despuesCant};
-  }
-  var _aOrder=['Disco','Aros','Telar','Varios','ALMC'];
-  // Mismo orden de subáreas que usa el Gantt, para que la lectura sea consistente entre vistas.
-  var _subOrder=['Disco','Pack','Manual','Oblongo/Manual','Riñon','Riñon/Manual','Oblongo','Pack Rect / Manual','Tiras','Tapas','Armar','Tubular','Tubulares','Remallado','Criba','Eliminador','Placa filtrante','Embolsados','Nuevo'];
-  var areasOut=[];
-  _aOrder.forEach(function(area){
-    var areaRows=RAW.filter(function(r){return r.AREA===area&&r.STATUS==='V';});
-    if(!areaRows.length)return;
-    var subGroups={};
-    areaRows.forEach(function(r){
-      var k=normSub(r.SUBAREA)||r.SUBAREA||'';
-      if(!subGroups[k])subGroups[k]=[];
-      subGroups[k].push(r);
-    });
-    var subKeys=_subOrder.filter(function(s){return subGroups[s];}).concat(
-      Object.keys(subGroups).filter(function(s){return _subOrder.indexOf(s)===-1;}).sort(function(a,b){
-        var ta=subGroups[a].reduce(function(s,r){return s+(parseInt(r.CANT)||0);},0);
-        var tb=subGroups[b].reduce(function(s,r){return s+(parseInt(r.CANT)||0);},0);
-        return tb-ta;
-      })
-    );
-    var subsOut=subKeys.map(function(subKey){
-      var b=bucketsDeFilas(subGroups[subKey]);
-      b.subKey=subKey;
-      return b;
-    });
-    var areaB=bucketsDeFilas(areaRows);
-    areasOut.push({area:area,totalCant:areaB.totalCant,opsCount:areaB.opsCount,subs:subsOut});
-  });
-  return {T:T,diaLabels:diaLabels,areas:areasOut};
-}
-// Iconos simples por área dibujados con primitivas de canvas (sin depender de imágenes async).
-function drawAreaIcon(ctx,area,x,y,size,color){
-  ctx.save();
-  ctx.strokeStyle=color;ctx.fillStyle=color;
-  ctx.lineWidth=Math.max(1.2,size*0.08);
-  var cx=x+size/2,cy=y+size/2,r=size*0.42;
-  ctx.beginPath();
-  if(area==='Disco'){
-    ctx.arc(cx,cy,r*0.62,0,Math.PI*2);ctx.stroke();
-  } else if(area==='Aros'){
-    ctx.arc(cx,cy,r,0,Math.PI*2);ctx.stroke();
-    ctx.beginPath();ctx.arc(cx,cy,r*0.72,0,Math.PI*2);ctx.stroke();
-  } else if(area==='Telar'){
-    var g=size*0.78,gx=x+(size-g)/2,gy=y+(size-g)/2,step=g/3;
-    ctx.lineWidth=Math.max(1,size*0.045);
-    for(var i=0;i<=3;i++){
-      ctx.beginPath();ctx.moveTo(gx+i*step,gy);ctx.lineTo(gx+i*step,gy+g);ctx.stroke();
-      ctx.beginPath();ctx.moveTo(gx,gy+i*step);ctx.lineTo(gx+g,gy+i*step);ctx.stroke();
-    }
-  } else if(area==='Varios'){
-    var pts=6,ang0=-Math.PI/2;
-    ctx.beginPath();
-    for(var k=0;k<=pts;k++){var a=ang0+k*(Math.PI*2/pts);var px=cx+r*Math.cos(a),py=cy+r*Math.sin(a);if(k===0)ctx.moveTo(px,py);else ctx.lineTo(px,py);}
-    ctx.closePath();ctx.stroke();
-  } else if(area==='ALMC'){
-    var bw=size*0.68,bh=size*0.56,bx=x+(size-bw)/2,by=y+size*0.24;
-    ctx.beginPath();ctx.rect(bx,by,bw,bh);ctx.stroke();
-    ctx.beginPath();ctx.moveTo(bx,by+bh*0.3);ctx.lineTo(bx+bw,by+bh*0.3);ctx.stroke();
-    ctx.beginPath();ctx.moveTo(bx+bw*0.38,by+bh*0.3);ctx.lineTo(bx+bw*0.38,by+bh*0.55);ctx.lineTo(bx+bw*0.62,by+bh*0.55);ctx.lineTo(bx+bw*0.62,by+bh*0.3);ctx.stroke();
-  } else {
-    ctx.arc(cx,cy,r,0,Math.PI*2);ctx.stroke();
-  }
-  ctx.restore();
-}
-// Reutiliza los mismos íconos SVG de subIcon() (los que ya se ven en el Gantt), rasterizados
-// para poder dibujarlos en el canvas. Se cachean por área+subárea.
-var _subIconImgCache={};
-function loadSubIconImage(subKey,area){
-  var key=area+'|'+subKey;
-  if(_subIconImgCache[key])return _subIconImgCache[key];
-  var p=new Promise(function(resolve){
-    var html=subIcon(subKey,area);
-    var m=html&&html.match(/<svg[^>]*>[\s\S]*<\/svg>/);
-    if(!m){resolve(null);return;}
-    var svgMarkup=m[0].replace('<svg ','<svg xmlns="http://www.w3.org/2000/svg" ');
-    var uri='data:image/svg+xml;base64,'+btoa(unescape(encodeURIComponent(svgMarkup)));
-    var img=new Image();
-    img.onload=function(){resolve(img);};
-    img.onerror=function(){resolve(null);};
-    img.src=uri;
-  });
-  _subIconImgCache[key]=p;
-  return p;
-}
-function dibujarResumenGeneralCanvas(data,opciones){
-  opciones=opciones||{};
-  var temaClaro=opciones.temaClaro!==undefined?opciones.temaClaro:true;
-  var pal=temaClaro?
-    {bg:'#ffffff',title:'#1e293b',muted:'#64748b',border:'#e2e8f0',areaBg:'rgba(0,0,0,.025)'}:
-    {bg:'#0d1523',title:'#e2e8f0',muted:'#94a3b8',border:'#334155',areaBg:'rgba(255,255,255,.02)'};
-  var W=860,pad=24,titleH=46;
-  var areaHeaderH=24,subHeaderH=26,chartH=96,subGap=10,areaGap=20;
-  var areas=data.areas;
-
-  // Pass 1: calcular alturas (varía según cuántas subáreas tenga cada área)
-  var y=pad+titleH;
-  var layout=[];
-  areas.forEach(function(a){
-    var areaStartY=y;
-    y+=areaHeaderH;
-    var subsLayout=[];
-    a.subs.forEach(function(s,i){
-      subsLayout.push({d:s,y:y});
-      y+=subHeaderH+chartH;
-      if(i<a.subs.length-1)y+=subGap;
-    });
-    y+=areaGap;
-    layout.push({d:a,y:areaStartY,h:(y-areaGap)-areaStartY,subs:subsLayout});
-  });
-  var H=(areas.length?y:pad+titleH+40)+10;
-
-  var canvas=document.createElement('canvas');
-  var scale=2;
-  canvas.width=W*scale;canvas.height=H*scale;
-  var ctx=canvas.getContext('2d');
-  ctx.scale(scale,scale);
-  ctx.fillStyle=pal.bg;ctx.fillRect(0,0,W,H);
-
-  var totalGeneral=areas.reduce(function(s,a){return s+a.totalCant;},0);
-  var opsGeneral=areas.reduce(function(s,a){return s+a.opsCount;},0);
-
-  ctx.fillStyle=pal.title;
-  ctx.font='bold 17px "IBM Plex Sans",Arial,sans-serif';
-  ctx.fillText('Resumen general de producción — carga por subárea',pad,pad+14);
-  ctx.font='11px "IBM Plex Sans",Arial,sans-serif';
-  ctx.fillStyle=pal.muted;
-  ctx.fillText(fd(data.T)+' · '+fmtNum(opsGeneral)+' OP pendientes · '+fmtNum(totalGeneral)+' pzas en total',pad,pad+32);
-
-  if(!areas.length){
-    ctx.font='13px "IBM Plex Sans",Arial,sans-serif';
-    ctx.fillStyle=pal.muted;
-    ctx.fillText('Sin órdenes pendientes.',pad,pad+titleH+14);
-    return canvas.toDataURL('image/png');
-  }
-
-  layout.forEach(function(al){
-    var a=al.d,col=ac(a.area);
-    // franja de fondo + barra de acento cubriendo toda el área (encabezado + sus subáreas)
-    ctx.fillStyle=pal.areaBg;
-    ctx.fillRect(pad,al.y,W-pad*2,al.h);
-    ctx.fillStyle=col;
-    ctx.fillRect(pad,al.y+2,4,al.h-6);
-
-    drawAreaIcon(ctx,a.area,pad+12,al.y+3,18,col);
-    ctx.font='bold 12px "IBM Plex Sans",Arial,sans-serif';
-    ctx.fillStyle=col;
-    ctx.fillText(a.area.toUpperCase(),pad+36,al.y+15);
-    ctx.textAlign='right';
-    ctx.font='11px "IBM Plex Sans",Arial,sans-serif';
-    ctx.fillStyle=pal.muted;
-    ctx.fillText(fmtNum(a.totalCant)+' pzas · '+a.opsCount+' OP en total',W-pad-6,al.y+15);
-    ctx.textAlign='left';
-
-    al.subs.forEach(function(sl){
-      var s=sl.d,sy=sl.y;
-      var subImg=opciones.iconMap&&opciones.iconMap[a.area+'|'+s.subKey];
-      var textX=pad+36;
-      if(subImg){ctx.drawImage(subImg,pad+36,sy+1,15,15);textX=pad+56;}
-      ctx.font='bold 13px "IBM Plex Sans",Arial,sans-serif';
-      ctx.fillStyle=pal.title;
-      ctx.fillText(s.subKey,textX,sy+13);
-      ctx.textAlign='right';
-      ctx.font='bold 12px "IBM Plex Sans",Arial,sans-serif';
-      ctx.fillStyle=pal.title;
-      ctx.fillText(fmtNum(s.totalCant)+' pzas · '+s.opsCount+' OP',W-pad-6,sy+13);
-      if(s.vencidasCant>0){
-        ctx.font='10px "IBM Plex Sans",Arial,sans-serif';
-        ctx.fillStyle='#ef4444';
-        ctx.fillText(s.vencidasOps+' OP venc. · '+fmtNum(s.vencidasCant)+' pzas',W-pad-6,sy+27);
-      }
-      ctx.textAlign='left';
-
-      var chartTop=sy+subHeaderH;
-      var barLabels=[],barValues=[],barTypes=[];
-      if(s.vencidasCant>0){barLabels.push({l1:'VENC.',l2:''});barValues.push(s.vencidasCant);barTypes.push('venc');}
-      data.diaLabels.forEach(function(lbl,i){barLabels.push(lbl);barValues.push(s.dayBuckets[i]);barTypes.push('dia');});
-      if(s.despuesCant>0){barLabels.push({l1:'DESP.',l2:''});barValues.push(s.despuesCant);barTypes.push('desp');}
-      var n=barValues.length;
-      var chartX=pad+36,chartW=W-pad*2-36-6,gap=6;
-      var barW=Math.min(40,(chartW-(n-1)*gap)/n);
-      var usedW=barW*n+gap*(n-1);
-      var startX=chartX+(chartW-usedW)/2;
-      var maxV=Math.max.apply(null,barValues.concat([1]));
-      var chartBaseY=chartTop+chartH-28;
-      var maxBarH=chartBaseY-(chartTop+6);
-      barValues.forEach(function(v,i){
-        var bh=maxV>0?Math.round((v/maxV)*maxBarH):0;
-        if(v>0)bh=Math.max(bh,3);
-        var bx=startX+i*(barW+gap);
-        var color=barTypes[i]==='venc'?'#ef4444':barTypes[i]==='desp'?pal.muted:col;
-        ctx.globalAlpha=barTypes[i]==='desp'?0.45:0.85;
-        ctx.fillStyle=color;
-        ctx.fillRect(bx,chartBaseY-bh,barW,bh);
-        ctx.globalAlpha=1;
-        if(v>0){
-          ctx.font='9px "IBM Plex Mono",monospace';
-          ctx.fillStyle=pal.title;
-          ctx.textAlign='center';
-          ctx.fillText(fmtNum(v),bx+barW/2,chartBaseY-bh-4);
-        }
-        ctx.font='9px "IBM Plex Sans",Arial,sans-serif';
-        ctx.fillStyle=pal.muted;
-        ctx.textAlign='center';
-        ctx.fillText(barLabels[i].l1,bx+barW/2,chartBaseY+12);
-        if(barLabels[i].l2){
-          ctx.font='8px "IBM Plex Mono",monospace';
-          ctx.fillText(barLabels[i].l2,bx+barW/2,chartBaseY+21);
-        }
-        ctx.textAlign='left';
-      });
-      ctx.strokeStyle=pal.border;
-      ctx.lineWidth=1;
-      ctx.beginPath();ctx.moveTo(chartX,chartBaseY+0.5);ctx.lineTo(chartX+chartW,chartBaseY+0.5);ctx.stroke();
-    });
-  });
-
-  return canvas.toDataURL('image/png');
-}
-var _capturaGeneralTemaClaro=true;
-function pintarResumenGeneral(){
-  var data=getResumenGeneralData();
-  var preview=document.getElementById('capturaGeneralPreview');
-  if(preview)preview.innerHTML='<div style="padding:24px;color:var(--muted);font-size:12px">Generando...</div>';
-  var pares=[];
-  data.areas.forEach(function(a){a.subs.forEach(function(s){pares.push({area:a.area,sub:s.subKey});});});
-  Promise.all(pares.map(function(p){
-    return loadSubIconImage(p.sub,p.area).then(function(img){return {area:p.area,sub:p.sub,img:img};});
-  })).then(function(resultados){
-    var iconMap={};
-    resultados.forEach(function(r){iconMap[r.area+'|'+r.sub]=r.img;});
-    var dataUrl=dibujarResumenGeneralCanvas(data,{temaClaro:_capturaGeneralTemaClaro,iconMap:iconMap});
-    if(preview)preview.innerHTML='<img src="'+dataUrl+'" style="max-width:100%;border-radius:6px;display:block;margin:0 auto;border:1px solid var(--border)">';
-    window._resumenGeneralDataUrl=dataUrl;
-  });
-}
-function toggleTemaCapturaGeneral(){
-  _capturaGeneralTemaClaro=!_capturaGeneralTemaClaro;
-  var btn=document.getElementById('btnTemaGeneral');
-  if(btn)btn.textContent='Fondo: '+(_capturaGeneralTemaClaro?'claro':'oscuro');
-  pintarResumenGeneral();
-}
-function descargarCapturaGeneral(){
-  if(!window._resumenGeneralDataUrl)return;
-  var a=document.createElement('a');
-  a.href=window._resumenGeneralDataUrl;a.download='resumen_general_areas_'+todayIso()+'.png';
-  document.body.appendChild(a);a.click();document.body.removeChild(a);
-  var msg=document.getElementById('resumenGeneralMsg');
-  if(msg){msg.textContent='Imagen descargada ✓';msg.style.color='var(--accent3)';}
-}
-function generarResumenGeneralAreas(){
-  document.getElementById('mt').textContent='Resumen general — carga por subárea';
-  document.getElementById('mb').innerHTML=
-    '<div style="margin-bottom:8px;font-size:11px;color:var(--muted)">De un vistazo: lo vencido, lo que sigue día a día y lo que queda más adelante, por área. Clic derecho sobre la imagen → Copiar imagen.</div>'+
-    '<div id="capturaGeneralPreview" style="text-align:center;padding:10px 0"></div>'+
-    '<div style="display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap;margin-top:10px">'+
-    '<button onclick="toggleTemaCapturaGeneral()" id="btnTemaGeneral" style="background:var(--surface2);border:1px solid var(--border);color:var(--muted);border-radius:6px;padding:6px 14px;font-size:12px;cursor:pointer">Fondo: claro</button>'+
-    '<button onclick="descargarCapturaGeneral()" style="background:var(--accent3);color:#fff;border:none;border-radius:6px;padding:6px 14px;font-weight:600;font-size:12px;cursor:pointer">Descargar imagen</button>'+
-    '</div>'+
-    '<div id="resumenGeneralMsg" style="font-size:11px;text-align:right;margin-top:6px;min-height:14px"></div>';
-  document.getElementById('modal').classList.add('open');
-  pintarResumenGeneral();
 }
 function copiarResumenCorreo(){
   var ta=document.getElementById('resumenText');
@@ -2617,7 +2329,6 @@ function centerGanttToday(smooth){
   var left=el.scrollLeft+(tr.left+tr.width/2)-er.left-(labelW+(el.clientWidth-labelW)/2);
   el.scrollTo({left:Math.max(0,left),behavior:smooth?'smooth':'auto'});
 }
-function scrollGanttToday(){window._ganttUser=false;centerGanttToday(true);}
 function weeklyTSums(area,subKey,isPack,numWeeks){
   var T=today(),weeks=[];
   for(var w=numWeeks;w>=1;w--){
@@ -3007,10 +2718,7 @@ function renderGantt(){
   }).join('');
   var topBarHtml='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;gap:8px;flex-wrap:wrap">'+
     '<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">'+_aBtns+'<span style="font-size:10px;color:var(--muted);margin-left:4px">'+src.length+' OP abiertas (vigentes y vencidas recientes)</span></div>'+
-    '<div style="display:flex;gap:8px;align-items:center">'+
-    '<button onclick="generarResumenGeneralAreas()" style="background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:3px 10px;font-size:11px;font-weight:600;cursor:pointer">Resumen general</button>'+
-    '<button onclick="scrollGanttToday()" style="background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:3px 10px;font-size:11px;font-weight:600;cursor:pointer">Hoy</button>'+
-    '</div></div>';
+    '</div>';
   if(_mobileGantt){
     var labelsHtml='<div style="height:'+(H1+H2)+'px;border-bottom:2px solid var(--border);box-sizing:border-box"></div>';
     var timelineBodyHtml='';
