@@ -194,7 +194,7 @@ def find_inputs(inbox):
 # ----------------------------------------------------------------------------- clasificación ERP
 CLASIF = [  # (prefijo, AREA, SUBAREA) — el orden importa (más específico primero)
     ('ARO DE ALAMBRE','Varios','Arillos'), ('EMPAQUE DE HULE','Aros','Empaque'),
-    ('ELIMINADOR DE NIEBLA','Varios','Eliminador'), ('FILTRO TUBULAR','Varios','Tubular'),
+    ('ELIMINADOR DE NIEBLA','Varios','Eliminador'), ('FILTRO TUBULAR','Varios','Tubular'), ('FILTRO DE MALLA','Disco','Tubulares'),   # Chato/PROD 09/nov/2026: OP 31579 (stock) el PROD la trae como Disco / Tubulares
     ('REMALLADO','Aros','Remallado'), ('RECTANGULOS','Disco','Manual'), ('CUADROS','Disco','Manual'),
     ('OBLONGO','Disco','Oblongo'), ('DISCOS','Disco','Disco'), ('DISCO ','Disco','Disco'),
     ('PACKS','Disco','Pack'), ('PACK ','Disco','Pack'), ('CRIBA','Telar','Criba'),
