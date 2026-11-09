@@ -169,6 +169,15 @@ select{background:var(--surface2);border:1px solid var(--border);color:var(--tex
 .mo.open{display:flex;}
 .md{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:24px;max-width:480px;width:90%;position:relative;max-height:90vh;overflow-y:auto;}
 .md h2{font-size:16px;margin-bottom:14px;}
+.diagBtn{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;margin:0 0 12px;padding:9px 10px;border-radius:10px;border:1.5px solid var(--accent);background:transparent;color:var(--accent);font-weight:700;font-size:13px;cursor:pointer;font-family:inherit}
+.diagBtn:hover{background:var(--surface2)}
+#diagOv{display:none;position:fixed;inset:0;background:rgba(0,0,0,.82);z-index:900;overflow:auto;padding:24px 16px}
+#diagOv.open{display:block}
+#diagOv .dgBox{max-width:1100px;margin:0 auto;background:#fff;border-radius:12px;padding:12px;position:relative}
+#diagOv .dgHead{display:flex;justify-content:space-between;align-items:center;font:700 14px system-ui,sans-serif;color:#111;margin:0 0 8px}
+#diagOv .dgX{border:none;background:#e5e7eb;border-radius:50%;width:30px;height:30px;font-size:15px;cursor:pointer;color:#111}
+#diagOv img{display:block;width:100%;height:auto;border-radius:6px;margin:0 0 10px}
+
 .mc{position:absolute;top:12px;right:16px;font-size:17px;cursor:pointer;background:none;border:none;color:var(--muted);}
 .dr{display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border);font-size:12px;gap:10px;}
 .dr:last-child{border:none;}
@@ -589,6 +598,7 @@ _r.send();
 <div id="bigSelBar"><div class="sbTop"><div class="sbN" id="sbN"></div><button class="sbClr" onclick="bigSelClear()">Limpiar</button></div><button class="sbGo" id="sbGo" onclick="bigReview()">Revisar y confirmar</button></div>
 <div id="bigConf"><div class="bWrap" id="bigConfBody"></div></div>
 <div id="bigToast"></div>
+<div id="diagOv" onclick="if(event.target===this||event.target.classList.contains('dgX'))cerrarDiagrama()"><div class="dgBox"><div class="dgHead"><span id="dgT"></span><button class="dgX">&#x2715;</button></div><div id="dgImgs"></div></div></div>
 <div class="mo" id="modal" onclick="if(event.target===this)this.classList.remove('open')">
   <div class="md"><button class="mc" onclick="document.getElementById('modal').classList.remove('open')">&#x2715;</button><h2 id="mt"></h2><div id="mb"></div></div>
 </div>
@@ -1755,6 +1765,44 @@ function _parcialHtml(parts){
       '<span style="font-size:10px;color:var(--muted)">de '+fmtNum(max)+' '+unidad+'</span></span></div>';
   }).join('');
 }
+// ===== Diagramas por OP (diagramas/OP<num>.png, OP<num>_2.png, ...) =====
+// El botón aparece solo si el archivo existe en el repo; no hay lista que mantener.
+var _diagCache={};
+function _diagVer(){return Math.floor(Date.now()/600000);}
+function diagProbe(op,cb){
+  if(_diagCache[op]){cb(_diagCache[op]);return;}
+  var out=[],i=1;
+  (function next(){
+    if(i>4){_diagCache[op]=out;cb(out);return;}
+    var u='diagramas/OP'+op+(i>1?'_'+i:'')+'.png';
+    var im=new Image();
+    im.onload=function(){out.push(u);i++;next();};
+    im.onerror=function(){_diagCache[op]=out;cb(out);};
+    im.src=u+'?v='+_diagVer();
+  })();
+}
+function diagBtn(op){
+  window._diagOp=String(op);
+  diagProbe(String(op),function(files){
+    if(!files.length||window._diagOp!==String(op))return;
+    var mb=document.getElementById('mb');if(!mb||mb.querySelector('.diagBtn'))return;
+    var b=document.createElement('button');b.className='diagBtn';b.type='button';
+    b.innerHTML='&#128208; Ver diagrama'+(files.length>1?' ('+files.length+')':'');
+    b.onclick=function(){abrirDiagrama(op,files);};
+    mb.insertBefore(b,mb.firstChild);
+  });
+}
+function abrirDiagrama(op,files){
+  document.getElementById('dgT').textContent='Diagrama · OP '+op;
+  document.getElementById('dgImgs').innerHTML=files.map(function(u){return '<img src="'+u+'?v='+_diagVer()+'" alt="Diagrama OP '+op+'">';}).join('');
+  document.getElementById('diagOv').classList.add('open');
+}
+function cerrarDiagrama(){document.getElementById('diagOv').classList.remove('open');}
+document.addEventListener('keydown',function(e){
+  if(e.key!=='Escape')return;var o=document.getElementById('diagOv');
+  if(o&&o.classList.contains('open')){o.classList.remove('open');e.preventDefault();e.stopPropagation();}
+},true);
+
 function showDetail(op){
   var r=DATA.find(function(d){return String(d.OP)===String(op);})||TERM.find(function(d){return String(d.OP)===String(op);});
   if(!r)return;
@@ -1818,6 +1866,7 @@ function showDetail(op){
       '</div>'
       :''));
   document.getElementById('modal').classList.add('open');
+  diagBtn(op);
 }
 
 function showMissing(op){
