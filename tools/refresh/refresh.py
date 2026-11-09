@@ -387,6 +387,8 @@ READ_PROD_INFO = {}
 
 # ----------------------------------------------------------------------------- merge PROD
 PRESERVED_V = []   # V que el PROD no trae (se conservan); el reporte las nombra
+ART_SKIPPED = []   # OPs donde no se reemplazó el artículo (el ERP trajo menos líneas que partidas); solo informativo
+ART_CHANGES = []   # OPs abiertas cuyo artículo cambió al reemplazarse por las líneas actuales del ERP
 
 def merge_prod(current, xrows, restruct_dec):
     """Merge documentado: T/C se preservan; V toma el xlsx si (OP,PART) existe, si no se preserva."""
@@ -563,6 +565,7 @@ def date_from_name(path, pattern):
 # ----------------------------------------------------------------------------- orquestación
 def run(a):
     log = []; pending = []; notes = []
+    ART_CHANGES.clear(); ART_SKIPPED.clear()
     today = date.fromisoformat(a.today) if a.today else datetime.now(MX).date()
     rd = lambda p: open(p, encoding='utf-8').read()
     idx_html, mtx_html = rd(a.index), rd(a.matex)
@@ -651,10 +654,25 @@ def run(a):
             ref = lines[0]['ref']
             if ref: full['PEDIDOS'][op] = ref
             if lines[0]['entrega']: full['MNET_FECHAS'][op] = lines[0]['entrega']
-            if op in raw_ops_now:                       # OP existente: solo se agregan descripciones que falten
+            if op in raw_ops_now:                       # OP existente
                 art = full['ARTICULOS'].setdefault(op, [])
-                for d in descs:
-                    if d not in art: art.append(d)
+                activa = any(r['OP'] == op and r['STATUS'] == 'V' for r in raw)
+                nparts = max([int(m2.group(1)) for r in raw if r['OP'] == op for m2 in [re.search(r'/(\d+)\s*$', str(r.get('PART', '')))] if m2] or [0])
+                if activa and descs and len(descs) < nparts:
+                    # el ERP trae menos líneas que partidas tiene la OP: no se reemplaza (solo se agregan las que falten); se anota en el reporte, NO detiene el refresh
+                    for d in descs:
+                        if d not in art: art.append(d)
+                    ART_SKIPPED.append({'op': op, 'lineas': len(descs), 'partidas': nparts})
+                elif activa and descs:
+                    # OP abierta: el artículo = líneas ACTUALES de la OP en el ERP (si la OP cambió, las líneas viejas salen)
+                    quitadas = [d for d in art if d not in descs]
+                    nuevas = [d for d in descs if d not in art]
+                    if quitadas or nuevas:
+                        ART_CHANGES.append({'op': op, 'quitadas': quitadas, 'nuevas': nuevas})
+                    full['ARTICULOS'][op] = list(descs)
+                else:                                   # cerrada: solo se agregan las que falten (histórico)
+                    for d in descs:
+                        if d not in art: art.append(d)
             if op not in raw_ops_now:
                 full['ARTICULOS'][op] = descs if rows else [l['desc'] for l in lines]
                 if rows:
@@ -900,6 +918,18 @@ def write_report(a, today, L):
             sit = 'VENCIDA hace %d d' % dias if dias and dias > 0 else ('vence hoy' if dias == 0 else 'vigente')
             qty = r['GOLPE'] if r.get('GOLPE') else r['CANT']
             w('| %s | %s | %s / %s | %s | %s | %s | %s | %s |' % (r['OP'], r['PART'], r['AREA'], r['SUBAREA'], qty, r['VENDEDOR'] or '—', r['FProm'], r['Fprod'], sit))
+        w('')
+    if ART_CHANGES:
+        w('## Aviso: artículos de OPs abiertas que cambiaron (el artículo se reemplazó por las líneas actuales del ERP)')
+        w('| OP | Líneas que salieron | Líneas nuevas |'); w('|---|---|---|')
+        for c in ART_CHANGES:
+            q = '<br>'.join(x[:80] for x in c['quitadas']) or '—'; n = '<br>'.join(x[:80] for x in c['nuevas']) or '—'
+            w('| %s | %s | %s |' % (c['op'], q, n))
+        w('')
+    if ART_SKIPPED:
+        w('## Aviso: artículos que NO se reemplazaron (el ERP trae menos líneas que partidas tiene la OP)')
+        w('| OP | Líneas en ERP | Partidas en PROD |'); w('|---|---|---|')
+        for c in ART_SKIPPED: w('| %s | %d | %d |' % (c['op'], c['lineas'], c['partidas']))
         w('')
     w('## Validaciones automáticas')
     for ok, msg in checks: w('- [%s] %s' % ('x' if ok else ' FALLÓ', msg))
