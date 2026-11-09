@@ -2938,7 +2938,7 @@ function renderGantt(){
       var _unit=_isPack?' gol.':' pzas';
       var _weekSums=weeklyTSums(area,se[0],_isPack,8);
       var _spark=subSparklineHtml(_weekSums,_tot,col,_unit);
-      rows.push({h:SUB_H,pad:'0 10px 0 20px',flex:true,labelStyle:'font-size:11px;font-weight:600;color:var(--muted);',border:'var(--subbd)',bg:'var(--subband)',labelBg:'var(--subband)',label:'<div style="display:flex;flex-direction:column;gap:1px;overflow:visible;width:100%;"><div style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:16px;">'+subIcon(se[0],area)+sub+'</div>'+_spark+'</div>',content:todayLine()});
+      rows.push({h:SUB_H,pad:'0 10px 0 20px',flex:true,labelStyle:'font-size:11px;font-weight:600;color:var(--muted);',border:'var(--subbd)',bg:'var(--subband)',labelBg:'var(--subband)',label:'<div style="display:flex;flex-direction:column;gap:1px;overflow:visible;width:100%;"><div style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:16px;">'+subIcon(se[0],area)+sub+'</div>'+_spark+'</div>',content:'<div style="position:absolute;top:0;bottom:0;left:0;right:0;opacity:.45;pointer-events:none">'+wkBands()+'</div>'+todayLine()});
       ops.forEach(function(r){
         var fe=pd(r.FVALE),fp=pd(r.Fprod||r.FProm);
         var startDay=fe?Math.max(0,daysDiff(minD,fe)):0;
