@@ -386,6 +386,8 @@ def limpiar_prod_contra_actual(prod_rows, raw, notes):
 READ_PROD_INFO = {}
 
 # ----------------------------------------------------------------------------- merge PROD
+PRESERVED_V = []   # V que el PROD no trae (se conservan); el reporte las nombra
+
 def merge_prod(current, xrows, restruct_dec):
     """Merge documentado: T/C se preservan; V toma el xlsx si (OP,PART) existe, si no se preserva."""
     by_op = lambda rows: collections.defaultdict(list, {})
@@ -414,6 +416,7 @@ def merge_prod(current, xrows, restruct_dec):
     groups = collections.defaultdict(list)
     for r in eff_x: groups[key(r)].append(r)
     used = collections.Counter(); result = []; stats = collections.Counter(); changes = []
+    PRESERVED_V.clear()
     for r in eff_cur:                                   # 1) T/C primero, consumen su clave
         if r['STATUS'] in ('T', 'C'):
             result.append(r); stats['T/C preservadas'] += 1
@@ -428,7 +431,7 @@ def merge_prod(current, xrows, restruct_dec):
             if diff: changes.append({'op': r['OP'], 'part': r['PART'], 'diff': diff})
             result.append(fresh); stats['V refrescadas'] += 1
         else:
-            result.append(r); stats['V preservadas (xlsx no las trae)'] += 1
+            result.append(r); stats['V preservadas (xlsx no las trae)'] += 1; PRESERVED_V.append(r)
     for k, g in groups.items():                         # 3) nuevas
         for r in g[used[k]:]: result.append(r); stats['partidas nuevas'] += 1
     return result, stats, changes, restructured
@@ -884,6 +887,19 @@ def write_report(a, today, L):
         w('## Cambios por PROD (revisión exhaustiva, todas las filas)')
         w('%s' % dict(L['prod_stats']))
         for c in L['prod_changes']: w('- OP %s (%s): %s' % (c['op'], c['part'], '; '.join('%s %s → %s' % (f, o, n) for f, (o, n) in c['diff'].items())))
+        w('')
+    if L['prod_changes'] is not None and PRESERVED_V:
+        w('## Aviso: OPs abiertas que el PROD no trae (se conservaron como V)')
+        w('Pueden estar ya entregadas (cierre no registrado) o ser externas. Confirma con producción:\n')
+        w('| OP | Partida | Área / Subárea | Cant | Vendedor | Prometida | Producción | Situación |')
+        w('|---|---|---|---|---|---|---|---|')
+        for r in sorted(PRESERVED_V, key=lambda r: (str(r['OP']), str(r['PART']))):
+            try:
+                fp = parse_md(r['Fprod']); dias = (getattr(today, 'date', lambda: today)() - fp).days if fp else None
+            except Exception: dias = None
+            sit = 'VENCIDA hace %d d' % dias if dias and dias > 0 else ('vence hoy' if dias == 0 else 'vigente')
+            qty = r['GOLPE'] if r.get('GOLPE') else r['CANT']
+            w('| %s | %s | %s / %s | %s | %s | %s | %s | %s |' % (r['OP'], r['PART'], r['AREA'], r['SUBAREA'], qty, r['VENDEDOR'] or '—', r['FProm'], r['Fprod'], sit))
         w('')
     w('## Validaciones automáticas')
     for ok, msg in checks: w('- [%s] %s' % ('x' if ok else ' FALLÓ', msg))
