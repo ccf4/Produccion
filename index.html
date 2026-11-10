@@ -1896,13 +1896,16 @@ function buildGrid(WS,gridId,countId,sumId,badgesId){
   var q=searchQ();
   [0,1,2,3,4,7].forEach(function(i){var d=new Date(WS);d.setDate(d.getDate()+i);days.push(d);dlabs.push(d.toLocaleDateString('es-MX',{weekday:'short',day:'2-digit'}));});
   var NM=new Date(WE);NM.setDate(NM.getDate()+1);NM.setHours(0,0,0,0);
-  var ops=src.filter(function(d){var dt=pd(d.Fprod||d.FProm);return inR(dt,WS,WE)||(dt&&dt.toDateString()===NM.toDateString());});
+  var _vOpsWk=new Set();
+  RAW.forEach(function(r){var st=(r.STATUS||'').trim().toUpperCase();if(st==='T'||st==='C')return;var dt=pd(r.Fprod||r.FProm);if(inR(dt,WS,WE)||(dt&&dt.toDateString()===NM.toDateString()))_vOpsWk.add(String(r.OP));});
+  var ops=src.filter(function(d){return _vOpsWk.has(String(d.OP));});
   var mnetOps=mnetSrc.filter(function(m){var dt=pd(m.FProm);return inR(dt,WS,WE)||(dt&&dt.toDateString()===NM.toDateString());});
   if(countId)document.getElementById(countId).textContent=' - '+nOrd(ops.length);
   var areaOrder=['Disco','Aros','Telar','Varios','ALMC'];
   // Build area/subarea groups directly from RAW to handle multi-subarea OPs correctly
   var weekOpSet=new Set(ops.map(function(d){return String(d.OP);}));
-  var curWeekOpSet=new Set(ops.filter(function(d){var dt=pd(d.Fprod||d.FProm);return inR(dt,WS,WE);}).map(function(d){return String(d.OP);}));
+  var curWeekOpSet=new Set();
+  RAW.forEach(function(r){var st=(r.STATUS||'').trim().toUpperCase();if(st==='T'||st==='C')return;if(!weekOpSet.has(String(r.OP)))return;if(inR(pd(r.Fprod||r.FProm),WS,WE))curWeekOpSet.add(String(r.OP));});
   var areaSubMap={};
   RAW.forEach(function(r){
     if(!weekOpSet.has(String(r.OP)))return;
@@ -1971,7 +1974,7 @@ var _subRowsCurWeek=_subOpIdsCurWeek.reduce(function(acc,opId){
   var opRows=RAW.filter(function(r){return String(r.OP)===opId&&r.STATUS!=='T'&&r.STATUS!=='C';});
   var isCross=opRows.some(function(r){return r.AREA!==area;});
   return acc.concat(isCross?opRows:opRows.filter(function(r){return normSub(r.SUBAREA)===subarea;}));
-},[]);
+},[]).filter(function(r){return inR(pd(r.Fprod||r.FProm),WS,WE);});
 var totalCantCurWeek=_subRowsCurWeek.reduce(function(s,r){return s+(parseInt(r.CANT)||0);},0);
 if(totalCantCurWeek>0)weekBadges.push({area:area,sub:subarea,total:totalCantCurWeek});
 var _wkSubKey=normSub(subarea);
@@ -1984,12 +1987,17 @@ var row='<div class="week-row"><div class="row-label" style="padding-left:10px;f
       days.forEach(function(dayD,dsi){
         var dk=dayD.toISOString().slice(0,10),isT=dayD.toDateString()===T.toDateString(),isNW=dsi===days.length-1;
         var noWork=noWorkDays.indexOf(dk)>=0;
-        var dayOps=subOps.filter(function(d){var fp=pd(d.Fprod||d.FProm);return fp&&fp.toISOString().slice(0,10)===dk;});
+        var _dayRowsOf=function(op){
+          var _all=RAW.filter(function(r){var st=(r.STATUS||'').trim().toUpperCase();return String(r.OP)===String(op.OP)&&st!=='T'&&st!=='C';});
+          var _cr=_all.some(function(r){return r.AREA!==op.AREA;});
+          return (_cr?_all:_all.filter(function(r){return normSub(r.SUBAREA)===subarea;})).filter(function(r){var fp=pd(r.Fprod||r.FProm);return fp&&fp.toISOString().slice(0,10)===dk;});
+        };
+        var dayOps=subOps.filter(function(d){return _dayRowsOf(d).length>0;});
         var cells=dayOps.map(function(op){
-          var fp=pd(op.Fprod||op.FProm),cls=fp&&fp<T?'late-op':fp&&fp.toDateString()===T.toDateString()?'today-op':'';
+          var fp=dayD,cls=fp&&fp<T?'late-op':fp&&fp.toDateString()===T.toDateString()?'today-op':'';
           var allParts=RAW.filter(function(r){return String(r.OP)===String(op.OP);});
           var _isCrossOp=allParts.some(function(r){return r.AREA!==op.AREA;});
-          var _cRows=(_isCrossOp?allParts:allParts.filter(function(r){return normSub(r.SUBAREA)===subarea&&r.STATUS!=='T'&&r.STATUS!=='C';}));
+          var _cRows=_dayRowsOf(op);
           var totalCant=_cRows.reduce(function(s,r){return s+(parseInt(r.CANT)||0);},0);
           var totalGolpe=_cRows.reduce(function(s,r){return s+(parseInt(r.GOLPE)||0);},0);
           var cantStr=fmtNum(totalCant)+' pzas';
