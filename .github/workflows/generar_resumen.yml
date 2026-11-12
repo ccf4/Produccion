@@ -2,13 +2,18 @@ name: Generar resumen ejecutivo
 
 on:
   workflow_dispatch:
+  # Corrida automática cada lunes (13:00 UTC = 7:00 a.m. México). Sirve para
+  # tener el resumen fresco y, sobre todo, para enterarnos de una falla
+  # (GitHub manda correo) sin esperar a que alguien pulse el botón.
+  schedule:
+    - cron: '0 13 * * 1'
 
 permissions:
   contents: write
 
 jobs:
   generar:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
 
@@ -60,3 +65,29 @@ jobs:
           git add resumen_ejecutivo/latest.pdf resumen_ejecutivo/status.json
           git commit -m "Resumen ejecutivo generado automáticamente [skip ci]" || echo "Sin cambios que commitear"
           git push
+
+      # Si cualquier paso de arriba falló, se deja constancia en status.json
+      # (conserva la fecha del último PDF bueno). El panel lo lee y avisa
+      # "falló" en vez de quedarse esperando.
+      - name: Registrar falla en status.json
+        if: failure()
+        run: |
+          git fetch origin main || true
+          git checkout -- . 2>/dev/null || true
+          git reset --hard origin/main 2>/dev/null || true
+          mkdir -p resumen_ejecutivo
+          python3 - <<'PY'
+          import json, datetime
+          p = 'resumen_ejecutivo/status.json'
+          try:
+              st = json.load(open(p))
+          except Exception:
+              st = {}
+          st['failed_at'] = datetime.datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%SZ')
+          json.dump(st, open(p, 'w'))
+          PY
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add resumen_ejecutivo/status.json
+          git commit -m "Resumen ejecutivo: fallo registrado [skip ci]" || echo "Sin cambios"
+          git push || true
