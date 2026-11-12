@@ -425,7 +425,7 @@ body.big #bigView{font-size:17px}
 #bigView .bChip.on{background:var(--accent);border-color:var(--accent);color:#fff}
 #bigView .bSec{font-size:17px;margin:12px 2px 6px;gap:8px}#bigView .bSec small{font-size:15px}
 #bigView .bSec .bAll{font-size:13px;padding:6px 10px;border-width:1px;border-radius:9px}
-#bigView .bCard.bItem{display:block;border-width:1px;border-left-width:5px;border-radius:12px;margin-bottom:7px;padding:0}
+#bigView .bCard.bItem{display:block;border-width:1px;border-left-width:1px;border-radius:12px;margin-bottom:7px;padding:0}
 #bigView .bItem.par{border-color:#fbbf24;border-left-color:#fbbf24;background:rgba(251,191,36,.07)}
 #bigView .bLine{display:flex;align-items:stretch}
 #bigView .bChk{width:50px;border-right:none}
@@ -484,6 +484,38 @@ body.big.hasSel #bigView{padding-bottom:130px}
 #resMenu .rm-i:hover{background:rgba(127,127,127,.14)}
 #resMenu .rm-i:disabled{opacity:.5;cursor:wait}
 #resMenu .rm-i small{display:block;font-weight:500;font-size:11px;color:var(--muted);margin-top:2px}
+#bigView .bAreas{padding-top:6px}
+#bigView .bArea{display:flex;align-items:center;gap:6px;padding:7px 11px 7px 9px;border-left:4px solid var(--c);border-radius:12px;color:var(--text)}
+#bigView .bArea b{font:700 13px 'IBM Plex Mono',monospace;color:var(--muted)}
+#bigView .bArea.on{background:color-mix(in srgb,var(--c) 22%,var(--surface2));border-color:var(--c);color:var(--text)}
+#bigView .bArea.on b{color:var(--text)}
+.kbt{position:absolute;right:10px;top:50%;transform:translateY(-50%);height:24px;min-width:34px;padding:0 7px;border-radius:12px;border:1px solid var(--border);background:var(--surface);color:var(--text);font:800 10px 'IBM Plex Sans',sans-serif;letter-spacing:.3px;cursor:pointer;z-index:2}
+input[type=search]::-webkit-search-cancel-button{display:none}
+@media(max-width:640px){.hdr-search .search-input{width:100%;font-size:14px;padding:10px 54px 10px 16px;border-radius:24px}}
+#bigView .bAreas{gap:5px;overflow:visible}#bigView .bArea{flex:1 1 0;min-width:0;justify-content:center;gap:5px;padding:7px 6px 7px 7px;font-size:13px}#bigView .bArea svg{width:20px;height:20px;flex:none}
+@media(max-width:520px){#bigView .bArea span{display:none}#bigView .bArea.on span{display:inline}#bigView .bArea.on{flex-grow:2.2}}
+.dr{display:contents}
+@media(max-width:640px){
+  .hdr-info>div{display:flex!important;gap:5px;width:100%;justify-content:center}
+  .hdr-info>div>div:first-child{display:none}
+  .dr{display:flex;align-items:baseline;gap:4px;background:var(--surface2);border:1px solid var(--border);border-radius:9px;padding:5px 7px;white-space:nowrap;font-size:9px;color:var(--text)}
+  .dr .dl{font-size:0;opacity:1!important}.dr .dl::before{content:attr(data-s);font-size:9px;color:var(--muted);letter-spacing:.4px}
+  .dr>span{text-align:left!important}
+}
+#bigView .bFich{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:7px;padding:6px 0 4px}
+#bigView .bFi{text-align:left;background:var(--surface);border:1px solid var(--border);border-left:5px solid var(--c);border-radius:12px;padding:9px 11px;color:var(--text);font-family:inherit;cursor:pointer;display:block}
+#bigView .bFi.on{background:color-mix(in srgb,var(--c) 18%,var(--surface2));box-shadow:0 0 0 1px var(--c)}
+#bigView .bFh{display:flex;align-items:center;gap:8px;color:var(--c)}#bigView .bFh b{font-size:13px;letter-spacing:.5px}#bigView .bFh svg{width:34px;height:34px;flex:none}
+#bigView .bFn{display:block;font:700 24px 'IBM Plex Mono',monospace;margin-top:4px}
+#bigView .bFi small{display:block;color:var(--muted);font-size:11px}
+#bigView .bCard.bItem.late,#bigView .bCard.bItem.soon,#bigView .bCard.bItem{border-left-color:var(--border)}
+#bigView .bItem.par{border-left-color:#fbbf24}
+.gf-wrap{display:flex;flex-direction:column;gap:7px}
+.gf-row{display:flex;align-items:center;gap:6px;flex-wrap:nowrap;overflow-x:auto;white-space:nowrap;padding-bottom:3px;scrollbar-width:thin;-webkit-overflow-scrolling:touch}
+.gf-row>*{flex:none}
+#bigView .bFi{display:grid;grid-template-columns:auto 1fr;grid-template-areas:'h n' 's s';align-items:center;column-gap:8px}
+#bigView .bFh{grid-area:h}#bigView .bFn{grid-area:n;text-align:right;margin-top:0;font-size:26px}#bigView .bFi small{grid-area:s;margin-top:3px}
+#bigView .bFi{min-width:0;padding:9px 10px}#bigView .bFh svg{width:30px;height:30px}#bigView .bFh{min-width:0}#bigView .bFh b{overflow:hidden;text-overflow:ellipsis;font-size:12px}#bigView .bFn{font-size:22px;min-width:0}
 </style>
 </head>
 <body>
@@ -496,9 +528,9 @@ body.big.hasSel #bigView{padding-bottom:130px}
   <div class="hdr-info">
     <div style="display:grid;grid-template-columns:auto auto auto;gap:2px 6px;font-size:10px;color:var(--muted);font-family:'IBM Plex Mono',monospace">
       <div style="grid-column:1/-1;font-size:9px;letter-spacing:.6px;opacity:.6;text-transform:uppercase;margin-bottom:2px;text-align:center">Última actualización</div>
-      <span style="opacity:.75" class="datos-row">PROD:</span><span style="text-align:right" class="datos-row">06/nov/26</span><span class="datos-row"></span>
-      <span style="opacity:.75" class="datos-row">Artículos:</span><span style="text-align:right" class="datos-row">12/nov/26</span><span class="datos-row"></span>
-      <span style="opacity:.75" class="entregas-row">Entregas:</span><span style="text-align:right" class="entregas-row">11/nov/26</span><span class="entregas-row">17:45</span>
+      <span class="dr"><span style="opacity:.75" class="datos-row dl" data-s="PROD">PROD:</span><span style="text-align:right" class="datos-row">06/nov/26</span><span class="datos-row"></span></span>
+      <span class="dr"><span style="opacity:.75" class="datos-row dl" data-s="ART.">Artículos:</span><span style="text-align:right" class="datos-row">12/nov/26</span><span class="datos-row"></span></span>
+      <span class="dr"><span style="opacity:.75" class="entregas-row dl" data-s="ENTREGAS">Entregas:</span><span style="text-align:right" class="entregas-row">11/nov/26</span><span class="entregas-row">17:45</span></span>
     </div>
   </div>
   <button class="nb" id="themeBtn" title="Cambiar a vista clara" aria-label="Cambiar tema claro/oscuro" onclick="toggleTema()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg></button>
@@ -3030,8 +3062,9 @@ function renderGantt(){
     var on=!!_eSel[x[0]];
     return '<button onclick="toggleGanttEdad(\''+x[0]+'\')" title="'+(on?'Quitar filtro de antig\u00fcedad':'Filtrar por antig\u00fcedad de la OP')+'" style="display:inline-flex;align-items:center;gap:4px;background:'+(on?'var(--surface)':'var(--surface2)')+';border:1px solid '+(on?'var(--text)':'var(--border)')+';color:var(--text);border-radius:6px;padding:2px 8px;font-size:11px;font-weight:600;cursor:pointer;opacity:'+(_eAny&&!on?'.55':'1')+'"><span class="dpill '+(x[0]==='rr'?'r':x[0]==='r'?'o':x[0])+'" style="padding:0 6px">'+x[1]+'</span></button>';
   }).join('');
-  var topBarHtml='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;gap:8px;flex-wrap:wrap">'+
-    '<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">'+_aBtns+'<span style="width:1px;height:18px;background:var(--border);margin:0 4px"></span><span style="font-size:10px;color:var(--muted)">Antig\u00fcedad:</span>'+_eBtns+'<span style="font-size:10px;color:var(--muted);margin-left:4px">'+src.length+' OP abiertas (vigentes y vencidas recientes)</span></div>'+
+  var topBarHtml='<div class="gf-wrap" style="margin-bottom:8px">'+
+    '<div class="gf-row">'+_aBtns+'</div>'+
+    '<div class="gf-row"><span style="font-size:10px;color:var(--muted)">Antig\u00fcedad:</span>'+_eBtns+'<span style="font-size:10px;color:var(--muted);margin-left:4px">'+src.length+' OP abiertas (vigentes y vencidas recientes)</span></div>'+
     '</div>';
   if(_mobileGantt){
     var labelsHtml='<div style="height:'+(H1+H2)+'px;border-bottom:2px solid var(--border);box-sizing:border-box"></div>';
@@ -3798,7 +3831,7 @@ function refrescarApp(){var u=new URL(location.href);u.searchParams.set('t',Date
 <script>document.addEventListener('keydown',function(e){if(e.key!=='Escape')return;var m=document.getElementById('modal');if(m&&m.classList.contains('open')){m.classList.remove('open');e.preventDefault();}});</script>
 <script>
 // ===== Modo letra grande: lista simple de OPs abiertas + cierre con botones grandes =====
-var _bigShown=40,_bigSel={},_bigMode={},_bigPar={},_bigMap={},_bigSecs={},_bigFilter='all';
+var _bigShown=40,_bigSel={},_bigMode={},_bigPar={},_bigMap={},_bigSecs={},_bigFilter='all',_bigArea='all';
 function bigSet(on){
   document.body.classList.toggle('big',!!on);
   try{localStorage.setItem('bigMode',on?'1':'0');}catch(e){}
@@ -3866,7 +3899,8 @@ function _bigCard(e,T,cls){
   var _dA=ganttDiasAbierta(e.op);
   var meta=(e.subs.join(' · ')||e.areas.join(' · ')||'--')+(ped(e.op)?' · '+ped(e.op):'');
   var _ics=opSubList(opRowsAbiertas(e.op)).map(function(g){return subIcon(g.sub,g.area);}).join('');
-  return '<div class="bCard bItem '+cls+(sel?' sel':'')+(par?' par':'')+'" data-op="'+e.op+'"><div class="bLine">'+
+  var _ac=ac(e.areas[0]);
+  return '<div class="bCard bItem '+cls+(sel?' sel':'')+(par?' par':'')+'" data-op="'+e.op+'"'+''+'><div class="bLine">'+
     '<button class="bChk" onclick="bigToggleSel(\''+e.op+'\')" aria-label="Seleccionar OP '+e.op+'" aria-pressed="'+(sel?'true':'false')+'"><i>✓</i></button>'+
     '<button class="bBody" onclick="bigOpen(\''+e.op+'\')"><span class="bL"><span class="bOp" style="display:flex;align-items:center;gap:6px">'+e.op+_ics+(_dA!==null?'<span title="D\u00edas abierta" style="font-size:13px;font-weight:600;color:var(--muted);margin-left:2px">'+_dA+' d</span>':'')+'</span><span class="bMeta">'+meta+'</span></span>'+
     '<span class="bRt"><b class="bPz">'+fmtNum(e.pz)+' pzas</b><span class="'+(late?'bLate':'')+'">'+(late?'hace '+d+' d':fecha)+'</span></span></button></div>'+
@@ -3874,6 +3908,8 @@ function _bigCard(e,T,cls){
 }
 function bigRender(){
   var T=today(),ops=_bigOps(),el=document.getElementById('bigList');if(!el)return;
+  var _aCnt={},_aPz={};ops.forEach(function(e){e.areas.forEach(function(a){_aCnt[a]=(_aCnt[a]||0)+1;_aPz[a]=(_aPz[a]||0)+e.pz;});});
+  if(_bigArea!=='all')ops=ops.filter(function(e){return e.areas.indexOf(_bigArea)>=0;});
   var week=new Date(T);week.setDate(week.getDate()+7);
   var late=[],soon=[],later=[];
   ops.forEach(function(e){if(e.f&&e.f<T)late.push(e);else if(e.f&&e.f<=week)soon.push(e);else later.push(e);});
@@ -3881,7 +3917,8 @@ function bigRender(){
   soon.sort(function(a,b){return (a.f-b.f)||((parseInt(a.op)||0)-(parseInt(b.op)||0));});
   later.sort(function(a,b){return ((a.f||0)-(b.f||0))||((parseInt(a.op)||0)-(parseInt(b.op)||0));});
   var fl=_bigFilter;
-  var h='<div class="bChips"><button class="bChip'+(fl==='late'?' on':'')+'" onclick="bigSetFilter(\'late\')">Vencidas '+late.length+'</button><button class="bChip'+(fl==='soon'?' on':'')+'" onclick="bigSetFilter(\'soon\')">Próx. 7 días '+soon.length+'</button><button class="bChip'+(fl==='all'?' on':'')+'" onclick="bigSetFilter(\'all\')">Todas '+ops.length+'</button></div>';
+  var h='<div class="bFich">'+['Disco','Aros','Telar','Varios'].map(function(a){var on=_bigArea===a;return '<button class="bFi'+(on?' on':'')+'" style="--c:'+ac(a)+'" onclick="bigSetArea(\''+a+'\')" aria-pressed="'+(on?'true':'false')+'"><span class="bFh">'+areaIcon(a,34)+'</span><span class="bFn">'+fmtNum(_aPz[a]||0)+'</span><small><b style="color:var(--c);letter-spacing:.4px">'+a.toUpperCase()+'</b> \u00b7 pzas \u00b7 '+(_aCnt[a]||0)+' OP</small></button>';}).join('')+'</div>'
+    +'<div class="bChips"><button class="bChip'+(fl==='late'?' on':'')+'" onclick="bigSetFilter(\'late\')">Vencidas '+late.length+'</button><button class="bChip'+(fl==='soon'?' on':'')+'" onclick="bigSetFilter(\'soon\')">Próx. 7 días '+soon.length+'</button><button class="bChip'+(fl==='all'?' on':'')+'" onclick="bigSetFilter(\'all\')">Todas '+ops.length+'</button></div>';
   var shown=0,lim=_bigShown,total=0;_bigSecs={};
   function sec(t,col,arr,cls){
     if(!arr.length)return;
@@ -3899,6 +3936,7 @@ function bigRender(){
   el.innerHTML=h;
   bigSelBarUpd();
 }
+function bigSetArea(a){_bigArea=(_bigArea===a)?'all':a;_bigShown=40;bigRender();}
 function bigSetFilter(f){_bigFilter=f;_bigShown=40;bigRender();window.scrollTo(0,0);}
 function bigRedraw(op){
   var el=document.querySelector('#bigList .bItem[data-op="'+op+'"]'),m=_bigMap[op];
@@ -4107,6 +4145,23 @@ document.addEventListener('click',function(e){if(!e.target.closest||!e.target.cl
 <script>
 // En celular el encabezado (título + buscador) queda fijo arriba como en matex; las fechas se ocultan al bajar
 (function(){var h=null,c=false;function u(){h=h||document.querySelector('header');if(!h)return;var y=window.pageYOffset||0;if(!c&&y>60){c=true;h.classList.add('hc');}else if(c&&y<5){c=false;h.classList.remove('hc');}}window.addEventListener('scroll',u,{passive:true});})();
+
+// Buscador: teclado numerico por defecto (movil) con alternador 123/ABC dentro del campo
+(function(){
+  var touch=window.matchMedia&&matchMedia('(pointer:coarse)').matches;
+  if(!touch)return;
+  ['searchBox','bigSearch'].forEach(function(id){
+    var inp=document.getElementById(id);if(!inp||inp.parentNode.querySelector('.kbt'))return;
+    inp.setAttribute('inputmode','numeric');
+    var host=inp.parentNode;
+    if(id==='searchBox'){host.style.position='relative';host.style.width='100%';inp.style.paddingRight='54px';}
+    else{var w=document.createElement('span');w.style.cssText='position:relative;flex:1;min-width:0;display:flex';host.insertBefore(w,inp);w.appendChild(inp);host=w;inp.style.width='100%';inp.style.paddingRight='60px';}
+    var b=document.createElement('button');b.type='button';b.className='kbt';b.textContent='ABC';b.setAttribute('aria-label','Cambiar teclado');
+    b.addEventListener('mousedown',function(e){e.preventDefault();});
+    b.addEventListener('click',function(e){e.preventDefault();e.stopPropagation();var num=inp.getAttribute('inputmode')==='numeric';inp.setAttribute('inputmode',num?'text':'numeric');b.textContent=num?'123':'ABC';inp.blur();setTimeout(function(){inp.focus();},60);});
+    host.appendChild(b);
+  });
+})();
 </script>
 </body></html>
 
