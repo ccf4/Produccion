@@ -4,7 +4,7 @@ gen_resumen_ejecutivo.py
 =========================
 Genera el "resumen ejecutivo de carga de producción" (HTML + PDF, carta
 horizontal a 2 páginas) que se le manda a gerencia con las OPs abiertas.
-
+ 
 Combina lo mejor de las 3 versiones históricas del reporte:
 - V1 (may/2026): badge de antigüedad por OP (gris <30d / ámbar 30-89d / rojo
   ≥90d) + fila teñida de rosa si ≥90d.
@@ -18,10 +18,10 @@ Combina lo mejor de las 3 versiones históricas del reporte:
   `window.print()` en Chrome real — no aplica aquí porque exportamos el PDF
   con Playwright (`page.pdf()`), no con window.print(), así que se mantienen
   las barras posicionadas de V2 (ya verificado que sí imprimen bien así).
-
+ 
 Requiere Playwright (chromium) para: (a) evaluar subIcon() vía JS y (b)
 exportar el PDF.
-
+ 
 USO
 ---
 1. TODAY se calcula solo (fecha actual en hora de México) — no hace falta
@@ -38,7 +38,7 @@ USO
    con pocas OPs cabe holgado en 2 páginas, pero si la carga crece mucho
    puede desbordar; si eso pasa, lo primero que hay que achicar son las
    alturas de fila del Gantt (.grow/.garow/.gsrow) y el font-size de la tabla.
-
+ 
 NOTA IMPORTANTE sobre "qué OP cuenta como abierta"
 ---------------------------------------------------
 index.html embebe su RAW estático, pero el panel en vivo aplica encima
@@ -50,11 +50,11 @@ hoy mismo vía el editor en vivo (pasó el 23/sep/2026: 6 OPs estaban cerradas
 en cierres.json pero el RAW estático de index.html todavía las marcaba V).
 Por eso este script SIEMPRE aplica cierres.json/overrides.json antes de
 filtrar STATUS=='V', igual que hace el panel.
-
+ 
 OPs excluidas permanentemente de este resumen (casos especiales, llevan
 meses/años abiertas a propósito): 9098, 29841, 30550. Ver overview.md /
 tooling.md del proyecto si esa lista cambia.
-
+ 
 Líneas de semana: el Gantt marca, con una línea punteada vertical (clase
 .wksep, superpuesta encima de las barras para que no se tape), los dos
 bordes que separan "esta semana" de la previa y de la próxima — se calculan
@@ -62,7 +62,7 @@ solos a partir de GRID, no hay que tocar nada.
 """
 import json, os, re
 from datetime import date, datetime, timedelta, timezone
-
+ 
 # ============================================================
 # CONFIG
 # ============================================================
@@ -76,7 +76,7 @@ _MX = timezone(timedelta(hours=-6))
 _override = os.environ.get('RESUMEN_TODAY')
 TODAY = date.fromisoformat(_override) if _override else datetime.now(_MX).date()
 EXCLUDE = {"9098", "29841", "30550"}
-
+ 
 # Ventana: semana previa (contexto gris) + esta semana + próxima semana,
 # solo Lun-Sáb (18 columnas). Recalcula a partir de TODAY.
 _this_mon = TODAY - timedelta(days=TODAY.weekday())
@@ -88,7 +88,7 @@ GRID = [_prev_mon + timedelta(days=i) for i in range(6)] \
 W0, W1 = _this_mon, _next_mon + timedelta(days=5)
 GIDX = {d: i for i, d in enumerate(GRID)}
 N = len(GRID)
-
+ 
 MES = ['','ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic']
 DOW = {0:'L',1:'M',2:'X',3:'J',4:'V',5:'S'}
 COL = {'Disco':('#2563eb','#1e3a8a'), 'Aros':('#059669','#065f46'),
@@ -96,13 +96,13 @@ COL = {'Disco':('#2563eb','#1e3a8a'), 'Aros':('#059669','#065f46'),
        'ALMC':('#c77dff','#7c3aed')}
 AREA_ORDER = ['Disco', 'Aros', 'Telar', 'Varios', 'ALMC']
 PAGE2_AT = 'Aros'   # página 1 = todo lo que va ANTES de esta área en AREA_ORDER
-
+ 
 def usa_golpe(area, sub):
     """Dentro de Disco, solo las subáreas Disco y Pack se cuentan/muestran en
     golpes (g); el resto de Disco (Manual, Tapas, Oblongo/manual, Riñon,
     Tiras, etc.) son piezas (pz), igual que en las demás áreas."""
     return area == 'Disco' and sub in ('Disco', 'Pack')
-
+ 
 NORM_MAP = {'FTUBO':'Tubular','TAPAS':'Tapas','MANUAL':'Manual','DISCO':'Disco',
     'PACK':'Pack','OBLONGO':'Oblongo','REMALLADO':'Remallado','CRIBA':'Criba',
     'ELIMINADOR':'Eliminador','P.FILTRANTE':'Placa filtrante','EMBOLSADOS':'Embolsados',
@@ -112,40 +112,40 @@ NORM_MAP = {'FTUBO':'Tubular','TAPAS':'Tapas','MANUAL':'Manual','DISCO':'Disco',
 # ⚠️ Si index.html cambia su normSub() (agrega/renombra subáreas), actualiza
 # este dict a mano copiando la función real del HTML — este script no la lee
 # solo, para no depender de que el archivo no haya cambiado de forma.
-
+ 
 def pd(s):
     if not s or not s.strip(): return None
     m, d, y = s.split('/'); return date(int(y), int(m), int(d))
-
+ 
 def normSub(s):
     if not s: return s
     s2 = s.strip()
     if s2[:1] in (':', '.'): s2 = s2[1:]
     return NORM_MAP.get(s2.upper(), s2[:1].upper() + s2[1:].lower())
-
+ 
 def nf(n):
     return f'{int(n):,}'.replace(',', ' ')
-
+ 
 def fmt_dmy(s):
     """'9/23/2026' (M/D/YYYY, tal como llega de cierres.json) -> '23/sep/2026'."""
     if not s: return s
     m, d, y = s.split('/')
     return f'{int(d)}/{MES[int(m)]}/{y}'
-
+ 
 # ============================================================
 # PASO 1 — cargar RAW + overlay cierres.json/overrides.json + filtrar
 # ============================================================
 def load_and_filter(workdir):
     txt = open(os.path.join(workdir, 'index.html')).read()
     RAW = json.loads(re.search(r'const RAW=(\[.*?\]);', txt, re.S).group(1))
-
+ 
     overrides_path = os.path.join(workdir, 'overrides.json')
     if os.path.exists(overrides_path):
         for o in json.load(open(overrides_path)):
             op, fecha = str(o.get('op')), o.get('fecha')
             for r in RAW:
                 if str(r['OP']) == op: r['Fprod'] = fecha
-
+ 
     cierres_path = os.path.join(workdir, 'cierres.json')
     cierres = {}
     if os.path.exists(cierres_path):
@@ -157,11 +157,11 @@ def load_and_filter(workdir):
         if op in cierres and r['STATUS'] == 'V':
             r['STATUS'] = 'T'; r['FTERM'] = cierres[op]['fecha']; n_closed += 1
     print(f'Cierres en vivo aplicados: {n_closed} filas -> OPs {sorted(cierres.keys(), key=int)}')
-
+ 
     entregas_dt = None
     if cierres:
         entregas_dt = max(cierres.values(), key=lambda x: x['timestamp'] or '')['fecha']
-
+ 
     # totales T+V por OP (excluye canceladas) — para detectar entregas parciales:
     # una OP es parcial si su total (T+V) es mayor que lo que sigue pendiente (V)
     op_totals = {}
@@ -171,7 +171,7 @@ def load_and_filter(workdir):
         d = op_totals.setdefault(op, {'cant': 0, 'golpe': 0})
         d['cant'] += int(r['CANT'] or 0)
         d['golpe'] += int(r['GOLPE'] or 0)
-
+ 
     V, fuera_ventana = [], []
     for r in RAW:
         if r['STATUS'].strip().upper() != 'V': continue
@@ -186,7 +186,7 @@ def load_and_filter(workdir):
     if fuera_ventana:
         print('Fuera de ventana (no entran a este resumen):', fuera_ventana)
     return V, entregas_dt, fuera_ventana, op_totals
-
+ 
 # ============================================================
 # PASO 2 — agrupar (AREA, subárea normalizada) -> OP -> totales
 # ============================================================
@@ -211,10 +211,10 @@ def group_rows(V, op_totals):
             o['tot_golpe'] = tot['golpe']
             o['partial'] = tot['cant'] > o['cant'] or tot['golpe'] > o['golpe']
     return groups
-
+ 
 def areas_present(groups):
     return [a for a in AREA_ORDER if any(k[0] == a for k in groups)]
-
+ 
 def subs_of(groups, area):
     s = [k[1] for k in groups if k[0] == area]
     if area == 'Disco':
@@ -227,10 +227,10 @@ def subs_of(groups, area):
         rest = sorted([x for x in s if x not in head], key=lambda x: min(int(o) for o in groups[(area,x)]))
         return head + rest
     return sorted(s, key=lambda x: min(int(o) for o in groups[(area, x)]))
-
+ 
 def ops_of(groups, area, sub):
     return sorted(groups[(area, sub)].items(), key=lambda kv: (kv[1]['fprod'], int(kv[0])))
-
+ 
 # ============================================================
 # PASO 3 — resolver íconos subIcon() vía Playwright (paleta propia del reporte)
 # ============================================================
@@ -247,7 +247,7 @@ function normSub(s){{
 </script>
 <script>{subicon_js}</script>
 </head><body></body></html>'''
-
+ 
 def resolve_icons(workdir, groups):
     from playwright.sync_api import sync_playwright
     subicon_js = open(os.path.join(workdir, 'subicon_template.js')).read() \
@@ -255,13 +255,13 @@ def resolve_icons(workdir, groups):
     harness = SUBICON_HARNESS.format(norm_json=json.dumps(NORM_MAP, ensure_ascii=False), subicon_js=subicon_js)
     harness_path = os.path.join(workdir, '_harness.html')
     open(harness_path, 'w').write(harness)
-
+ 
     reqs = []
     for area in areas_present(groups):
         for sub in subs_of(groups, area):
             rep_raw = next(iter(groups[(area, sub)].values()))['sub_raw']
             reqs.append((area, sub, rep_raw))
-
+ 
     resolved = {}
     with sync_playwright() as p:
         b = p.chromium.launch()
@@ -270,16 +270,16 @@ def resolve_icons(workdir, groups):
         for area, sub, raw in reqs:
             html = pg.evaluate('([sub,area]) => subIcon(sub,area)', [raw, area])
             if html:
-                html = (html.replace('width:20px;height:20px', 'width:13px;height:13px')
-                            .replace('margin-right:5px', 'margin-right:3px')
-                            .replace('width="16" height="16"', 'width="10" height="10"'))
+                html = (html.replace('width:20px;height:20px', 'width:19px;height:19px')
+                            .replace('margin-right:5px', 'margin-right:4px')
+                            .replace('width="16" height="16"', 'width="15" height="15"'))
             else:
                 html = fallback_icon(area, sub) or ''
             resolved[area + '||' + sub] = html
         b.close()
     os.remove(harness_path)
     return resolved
-
+ 
 def fallback_icon(area, sub):
     """subIcon() (compartido con el panel en vivo) todavía no trae ícono para
     algunas subáreas nuevas — ej. Tapas. Mientras no se agregue allá, usamos
@@ -288,21 +288,21 @@ def fallback_icon(area, sub):
         return None
     c = COL.get(area, ('#475569', '#1f2937'))[0]
     bg = f'color-mix(in srgb,{c} 12%,white)'
-    return (f'<span style="display:inline-flex;align-items:center;justify-content:center;width:13px;height:13px;'
-            f'border-radius:4px;background:{bg};vertical-align:middle;margin-right:3px;flex-shrink:0">'
-            f'<svg width="10" height="10" viewBox="0 0 32 32" fill="none">'
+    return (f'<span style="display:inline-flex;align-items:center;justify-content:center;width:19px;height:19px;'
+            f'border-radius:4px;background:{bg};vertical-align:middle;margin-right:4px;flex-shrink:0">'
+            f'<svg width="15" height="15" viewBox="0 0 32 32" fill="none">'
             f'<circle cx="16" cy="16" r="10" stroke="{c}" stroke-width="1.8" fill="none"/></svg></span>')
-
+ 
 # ============================================================
 # PASO 4 — armar tabla + Gantt (con badge de antigüedad) + carga/día
 # ============================================================
 def age_days(femit): return (TODAY - femit).days if femit else None
-
+ 
 def age_badge(age):
     if age is None: return ''
     cls = 'age-old' if age >= 90 else 'age-mid' if age >= 30 else 'age-new'
     return f'<span class="agebadge {cls}">{age}d</span>'
-
+ 
 def build_table(groups):
     tb = []; G_PZ = G_G = G_OP = 0
     for area in areas_present(groups):
@@ -319,7 +319,7 @@ def build_table(groups):
         tb += buf; G_PZ += a_pz; G_G += a_g; G_OP += len(a_ops)
     return ('<table class="mx">\n<thead><tr><th>Área / Subárea</th><th class="n">Piezas</th><th class="n">Golpes</th><th class="n">OPs</th></tr></thead>\n'
             '<tbody>' + ''.join(tb) + f'\n<tr class="gt-grand"><td>TOTAL</td><td class="n">{nf(G_PZ)}</td><td class="n">{nf(G_G)}</td><td class="n">{G_OP}</td></tr>\n</tbody></table>')
-
+ 
 def build_gantt(groups, icons):
     def strip():
         out = []
@@ -367,7 +367,7 @@ def build_gantt(groups, icons):
             if d < W0: c.append('past')
             dch.append(f'<div class="{" ".join(c)}">{DOW[d.weekday()]}<span class="dcn">{d.day}</span></div>')
         dch.append('</div>'); return ''.join(dch)
-
+ 
     areas = areas_present(groups)
     gz = ['<div class="gantt">', week_label_row(), day_header_row()]
     for area in areas:
@@ -387,7 +387,7 @@ def build_gantt(groups, icons):
                 gz.append(f'<div class="grow{stale}"><div class="glabel"><span class="gop">{op}</span><span class="gemit">{emit_lbl(info)}</span>{age_badge(age)}</div><div class="gcal">{STRIP}{bar(info,c0,c1,ug)}{WK_LINES}</div></div>')
     gz.append('</div>')
     return '\n'.join(gz)
-
+ 
 def build_carga_dia(groups):
     day_load = {d: 0 for d in GRID}
     for (area, sub), ops in groups.items():
@@ -404,7 +404,7 @@ def build_carga_dia(groups):
         dt.append(f'<div class="{" ".join(c)}">{v}</div>')
     dt.append('</div>')
     return ''.join(dt)
-
+ 
 # ============================================================
 # PASO 5 — CSS + ensamblado final
 # ============================================================
@@ -475,7 +475,7 @@ table.mx tr.gt-grand td{border-top:2px solid #1e293b;border-bottom:none;font-wei
 .lgnd i.age-old{background:#dc2626}
 .page-break{break-before:page;page-break-before:always;height:0}
 '''
-
+ 
 def assemble(table, gantt, carga_dia, entregas_dt):
     subtitle = (f'Semana (lun {GRID[6].day} – sáb {GRID[11].day} {MES[GRID[11].month]}) + '
                 f'próxima (lun {GRID[12].day} – sáb {GRID[17].day} {MES[GRID[17].month]})')
@@ -499,7 +499,7 @@ def assemble(table, gantt, carga_dia, entregas_dt):
 <span>antigüedad desde FEMIT: <i class="age-new">&lt;30d</i><i class="age-mid">30–89d</i><i class="age-old">≥90d</i></span>
 </div>
 </body></html>'''
-
+ 
 # ============================================================
 # MAIN
 # ============================================================
@@ -514,7 +514,7 @@ def main(workdir='.'):
     out_html = os.path.join(workdir, 'resumen_ejecutivo.html')
     open(out_html, 'w', encoding='utf-8').write(html)
     print('Escrito', out_html)
-
+ 
     from playwright.sync_api import sync_playwright
     with sync_playwright() as p:
         b = p.chromium.launch()
@@ -527,6 +527,7 @@ def main(workdir='.'):
         pg.screenshot(path=os.path.join(workdir, 'resumen_ejecutivo_preview.png'), full_page=True)
         b.close()
     print('Escrito', out_pdf, '— revisar pdfinfo (debe dar 2 páginas) antes de entregar.')
-
+ 
 if __name__ == '__main__':
     main('.')
+ 
