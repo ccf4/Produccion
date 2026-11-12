@@ -479,6 +479,11 @@ body.big.hasSel #bigView{padding-bottom:130px}
 @media (max-width:640px){.hdr-big{position:absolute;top:8px;left:12px;margin:0}.hdr-brand{padding-left:46px}}
 @keyframes hglTurn{0%{transform:rotate(0)}45%,100%{transform:rotate(180deg)}}
 .hgl{animation:hglTurn 2s cubic-bezier(.5,0,.3,1) infinite;transform-origin:50% 50%}
+#resMenu{position:fixed;z-index:9999;background:var(--card,#fff);color:var(--text,#111);border:1px solid var(--border,#d9dee8);border-radius:12px;box-shadow:0 8px 28px rgba(0,0,0,.25);padding:6px;min-width:230px;max-width:calc(100vw - 16px)}
+#resMenu .rm-i{display:block;width:100%;text-align:left;background:transparent;border:0;color:inherit;font:600 13px 'IBM Plex Sans',sans-serif;padding:9px 12px;border-radius:8px;cursor:pointer}
+#resMenu .rm-i:hover{background:rgba(127,127,127,.14)}
+#resMenu .rm-i:disabled{opacity:.5;cursor:wait}
+#resMenu .rm-i small{display:block;font-weight:500;font-size:11px;color:var(--muted,#64748b);margin-top:2px}
 </style>
 </head>
 <body>
@@ -501,7 +506,7 @@ body.big.hasSel #bigView{padding-bottom:130px}
     <svg viewBox="0 0 32 32" fill="none"><path d="M26 16a10 10 0 1 1-3.2-7.3" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/><path d="M24 4v6h-6" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
   </button>
   <span class="hdr-mailw" style="position:relative;display:inline-flex"><button class="nb hdr-mail" id="mailBtn" title="Enviar resumen" aria-label="Enviar resumen" onclick="toggleMailMenu(event)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><polyline points="3 7 12 13 21 7"/></svg></button><div id="mailMenu" style="display:none;position:absolute;top:40px;right:0;z-index:250;background:var(--surface);border:1px solid var(--border);border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.4);padding:6px;min-width:190px"><button class="mmItem" onclick="closeMailMenu();enviarResumenPorVendedor()">&#9993; Resumen por vendedor</button><button class="mmItem" onclick="closeMailMenu();enviarResumenCorreo()">&#9993; Resumen general</button></div></span>
-  <button class="nb hdr-pdf" id="pdfBtn" title="Generar resumen ejecutivo (PDF)" aria-label="Generar resumen ejecutivo" onclick="generarResumen(this)">
+  <button class="nb hdr-pdf" id="pdfBtn" title="Generar resumen ejecutivo (PDF)" aria-label="Generar resumen ejecutivo" onclick="resumenClick(this)">
     <svg viewBox="0 0 32 32" fill="none"><path d="M9 4h9l7 7v17a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"/><path d="M18 4v7h7" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"/><line x1="11" y1="18" x2="21" y2="18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><line x1="11" y1="22" x2="21" y2="22" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><line x1="11" y1="26" x2="17" y2="26" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
   </button>
 </header>
@@ -1555,11 +1560,14 @@ function resumenSetState(btn,state,origTitle){
 }
 function pollResumen(btn,origTitle,clickTime,attempt){
   setTimeout(function(){
-    fetch(RESUMEN_STATUS+'?t='+Date.now(),{cache:'no-store'}).then(function(r){
+    fetch(RESUMEN_WORKER,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({checkResumen:true})}).then(function(r){
       return r.ok?r.json():null;
     }).then(function(st){
       if(st&&st.generated_at&&new Date(st.generated_at).getTime()>clickTime){
         resumenSetState(btn,'ready',origTitle);
+      }else if(st&&st.failed_at&&new Date(st.failed_at).getTime()>clickTime){
+        alert('El generador del resumen fall\u00f3 en GitHub. Revisa la corrida en Actions del repo Produccion (paso con la X roja).');
+        resumenSetState(btn,'idle',origTitle);
       }else if(attempt<80){
         pollResumen(btn,origTitle,clickTime,attempt+1);
       }else{
@@ -1571,6 +1579,34 @@ function pollResumen(btn,origTitle,clickTime,attempt){
       else{resumenSetState(btn,'idle',origTitle);}
     });
   }, attempt===0?10000:5000);
+}
+function resumenMenuClose(){var m=document.getElementById('resMenu');if(m)m.remove();document.removeEventListener('click',resumenMenuOut,true);}
+function resumenMenuOut(e){var m=document.getElementById('resMenu');if(m&&!m.contains(e.target)&&!e.target.closest('#pdfBtn'))resumenMenuClose();}
+function resumenClick(btn){
+  if(btn.dataset.state==='ready'){generarResumen(btn);return;}
+  if(document.getElementById('resMenu')){resumenMenuClose();return;}
+  var busy=btn.dataset.state==='busy';
+  var m=document.createElement('div');m.id='resMenu';
+  m.innerHTML='<button class="rm-i" id="rmGen"'+(busy?' disabled':'')+'>'+(busy?'Generando\u2026 (puede tardar)':'Generar nuevo resumen')+'</button>'
+    +'<button class="rm-i" id="rmOpen">Abrir el \u00faltimo resumen<small id="rmWhen">consultando fecha\u2026</small></button>';
+  document.body.appendChild(m);
+  var r=btn.getBoundingClientRect();
+  m.style.top=(r.bottom+6)+'px';m.style.right=Math.max(8,window.innerWidth-r.right)+'px';
+  document.getElementById('rmGen').onclick=function(){resumenMenuClose();generarResumen(btn);};
+  document.getElementById('rmOpen').onclick=function(){resumenMenuClose();window.open(RESUMEN_PDF+'?t='+Date.now(),'_blank');};
+  fetch(RESUMEN_STATUS+'?t='+Date.now(),{cache:'no-store'}).then(function(x){return x.ok?x.json():null;}).then(function(st){
+    var el=document.getElementById('rmWhen');if(!el)return;
+    if(st&&st.failed_at&&(!st.generated_at||new Date(st.failed_at)>new Date(st.generated_at))){
+      var f=new Date(st.failed_at);
+      el.textContent='\u26a0 el \u00faltimo intento fall\u00f3 ('+f.toLocaleString('es-MX',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})+')'+(st.generated_at?' \u00b7 PDF bueno: '+new Date(st.generated_at).toLocaleDateString('es-MX',{day:'numeric',month:'short'}):'');
+      el.style.color='var(--danger)';
+    }else if(st&&st.generated_at){
+      var d=new Date(st.generated_at),days=Math.floor((Date.now()-d.getTime())/864e5);
+      el.textContent='generado '+d.toLocaleString('es-MX',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})+(days>=1?' \u00b7 hace '+days+(days===1?' d\u00eda':' d\u00edas'):' \u00b7 hoy');
+      if(days>=2)el.style.color='var(--danger)';
+    }else el.textContent='fecha no disponible';
+  }).catch(function(){var el=document.getElementById('rmWhen');if(el)el.textContent='fecha no disponible';});
+  setTimeout(function(){document.addEventListener('click',resumenMenuOut,true);},0);
 }
 function generarResumen(btn){
   var origTitle=btn.dataset.origTitle||btn.title;
