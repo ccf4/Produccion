@@ -477,6 +477,8 @@ body.big.hasSel #bigView{padding-bottom:130px}
 #bigConf .bBtn{font-size:20px;padding:16px}
 #bigToast{font-size:18px;padding:12px 18px;max-width:88vw;text-align:center}
 @media (max-width:640px){.hdr-big{position:absolute;top:8px;left:12px;margin:0}.hdr-brand{padding-left:46px}}
+@keyframes hglTurn{0%{transform:rotate(0)}45%,100%{transform:rotate(180deg)}}
+.hgl{animation:hglTurn 2s cubic-bezier(.5,0,.3,1) infinite;transform-origin:50% 50%}
 </style>
 </head>
 <body>
@@ -3973,7 +3975,8 @@ function bigConfRun(){
   btn.disabled=true;document.getElementById('cBack').disabled=true;
   document.querySelectorAll('#bigConf .cX').forEach(function(x){x.style.display='none';});
   var ok=0,fail=0,i=0;
-  function paint(o,st){var r=document.getElementById('cr_'+o),s=document.getElementById('cs_'+o);if(!r)return;r.classList.remove('ok','err');if(st==='ok')r.classList.add('ok');if(st==='err')r.classList.add('err');if(s){s.textContent=st==='ok'?'✔':st==='err'?'✖':st==='...'?'⏳':'';s.style.color=st==='ok'?'var(--accent3)':st==='err'?'var(--danger)':'var(--muted)';}}
+  var HGL='<svg class="hgl" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle"><path d="M6 3h12M6 21h12M7 3c0 5 5 6 5 9s-5 4-5 9M17 3c0 5-5 6-5 9s5 4 5 9"/></svg>';
+  function paint(o,st){var r=document.getElementById('cr_'+o),s=document.getElementById('cs_'+o);if(!r)return;r.classList.remove('ok','err');if(st==='ok')r.classList.add('ok');if(st==='err')r.classList.add('err');if(s){if(st==='...')s.innerHTML=HGL;else s.textContent=st==='ok'?'✔':st==='err'?'✖':'';s.style.color=st==='ok'?'var(--accent3)':st==='err'?'var(--danger)':'var(--muted)';}}
   function next(){
     if(i>=items.length){fin();return;}
     var it=items[i++],o=it.op;msg.textContent='Guardando '+i+' de '+items.length+'…';msg.style.color='var(--muted)';paint(o,'...');
@@ -4033,7 +4036,7 @@ function bigDone(op){
   setTimeout(function(){t.style.display='none';},3200);
 }
 document.addEventListener('keydown',function(e){if(e.key==='Escape'&&document.body.classList.contains('big')){var d=document.getElementById('bigDet');if(d&&d.classList.contains('open'))bigClose();}});
-(function(){var on=false;try{on=localStorage.getItem('bigMode')==='1';}catch(e){}if(/[?&]grande=1/.test(location.search))on=true;try{if(window.matchMedia&&matchMedia('(max-width:640px)').matches)on=true;}catch(e){}if(on){document.addEventListener('DOMContentLoaded',function(){setTimeout(function(){bigSet(true);},0);});window.addEventListener('load',function(){if(document.body.classList.contains('big'))bigRender();});}})();
+(function(){var on=false,st=null;try{st=localStorage.getItem('bigMode');}catch(e){}on=st==='1';if(st===null){try{if(window.matchMedia&&matchMedia('(max-width:640px)').matches)on=true;}catch(e){}}if(/[?&]grande=1/.test(location.search))on=true;if(on){document.addEventListener('DOMContentLoaded',function(){setTimeout(function(){bigSet(true);},0);});window.addEventListener('load',function(){if(document.body.classList.contains('big'))bigRender();});}})();
 </script>
 <script>
 // Barras de resumen: degradado en el borde cuando hay más contenido por desplazar
