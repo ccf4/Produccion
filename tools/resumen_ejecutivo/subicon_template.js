@@ -33,7 +33,7 @@ function subIcon(sub,area){
     'Embolsados':'<rect x="6" y="11" width="20" height="16" rx="2" stroke="C" stroke-width="1.7"/><path d="M6 16 L26 16" stroke="C" stroke-width="1.1"/><path d="M13 5 Q13 11 16 11 Q19 11 19 5" stroke="C" stroke-width="1.5" fill="none"/><line x1="16" y1="16" x2="16" y2="27" stroke="C" stroke-width="1.4"/>',
     'Rumba':'<rect x="6" y="4" width="24" height="28" rx="1" stroke="C" stroke-width="1.5" fill="none"/><line x1="6" y1="11" x2="30" y2="11" stroke="C" stroke-width=".7"/><line x1="6" y1="18" x2="30" y2="18" stroke="C" stroke-width=".7"/><line x1="6" y1="25" x2="30" y2="25" stroke="C" stroke-width=".7"/><line x1="15" y1="4" x2="15" y2="32" stroke="C" stroke-width=".7"/><line x1="21" y1="4" x2="21" y2="32" stroke="C" stroke-width=".7"/><line x1="9" y1="4" x2="9" y2="32" stroke="C" stroke-width="1.2"/><line x1="11" y1="4" x2="11" y2="32" stroke="C" stroke-width="1.2"/><line x1="25" y1="4" x2="25" y2="32" stroke="C" stroke-width="1.2"/><line x1="27" y1="4" x2="27" y2="32" stroke="C" stroke-width="1.2"/>',
     'Tiras':'<g stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="13" width="27" height="6" rx="1.5" fill="C" fill-opacity=".25" stroke="C" stroke-width="2"/><path d="M9.5 14V18M16 14V18M22.5 14V18" stroke="C" stroke-width="1.25" stroke-opacity=".7"/></g>',
-    'Arillos':'<circle cx="9" cy="9" r="5.5" stroke="C" stroke-width="2"/><circle cx="23" cy="9" r="5.5" stroke="C" stroke-width="2"/><circle cx="9" cy="23" r="5.5" stroke="C" stroke-width="2"/><circle cx="23" cy="23" r="5.5" stroke="C" stroke-width="2"/>',
+    'Arillos':'<g stroke-linecap="round" stroke-linejoin="round"><circle cx="10.60" cy="21.40" r="6" stroke="C" stroke-width="2"/><circle cx="16.00" cy="16.00" r="6" stroke="C" stroke-width="2"/><circle cx="21.40" cy="10.60" r="6" stroke="C" stroke-width="2"/></g>',
     'Remallado Varios':'<rect x="3" y="3" width="26" height="26" rx="1.5" stroke="C" stroke-width="2"/><rect x="7" y="7" width="18" height="18" rx="1" stroke="C" stroke-width="1.5"/><line x1="7" y1="16" x2="25" y2="16" stroke="C" stroke-width="1" stroke-dasharray="2 1.5"/><line x1="16" y1="7" x2="16" y2="25" stroke="C" stroke-width="1" stroke-dasharray="2 1.5"/>'
   };
   var p=paths[key];
@@ -45,6 +45,4 @@ function subIcon(sub,area){
   return '<span style="display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:4px;background:'+bg+';vertical-align:middle;margin-right:5px;flex-shrink:0"><svg width="16" height="16" viewBox="'+vb+'" fill="none">'+svgContent+'</svg></span>';
 }
  
- 
-// Iconos de TODAS las subáreas (productos) de una OP: una OP con Pack y Dona lleva los dos iconos
  
