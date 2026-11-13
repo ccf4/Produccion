@@ -496,15 +496,15 @@ input[type=search]::-webkit-search-cancel-button{display:none}
 @media(max-width:640px){.hdr-search .search-input{width:100%;font-size:14px;padding:10px 54px 10px 16px;border-radius:24px}}
 #bigView .bAreas{gap:5px;overflow:visible}#bigView .bArea{flex:1 1 0;min-width:0;justify-content:center;gap:5px;padding:7px 6px 7px 7px;font-size:13px}#bigView .bArea svg{width:20px;height:20px;flex:none}
 @media(max-width:520px){#bigView .bArea span{display:none}#bigView .bArea.on span{display:inline}#bigView .bArea.on{flex-grow:2.2}}
-.dr{display:contents}
+.hdr-info .dr{display:contents}
 @media(max-width:640px){
   .hdr-info>div{display:flex!important;gap:4px;width:100%;justify-content:center}
   .hdr-info>div>div:first-child{display:none}
-  .dr{display:flex;align-items:baseline;gap:4px;background:var(--surface2);border:1px solid var(--border);border-radius:9px;padding:5px 5px;white-space:nowrap;font-size:10px;color:var(--text)}
-  .dr .dl{font-size:0;opacity:1!important}.dr .dl::before{content:attr(data-s);font-size:10px;color:var(--muted);letter-spacing:.4px}
-  .dr>span{text-align:left!important}
+  .hdr-info .dr{display:flex;align-items:baseline;gap:4px;background:var(--surface2);border:1px solid var(--border);border-radius:9px;padding:5px 5px;white-space:nowrap;font-size:10px;color:var(--text)}
+  .hdr-info .dr .dl{font-size:0;opacity:1!important}.hdr-info .dr .dl::before{content:attr(data-s);font-size:10px;color:var(--muted);letter-spacing:.4px}
+  .hdr-info .dr>span{text-align:left!important}
 }
-@media(max-width:375px){.dr{font-size:9px!important;padding:5px 4px!important}.dr .dl::before{font-size:9px!important}}
+@media(max-width:375px){.hdr-info .dr{font-size:9px!important;padding:5px 4px!important}.hdr-info .dr .dl::before{font-size:9px!important}}
 #bigView .bFich{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:7px;padding:6px 0 4px}
 #bigView .bFi{text-align:left;background:var(--surface);border:1px solid var(--border);border-left:5px solid var(--c);border-radius:12px;padding:9px 11px;color:var(--text);font-family:inherit;cursor:pointer;display:block}
 #bigView .bFi.on{background:color-mix(in srgb,var(--c) 18%,var(--surface2));box-shadow:0 0 0 1px var(--c)}
