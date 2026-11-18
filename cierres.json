@@ -47,5 +47,21 @@
     "fecha": "11/18/2026",
     "editor": "produccion",
     "timestamp": "2026-11-18T22:48:36.919Z"
+  },
+  {
+    "op": "31361",
+    "part": "1/2",
+    "cant": 500,
+    "fecha": "11/18/2026",
+    "editor": "produccion",
+    "timestamp": "2026-11-18T22:48:38.479Z"
+  },
+  {
+    "op": "31361",
+    "part": "2c/2",
+    "cant": 1500,
+    "fecha": "11/18/2026",
+    "editor": "produccion",
+    "timestamp": "2026-11-18T22:48:38.480Z"
   }
 ]
