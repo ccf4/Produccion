@@ -58,11 +58,12 @@ jobs:
         run: |
           mkdir -p resumen_ejecutivo
           mv -f resumen_ejecutivo.pdf resumen_ejecutivo/latest.pdf
+          mv -f resumen_ejecutivo_movil.pdf resumen_ejecutivo/latest_movil.pdf
           printf '{"generated_at":"%s"}' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > resumen_ejecutivo/status.json
-          rm -f resumen_ejecutivo.html resumen_ejecutivo_preview.png gen_resumen_ejecutivo.py subicon_template.js
+          rm -f resumen_ejecutivo.html resumen_ejecutivo_movil.html resumen_ejecutivo_preview.png resumen_ejecutivo_movil_preview.png gen_resumen_ejecutivo.py subicon_template.js
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add resumen_ejecutivo/latest.pdf resumen_ejecutivo/status.json
+          git add resumen_ejecutivo/latest.pdf resumen_ejecutivo/latest_movil.pdf resumen_ejecutivo/status.json
           git commit -m "Resumen ejecutivo generado automáticamente [skip ci]" || echo "Sin cambios que commitear"
           git push
 
