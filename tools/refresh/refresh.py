@@ -775,7 +775,8 @@ def run(a):
     # aviso: misma OP y partida con la misma cantidad en dos filas = probable duplicado
     _dup = collections.defaultdict(list)
     for r in full['RAW']: _dup[(r['OP'], r['PART'], r['CANT'])].append(r['SUBAREA'])
-    _dups = sorted(k for k, v in _dup.items() if len(v) > 1)
+    _dok = {k for k in decisions.get('duplicados_ok', {}) if not k.startswith('_')}
+    _dups = sorted(k for k, v in _dup.items() if len(v) > 1 and k[0] not in _dok)
     if _dups:
         notes.append('POSIBLE DUPLICADO: %s tienen dos filas con la misma OP, partida y cantidad (subáreas: %s). Revísalas.' %
                      ('; '.join('OP %s %s' % (o, p) for o, p, c in _dups[:12]), '; '.join('/'.join(_dup[k]) for k in _dups[:6])))
@@ -826,7 +827,7 @@ def run(a):
     chk(not ({r['OP'] for r in act['RAW']} & {r['OP'] for r in his['RAW']}), 'Ninguna OP está a la vez en matex activo y en histórico')
     chk(len(act['RAW']) + len(his['RAW']) == len(raw), 'Filas matex activo + histórico = filas del index (%d)' % len(raw))
     dup = collections.Counter((r['OP'], r['PART'], (norm_sub(r['SUBAREA']) or '').upper()) for r in raw if r['STATUS'] == 'V')
-    dups = [k for k, c in dup.items() if c > 1]
+    dups = [k for k, c in dup.items() if c > 1 and k[0] not in _dok]
     chk(not dups, 'Sin partidas V duplicadas (OP,PART,SUBAREA)' + (' -> %s' % dups[:5] if dups else ''))
     for html, nm in ((out_idx, 'index.html'), (out_mtx, 'matex.html')):
         chk(all(get_const(html, n) is not None for n in names if not (nm == 'matex.html' and False)), nm + ': todas las constantes se leen de vuelta')
