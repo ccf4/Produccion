@@ -95,7 +95,7 @@ COL = {'Disco':('#2563eb','#1e3a8a'), 'Aros':('#059669','#065f46'),
        'Varios':('#7c5cff','#4c2dad'), 'Telar':('#fb923c','#9a3412'),
        'ALMC':('#c77dff','#7c3aed')}
 AREA_ORDER = ['Disco', 'Aros', 'Telar', 'Varios', 'ALMC']
-PAGE2_AT = 'Aros'   # página 1 = todo lo que va ANTES de esta área en AREA_ORDER
+PAGE2_AT = None   # página 1 = todo lo que va ANTES de esta área en AREA_ORDER
  
 def usa_golpe(area, sub):
     """Dentro de Disco, solo las subáreas Disco y Pack se cuentan/muestran en
@@ -123,6 +123,9 @@ def normSub(s):
     if s2[:1] in (':', '.'): s2 = s2[1:]
     return NORM_MAP.get(s2.upper(), s2[:1].upper() + s2[1:].lower())
  
+def area_lbl(a):
+    return 'Aro' if a == 'Aros' else a
+
 def plural_sub(s):
     """Nombre de subárea en plural para los totales (Disco→Discos, Eliminador→Eliminadores)."""
     if not s or s[-1].lower() == 's': return s
@@ -316,10 +319,10 @@ def age_days(femit): return (TODAY - femit).days if femit else None
  
 def age_badge(age):
     if age is None: return ''
-    cls = 'age-old' if age >= 90 else 'age-mid' if age >= 30 else 'age-new'
-    return f'<span class="agebadge {cls}">{age}d</span>'
+    return f'<span class="agebadge ab-{age_class_m(age)}">{age}d</span>'
  
-def build_table(groups):
+def build_table(groups, icons=None):
+    icons = icons or {}
     tb = []; G_PZ = G_G = G_OP = 0
     for area in areas_present(groups):
         a_pz = a_g = 0; a_ops = set(); buf = []
@@ -329,9 +332,9 @@ def build_table(groups):
             s_g = sum((o['golpe'] if usa_golpe(area, sub) else o['cant']) for o in ops.values())
             a_pz += s_pz; a_g += s_g; a_ops |= set(ops)
             gc = nf(s_g) if s_g != s_pz else '—'
-            buf.append(f'<tr><td class="sub">{sub}</td><td class="n">{nf(s_pz)}</td><td class="n">{gc}</td><td class="n">{len(ops)}</td></tr>')
+            buf.append(f'<tr><td class="sub"><span class="tn">{icon_m(icons, area, sub, 15)}{plural_sub(sub)}</span></td><td class="n">{nf(s_pz)}</td><td class="n">{gc}</td><td class="n">{len(ops)}</td></tr>')
         c0, _ = COL[area]
-        tb.append(f'<tr class="ar" style="background:{c0}"><td>{area}</td><td class="n">{nf(a_pz)}</td><td class="n">{nf(a_g)}</td><td class="n">{len(a_ops)}</td></tr>')
+        tb.append(f'<tr class="ar" style="background:{c0}"><td><span class="tn">{area_icon_m(area, 18, c0)}{area_lbl(area)}</span></td><td class="n">{nf(a_pz)}</td><td class="n">{nf(a_g)}</td><td class="n">{len(a_ops)}</td></tr>')
         tb += buf; G_PZ += a_pz; G_G += a_g; G_OP += len(a_ops)
     return ('<table class="mx">\n<thead><tr><th>Área / Subárea</th><th class="n">Piezas</th><th class="n">Golpes</th><th class="n">OPs</th></tr></thead>\n'
             '<tbody>' + ''.join(tb) + f'\n<tr class="gt-grand"><td>TOTAL</td><td class="n">{nf(G_PZ)}</td><td class="n">{nf(G_G)}</td><td class="n">{G_OP}</td></tr>\n</tbody></table>')
@@ -352,17 +355,19 @@ def build_gantt(groups, icons):
     # superpuesta encima de las barras (misma posición que los bordes .wk)
     WEEK_BOUNDARIES = [i for i, d in enumerate(GRID) if i > 0 and d.weekday() == 0]
     WK_LINES = ''.join(f'<div class="wksep" style="left:{pct(i)}"></div>' for i in WEEK_BOUNDARIES)
-    def bar(info, c0, c1, use_g):
+    def bar(info, c0, c1, use_g, area='', sub=''):
         fe = info['femit'] or info['fprod']; fp = info['fprod']
         clamp = fe < GRID[0]
         start = 0 if clamp else GIDX.get(fe, 0)
         end = GIDX.get(fp, N-1)
         w = end + 1 - start
         if info.get('partial'):
-            qty = (f'{nf(info["golpe"])} de {nf(info["tot_golpe"])}g pend' if use_g
-                   else f'{nf(info["cant"])} de {nf(info["tot_cant"])} pend')
+            qty = (f'{nf(info["golpe"])} de {nf(info["tot_golpe"])} golpes' if use_g
+                   else f'{nf(info["cant"])} de {nf(info["tot_cant"])} pzas')
         else:
-            qty = nf(info['golpe']) + 'g' if use_g else nf(info['cant'])
+            qty = f'{nf(info["golpe"])} golpes' if use_g else f'{nf(info["cant"])} ' + ('pza' if info["cant"] == 1 else 'pzas')
+        det = detalle_m(area, sub, info)
+        if det: qty = qty + ' · ' + html_esc(det)
         cap = f'<span class="cap{" clamp" if clamp else ""}" style="background:{c1}"></span>'
         return f'<div class="bar" style="left:{pct(start)};width:{pct(w)};background:{c0}">{cap}<span class="bq">{qty}</span></div>'
     def emit_lbl(info):
@@ -390,7 +395,7 @@ def build_gantt(groups, icons):
         c0, c1 = COL.get(area, ('#475569', '#1f2937'))
         if area == PAGE2_AT and area != areas[0]:
             gz += ['<div class="page-break"></div>', week_label_row(), day_header_row()]
-        gz.append(f'<div class="grow garow"><div class="glabel gareah" style="border-left:4px solid {c0};color:{c0}">{area}</div><div class="gcal gareac">{STRIP}{WK_LINES}</div></div>')
+        gz.append(f'<div class="grow garow"><div class="glabel gareah" style="border-left:4px solid {c0};color:{c0}">{area_lbl(area)}</div><div class="gcal gareac">{STRIP}{WK_LINES}</div></div>')
         for sub in subs_of(groups, area):
             ops = dict(ops_of(groups, area, sub))
             ug = usa_golpe(area, sub)
@@ -400,7 +405,7 @@ def build_gantt(groups, icons):
             for op, info in ops_of(groups, area, sub):
                 age = age_days(info['femit'])
                 stale = ' stale' if (age is not None and age >= 90) else ''
-                gz.append(f'<div class="grow{stale}"><div class="glabel"><span class="gop">{op}</span><span class="gemit">{emit_lbl(info)}</span>{age_badge(age)}</div><div class="gcal">{STRIP}{bar(info,c0,c1,ug)}{WK_LINES}</div></div>')
+                gz.append(f'<div class="grow{stale}"><div class="glabel"><span class="gop">{op}</span><span class="gemit">{emit_lbl(info)}</span>{age_badge(age)}</div><div class="gcal">{STRIP}{bar(info,c0,c1,ug,area,sub)}{WK_LINES}</div></div>')
     gz.append('</div>')
     return '\n'.join(gz)
  
@@ -432,63 +437,64 @@ h1{font-size:15px;margin:0 0 1px 0;font-weight:700}
 .subtitle{font-size:9.5px;margin:0 0 2px 0;color:#475569}
 .fresh{font-size:7.8px;margin:0 0 4px 0;color:#94a3b8}
 .sect{font-size:9.5px;font-weight:700;color:#334155;margin:5px 0 2px 0;text-transform:uppercase;letter-spacing:.03em}
-table.mx{width:60%;border-collapse:collapse;font-size:9px}
-table.mx th{text-align:left;font-size:7.8px;color:#64748b;font-weight:600;padding:1.3px 6px;border-bottom:1.5px solid #334155;text-transform:uppercase}
-table.mx td{padding:0.9px 6px;border-bottom:1px solid #e2e8f0}
+table.mx{width:60%;border-collapse:collapse;font-size:9.8px}
+table.mx th{text-align:left;font-size:8.4px;color:#64748b;font-weight:600;padding:1.3px 6px;border-bottom:1.5px solid #334155;text-transform:uppercase}
+table.mx td{padding:1.1px 6px;border-bottom:1px solid #e2e8f0}
 table.mx td.n{text-align:right;font-variant-numeric:tabular-nums}
 table.mx tr.ar td{color:#fff;font-weight:700;padding:1.6px 6px}
+.ai{display:inline-flex;align-items:center;justify-content:center;background:#fff;border-radius:4px;flex:none}.ai svg{display:block;flex:none}
 table.mx tr.ar td.n{font-weight:700}
-table.mx td.sub{padding-left:16px;color:#475569}
+table.mx td.sub{padding-left:14px;color:#475569}
+.tn{display:flex;align-items:center;gap:6px}
+table.mx td{vertical-align:middle}
+table.mx tr.ar td{height:25px;padding-top:0;padding-bottom:0}.tn .ai{margin-right:0}
+table.mx td{letter-spacing:.015em}
 table.mx tr.gt-grand td{border-top:2px solid #1e293b;border-bottom:none;font-weight:800;padding-top:2px}
 .gantt{width:100%;margin-top:1px}
 .wklrow{display:flex;height:10px;margin-bottom:1px}
-.wkl-sp{width:158px;flex-shrink:0}
+.wkl-sp{width:176px;flex-shrink:0}
 .wklcal{flex:1;display:flex}
-.wkl{font-size:7px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.02em;display:flex;align-items:flex-end;padding-bottom:1px}
+.wkl{font-size:7.6px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.02em;display:flex;align-items:flex-end;padding-bottom:1px}
 .wkl.past{color:#b6bfcc}
 .ghdr{display:flex;height:12px;margin-bottom:1px}
 .hlab{width:158px;flex-shrink:0}
-.dch{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:6.3px;font-weight:700;color:#94a3b8;border-left:1px solid #f1f5f9}
+.dch{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:6.9px;font-weight:700;color:#94a3b8;border-left:1px solid #f1f5f9}
 .dch.alt{background:#f8fafc}
 .dch.wk{border-left:1.5px dashed #94a3b8}
 .dch.past{color:#cbd5e1}
-.dcn{font-size:6.8px;font-weight:700;color:#334155}
+.dcn{font-size:7.4px;font-weight:700;color:#334155}
 .dch.past .dcn{color:#94a3b8}
-.grow{display:flex;height:12.5px;align-items:center;position:relative}
+.grow{display:flex;height:16px;align-items:center;position:relative}
 .grow.stale{background:#fdf1f4}
-.garow{height:13.5px}
-.gsrow{height:12.5px}
-.glabel{width:158px;flex-shrink:0;font-size:8px;display:flex;align-items:center;gap:3px;padding-right:4px;overflow:hidden;white-space:nowrap}
-.gareah{font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:.03em}
-.gsubh{font-size:7.8px;font-weight:700;color:#334155}
-.gop{font-weight:700;color:#1e293b;font-size:8px}
-.gemit{font-size:6.8px;color:#94a3b8}
-.agebadge{font-size:6.1px;font-weight:700;padding:0 3px;border-radius:5px;color:#fff;line-height:1.3}
-.age-new{background:#94a3b8}
-.age-mid{background:#d97706}
-.age-old{background:#dc2626}
+.garow{height:18px}
+.gsrow{height:23px}
+.glabel{letter-spacing:.012em;width:176px;flex-shrink:0;font-size:8.8px;display:flex;align-items:center;gap:3px;padding-right:4px;overflow:hidden;white-space:nowrap}
+.gareah{padding-left:4px;font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.03em}
+.gsubh{font-size:8.6px;font-weight:700;color:#334155}
+.gop{font-weight:700;color:#1e293b;font-size:8.8px}
+.gemit{font-size:7.4px;color:#475569}
+.agebadge{display:inline-flex;align-items:center;justify-content:center;height:10.5px;box-sizing:border-box;font-size:6.8px;font-weight:700;padding:1.5px 4px 0;border-radius:6px;line-height:1;letter-spacing:.02em}
+.ab-g{background:#e2e8f0;color:#475569}.ab-y{background:#fdf0a6;color:#7a6200}.ab-o1{background:#fcd9a0;color:#8a4b00}.ab-o2{background:#f8b980;color:#7a3500}.ab-o3{background:#f29a6b;color:#6b2300}.ab-r{background:#e84a4a;color:#fff}
 .gcal{flex:1;position:relative;height:100%}
 .gareac,.gsubc{opacity:.55}
 .gc{position:absolute;top:0;bottom:0;background:transparent}
 .gc.alt{background:#f8fafc}
 .gc.wk{border-left:1.5px dashed #cbd5e1}
 .gc.past{background:#f1f5f9}
-.bar{position:absolute;top:3px;bottom:3px;border-radius:3px;display:flex;align-items:center;min-width:3px}
+.bar{position:absolute;top:1.5px;bottom:1.5px;border-radius:3px;display:flex;align-items:center;min-width:3px}
 .cap{position:absolute;left:0;top:0;bottom:0;width:3px;border-radius:3px 0 0 3px}
 .cap.clamp{width:5px}
-.bq{font-size:7.3px;color:#fff;font-weight:700;margin-left:6px;white-space:nowrap}
+.bq.out{position:absolute;left:calc(100% + 4px);margin:0;color:#334155;background:#fff}.bq.outl{position:absolute;right:calc(100% + 4px);margin:0;color:#334155;background:#fff}
+.bq{position:relative;z-index:5;background:inherit;font-size:8.1px;line-height:1.25;letter-spacing:.025em;padding:0 3px;color:#fff;font-weight:700;margin-left:5px;white-space:nowrap}
 .wksep{position:absolute;top:0;bottom:0;width:0;border-left:1.3px dashed #94a3b8;pointer-events:none;z-index:4}
 .dtot{display:flex;height:17px;align-items:center;margin-top:2px;border-top:1.5px solid #1e293b}
-.dtl{width:158px;flex-shrink:0;font-size:9px;font-weight:800;color:#1e293b}
-.dct{flex:1;text-align:center;font-size:7.6px;font-weight:700;color:#1e293b;border-left:1px solid #f1f5f9}
+.dtl{width:176px;flex-shrink:0;font-size:9.8px;font-weight:800;color:#1e293b}
+.dct{flex:1;text-align:center;font-size:8.2px;font-weight:700;color:#1e293b;border-left:1px solid #f1f5f9}
 .dct.wk{border-left:1.5px dashed #94a3b8}
 .dct.past{color:#94a3b8;font-weight:600}
-.lgnd{display:flex;gap:16px;font-size:7.6px;color:#64748b;margin-top:5px;flex-wrap:wrap}
+.lgnd{display:flex;gap:16px;font-size:8.2px;color:#64748b;margin-top:5px;flex-wrap:wrap}
 .lgnd b{color:#334155}
-.lgnd i{font-style:normal;font-weight:700;padding:0 3px;border-radius:3px;color:#fff;margin-right:2px}
-.lgnd i.age-new{background:#94a3b8}
-.lgnd i.age-mid{background:#d97706}
-.lgnd i.age-old{background:#dc2626}
+.lgnd i{font-style:normal;font-weight:700;padding:0 4px;border-radius:5px;margin-left:2px}
 .page-break{break-before:page;page-break-before:always;height:0}
 '''
  
@@ -505,14 +511,14 @@ def assemble(table, gantt, carga_dia, entregas_dt):
 <div class="fresh">{fresh} · generado {today_disp}</div>
 <div class="sect">Totales por área y subárea</div>
 {table}
-<div class="sect">Gantt · OPs por área / subárea — barra FEMIT (creación) → Fprod (producción)</div>
+<div class="sect">Gantt · OPs por área / subárea — barra de fecha de creación a fecha programada de entrega</div>
 {gantt}
 {carga_dia}
 <div class="lgnd">
 <span><b>●</b> fecha de emisión real (dentro de la línea)</span>
 <span><b>◀</b> OP creada antes del {grid_start} — barra recortada al borde</span>
 <span>tope oscuro = inicio de barra</span>
-<span>antigüedad desde FEMIT: <i class="age-new">&lt;30d</i><i class="age-mid">30–89d</i><i class="age-old">≥90d</i></span>
+<span>días abierta: <i class="ab-g">&lt;15</i><i class="ab-y">15</i><i class="ab-o1">30</i><i class="ab-o2">45</i><i class="ab-o3">60</i><i class="ab-r">90+</i></span>
 </div>
 </body></html>'''
  
@@ -546,9 +552,9 @@ AREA_SVG = {
  'Varios':'<rect x="6" y="6" width="8" height="8" rx="1.5"/><rect x="18" y="6" width="8" height="8" rx="1.5"/><rect x="6" y="18" width="8" height="8" rx="1.5"/><circle cx="22" cy="22" r="4.2"/>',
  'ALMC':'<path d="M5 10.5l11-6 11 6v12l-11 6-11-6z"/><path d="M5 10.5l11 6 11-6M16 16.5v12"/>'}
 
-def area_icon_m(area, size=38):
+def area_icon_m(area, size=38, color=None):
     """Ícono de área (mismo dibujo que el panel) en cajita blanca sobre la barra de color."""
-    c = AC_M.get(area, '#64748b'); P = AREA_SVG.get(area)
+    c = color or AC_M.get(area, '#64748b'); P = AREA_SVG.get(area)
     if not P: return ''
     inner = 2 * round(size * (0.85 if area == 'Aros' else 0.74) / 2)
     return (f'<span class="ai" style="width:{size}px;height:{size}px"><svg viewBox="0 0 32 32" width="{inner}" height="{inner}" fill="none" '
@@ -589,7 +595,7 @@ def build_movil(groups, icons, entregas_dt):
             a_pz += s_pz; a_g += s_g; a_ops |= set(ops)
             gc = nfm(s_g) if s_g != s_pz else '—'
             buf.append(f'<tr><td class="sn">{icon_m(icons, area, sub, 18)}{plural_sub(sub)}</td><td>{nfm(s_pz)}</td><td>{gc}</td><td>{len(ops)}</td></tr>')
-        rows_t.append(f'<tr class="ta" style="background:{COL_M[area]}"><td>{area_icon_m(area, 24)}{area}</td><td>{nfm(a_pz)}</td><td>{nfm(a_g)}</td><td>{len(a_ops)}</td></tr>')
+        rows_t.append(f'<tr class="ta" style="background:{COL_M[area]}"><td>{area_icon_m(area, 24)}{area_lbl(area)}</td><td>{nfm(a_pz)}</td><td>{nfm(a_g)}</td><td>{len(a_ops)}</td></tr>')
         rows_t += buf; G_PZ += a_pz; G_G += a_g; G_OPS |= a_ops
     table = ('<table class="tt"><tr class="hd"><td></td><td>PIEZAS</td><td>GOLPES</td><td>OPS</td></tr>' + ''.join(rows_t)
              + f'<tr class="tot"><td>TOTAL</td><td>{nfm(G_PZ)}</td><td>{nfm(G_G)}</td><td>{len(G_OPS)}</td></tr></table>')
@@ -599,7 +605,7 @@ def build_movil(groups, icons, entregas_dt):
         a_ops = set(); a_pz = 0
         for sub in subs_of(groups, area):
             a_ops |= set(groups[(area, sub)]); a_pz += sum(o['cant'] for o in groups[(area, sub)].values())
-        body.append(f'<div class="ar" style="background:{COL_M[area]}"><b>{area}</b><span>{len(a_ops)} OP{'s' if len(a_ops) != 1 else ''} · {nfm(a_pz)} pzas</span></div>')
+        body.append(f'<div class="ar" style="background:{COL_M[area]}"><b>{area_lbl(area)}</b><span>{len(a_ops)} OP{'s' if len(a_ops) != 1 else ''} · {nfm(a_pz)} pzas</span></div>')
         for sub in subs_of(groups, area):
             ops = ops_of(groups, area, sub)
             ug = usa_golpe(area, sub)
@@ -676,7 +682,7 @@ def main(workdir='.'):
     V, entregas_dt, _, op_totals = load_and_filter(workdir)
     groups = group_rows(V, op_totals)
     icons = resolve_icons(workdir, groups)
-    table = build_table(groups)
+    table = build_table(groups, icons)
     gantt = build_gantt(groups, icons)
     carga_dia = build_carga_dia(groups)
     html = assemble(table, gantt, carga_dia, entregas_dt)
@@ -687,9 +693,61 @@ def main(workdir='.'):
     from playwright.sync_api import sync_playwright
     with sync_playwright() as p:
         b = p.chromium.launch()
-        pg = b.new_page()
+        pg = b.new_page(viewport={'width': 1003, 'height': 763})   # = área imprimible Letter horizontal (márgenes 7mm)
+        pg.emulate_media(media='print')
         pg.goto('file://' + os.path.abspath(out_html))
         pg.wait_for_timeout(300)
+        pg.evaluate("""() => {
+          // 1) texto de barra: si no cabe dentro, va fuera (derecha/izquierda); si tampoco, se recorta con …
+          document.querySelectorAll('.bar').forEach(b => {
+            const q = b.querySelector('.bq'); if (!q) return;
+            const cal = b.parentElement.getBoundingClientRect(), br = b.getBoundingClientRect();
+            const need = q.getBoundingClientRect().width + 6;
+            if (need <= br.width) return;
+            const right = cal.right - br.right, left = br.left - cal.left;
+            if (right >= need) q.classList.add('out');
+            else if (left >= need) q.classList.add('outl');
+            else { q.style.maxWidth = (br.width - 8) + 'px'; q.style.overflow = 'hidden'; q.style.textOverflow = 'ellipsis'; }
+          });
+          // 2) paginado: corta antes de la fila que se pasa de la hoja (de preferencia antes del título de subárea/área) y repite encabezado de días
+          const PAGE_H = 763 - 6, g = document.querySelector('.gantt');
+          const y = el => el.getBoundingClientRect().top + window.scrollY;
+          const hdr = [g.children[0], g.children[1]];
+          const mkBreak = (before, contSub) => {
+            const br = document.createElement('div'); br.className = 'page-break';
+            g.insertBefore(br, before);
+            hdr.forEach(h => g.insertBefore(h.cloneNode(true), before));
+            if (contSub) g.insertBefore(contSub.cloneNode(true), before);   // repite el título de la subárea que continúa
+          };
+          let pageTop = 0;
+          let rows = [...g.children].slice(2);
+          for (let i = 0; i < rows.length; i++) {
+            const r = rows[i];
+            if (r.classList.contains('page-break') || r.classList.contains('wklrow') || r.classList.contains('ghdr')) continue;
+            const bottom = y(r) + r.getBoundingClientRect().height;
+            if (bottom - pageTop > PAGE_H) {
+              let target = r, cont = null;
+              const idx = [...g.children].indexOf(r);
+              for (let k = idx; k >= Math.max(2, idx - 2); k--) {       // si hay un título a ≤2 filas, corta antes de él
+                const c = g.children[k];
+                if (c.classList.contains('gsrow') || c.classList.contains('garow')) { target = c; if (c.classList.contains('garow')) break; }
+              }
+              if (target === r && !r.classList.contains('gsrow') && !r.classList.contains('garow')) {
+                for (let k = idx; k >= 2; k--) { const c = g.children[k]; if (c.classList.contains('gsrow')) { cont = c; break; } if (c.classList.contains('garow')) break; }
+              }
+              mkBreak(target, cont);
+              const hh = hdr.reduce((a, h) => a + h.getBoundingClientRect().height, 0);
+              pageTop = y(target) - hh - (cont ? cont.getBoundingClientRect().height : 0);
+              i = rows.indexOf(target) - 1;
+            }
+          }
+          // 3) carga/día + leyenda deben caber en la última página
+          const dt = document.querySelector('.dtot'), lg = document.querySelector('.lgnd');
+          if (lg && (y(lg) + lg.getBoundingClientRect().height - pageTop > PAGE_H)) {
+            const br = document.createElement('div'); br.className = 'page-break'; dt.parentNode.insertBefore(br, dt);
+            hdr.forEach(h => dt.parentNode.insertBefore(h.cloneNode(true), dt));
+          }
+        }""")
         out_pdf = os.path.join(workdir, 'resumen_ejecutivo.pdf')
         pg.pdf(path=out_pdf, format='Letter', landscape=True, print_background=True,
                margin={'top':'7mm','bottom':'7mm','left':'7mm','right':'7mm'})
