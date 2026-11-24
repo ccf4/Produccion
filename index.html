@@ -1622,6 +1622,24 @@ function pollResumen(btn,origTitle,clickTime,attempt){
 }
 function resumenMenuClose(){var m=document.getElementById('resMenu');if(m)m.remove();document.removeEventListener('click',resumenMenuOut,true);}
 function resumenMenuOut(e){var m=document.getElementById('resMenu');if(m&&!m.contains(e.target)&&!e.target.closest('#pdfBtn'))resumenMenuClose();}
+var _resFile=null,_resFileUrl='';
+function resumenPrepararArchivo(){
+  var u=resumenUrl();
+  if(_resFile&&_resFileUrl===u)return Promise.resolve(_resFile);
+  return fetch(u+'?t='+Date.now(),{cache:'no-store'}).then(function(r){if(!r.ok)throw new Error('http '+r.status);return r.blob();}).then(function(b){
+    _resFile=new File([b],(resumenEsCel()?'resumen_ejecutivo_movil.pdf':'resumen_ejecutivo.pdf'),{type:'application/pdf'});_resFileUrl=u;return _resFile;
+  });
+}
+function resumenCompartir(){
+  // el archivo ya se bajó al abrir el menú: así el share se dispara dentro del toque (iOS lo exige)
+  if(!_resFile||_resFileUrl!==resumenUrl()){alert('El PDF todavía se está preparando; toca de nuevo en unos segundos.');return;}
+  var f=_resFile;
+  if(navigator.canShare&&navigator.canShare({files:[f]})){
+    navigator.share({files:[f],title:'Resumen ejecutivo'}).catch(function(e){if(!e||e.name!=='AbortError')alert('No se pudo abrir el men\u00fa de compartir.');});
+  }else{
+    var a=document.createElement('a');a.href=URL.createObjectURL(f);a.download=f.name;document.body.appendChild(a);a.click();a.remove();
+  }
+}
 function resumenClick(btn){
   if(btn.dataset.state==='ready'){generarResumen(btn);return;}
   if(document.getElementById('resMenu')){resumenMenuClose();return;}
@@ -1629,12 +1647,15 @@ function resumenClick(btn){
   var m=document.createElement('div');m.id='resMenu';
   m.innerHTML='<button class="rm-i" id="rmGen"'+(busy?' disabled':'')+'>'+(busy?'Generando\u2026 (puede tardar)':'Generar nuevo resumen')+'</button>'
     +'<button class="rm-i" id="rmOpen">Abrir el \u00faltimo resumen'+(resumenEsCel()?' (celular)':'')+'<small id="rmWhen">consultando fecha\u2026</small></button>'
+    +'<button class="rm-i" id="rmShare" disabled>Compartir / guardar PDF<small id="rmShareS">preparando\u2026</small></button>'
     +'<button class="rm-i" id="rmOpen2">'+(resumenEsCel()?'Abrir versi\u00f3n carta (horizontal)':'Abrir versi\u00f3n para celular')+'</button>';
   document.body.appendChild(m);
   var r=btn.getBoundingClientRect();
   m.style.top=(r.bottom+6)+'px';m.style.right=Math.max(8,window.innerWidth-r.right)+'px';
   document.getElementById('rmGen').onclick=function(){resumenMenuClose();generarResumen(btn);};
   document.getElementById('rmOpen').onclick=function(){resumenMenuClose();window.open(resumenUrl()+'?t='+Date.now(),'_blank');};
+  document.getElementById('rmShare').onclick=function(){resumenCompartir();resumenMenuClose();};
+  resumenPrepararArchivo().then(function(){var b=document.getElementById('rmShare'),t=document.getElementById('rmShareS');if(b)b.disabled=false;if(t)t.textContent='abre el men\u00fa de compartir';}).catch(function(){var t=document.getElementById('rmShareS');if(t)t.textContent='no disponible';});
   document.getElementById('rmOpen2').onclick=function(){resumenMenuClose();window.open((resumenEsCel()?RESUMEN_PDF:RESUMEN_PDF_M)+'?t='+Date.now(),'_blank');};
   fetch(RESUMEN_STATUS+'?t='+Date.now(),{cache:'no-store'}).then(function(x){return x.ok?x.json():null;}).then(function(st){
     var el=document.getElementById('rmWhen');if(!el)return;
