@@ -89,6 +89,7 @@ W0, W1 = _this_mon, _next_mon + timedelta(days=5)
 GIDX = {d: i for i, d in enumerate(GRID)}
 N = len(GRID)
  
+MES_LARGO = ['','enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre']
 MES = ['','ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic']
 DOW = {0:'L',1:'M',2:'X',3:'J',4:'V',5:'S'}
 COL = {'Disco':('#2563eb','#1e3a8a'), 'Aros':('#059669','#065f46'),
@@ -502,13 +503,12 @@ def assemble(table, gantt, carga_dia, entregas_dt):
     subtitle = (f'Semana (lun {GRID[6].day} – sáb {GRID[11].day} {MES[GRID[11].month]}) + '
                 f'próxima (lun {GRID[12].day} – sáb {GRID[17].day} {MES[GRID[17].month]})')
     fresh = f'último cierre reflejado: {fmt_dmy(entregas_dt)}' if entregas_dt else ''
-    today_disp = f'{TODAY.day}/{MES[TODAY.month]}/{str(TODAY.year)[-2:]}'
+    today_disp = f'{TODAY.day} de {MES_LARGO[TODAY.month]} {TODAY.year}'
     grid_start = f'{GRID[0].day}/{MES[GRID[0].month]}'
     return f'''<!DOCTYPE html><html><head><meta charset="utf-8"><title>Resumen ejecutivo · carga de producción</title>
 <style>{CSS}</style></head><body>
 <h1>Resumen · Carga de producción pendiente</h1>
-<div class="subtitle">{subtitle}</div>
-<div class="fresh">{fresh} · generado {today_disp}</div>
+<div class="subtitle">Generado {today_disp}</div>
 <div class="sect">Totales por área y subárea</div>
 {table}
 <div class="sect">Gantt · OPs por área / subárea — barra de fecha de creación a fecha programada de entrega</div>
@@ -583,6 +583,10 @@ def nfm(n): return f'{int(n):,}'
 
 def html_esc(t): return t.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
 
+def cols_hdr(con_golpes=False):
+    g = '<i>GOLPES</i>' if con_golpes else ''
+    return f'<div class="cols{" g" if con_golpes else ""}"><b>OP</b>{g}<span class="q">PIEZAS</span><u>DÍAS<br>ABIERTA</u><s>ENTREGA</s></div>'
+
 def build_movil(groups, icons, entregas_dt):
     areas = areas_present(groups)
     rows_t = []; G_PZ = G_G = 0; G_OPS = set()
@@ -611,32 +615,33 @@ def build_movil(groups, icons, entregas_dt):
             ug = usa_golpe(area, sub)
             tot = f'{nfm(sum(o["golpe"] for _, o in ops))} golpes' if ug else f'{nfm(sum(o["cant"] for _, o in ops))} pzas'
             body.append(f'<div class="sb">{icon_m(icons, area, sub, 32)}<b>{plural_sub(sub)}</b><span>{len(ops)} OP{"s" if len(ops) > 1 else ""} · {tot}</span></div>')
+            has_g = ug and any(o['golpe'] != o['cant'] for _, o in ops)
             for op, o in ops:
                 age = age_days(o['femit']); late = o['fprod'] < TODAY
-                ent = (f'<em class="late">venc. {fmt_dm(o["fprod"])}</em>' if late else fmt_dm(o['fprod']))
+                ent = (f'<em class="late">{fmt_dm(o["fprod"])}</em>' if late else fmt_dm(o['fprod']))
                 if o.get('partial'):
                     q = f'{nfm(o["cant"])} <small>de {nfm(o["tot_cant"])}</small>'
                 else:
                     q = f'{nfm(o["cant"])} <small>pzas</small>'
-                gcell = ''
-                if ug and o['golpe'] != o['cant']:
-                    gcell = f'{nfm(o["golpe"])} g'
+                gcell = f'{nfm(o["golpe"])} <small>golpes</small>' if has_g else ''
                 chip = f'<u class="ag {age_class_m(age)}">{age} d</u>' if age is not None else '<u class="ag g">–</u>'
                 det = detalle_m(area, sub, o)
                 r2 = f'<div class="r2">{html_esc(det)}</div>' if det else ''
-                body.append(f'<div class="op" style="border-left-color:{COL_M[area]}"><div class="r1"><b>{op}</b><span class="q">{q}</span><i>{gcell}</i>{chip}<s>{ent}</s></div>{r2}</div>')
+                cells = (f'<b>{op}</b><span class="gq"><span class="q">{gcell}</span><span class="q">{q}</span></span>{chip}<s>{ent}</s>' if has_g
+                         else f'<b>{op}</b><span class="q">{q}</span>{chip}<s>{ent}</s>')
+                body.append(f'<div class="op{" g" if has_g else ""}" style="border-left-color:{COL_M[area]}"><div class="r1">{cells}</div>{r2}</div>')
     sub_t = (f'Semana (lun {GRID[6].day} – sáb {GRID[11].day} {MES[GRID[11].month]}) + '
              f'próxima (lun {GRID[12].day} – sáb {GRID[17].day} {MES[GRID[17].month]})')
-    today_disp = f'{TODAY.day}/{MES[TODAY.month]}/{str(TODAY.year)[-2:]}'
+    today_disp = f'{TODAY.day} de {MES_LARGO[TODAY.month]} {TODAY.year}'
     fresh = (f' · último cierre: {fmt_dmy(entregas_dt)}' if entregas_dt else '')
     legend = ('<div class="leg"><b>Días abierta:</b><u class="ag g">&lt;15</u><u class="ag y">15</u><u class="ag o1">30</u>'
               '<u class="ag o2">45</u><u class="ag o3">60</u><u class="ag r">90+</u></div>')
     return f"""<!DOCTYPE html><html><head><meta charset="utf-8"><title>Resumen ejecutivo · carga de producción (celular)</title>
 <style>{CSS_M}</style></head><body><div class="pg">
-<h1>Carga de producción pendiente</h1><div class="sub">{sub_t} · generado {today_disp}{fresh}</div>
+<h1>Carga de producción pendiente</h1><div class="sub">Generado {today_disp}</div>
 <div class="th"><span>TOTALES POR ÁREA / SUBÁREA</span></div>{table}
-{legend}<div class="th" style="margin-top:10px"><span>OPs POR ÁREA / SUBÁREA</span><em>días abierta</em></div>
-{''.join(body)}</div></body></html>"""
+{legend}<div class="th" style="margin-top:10px"><span>OPs POR ÁREA / SUBÁREA</span></div>
+{cols_hdr()}{''.join(body)}</div></body></html>"""
 
 CSS_M = """.pg{--icbase:#fff}*{box-sizing:border-box}body{margin:0;font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif}
 .pg{width:390px;background:#fff;padding:14px 12px 18px;color:#0f172a}
@@ -647,9 +652,10 @@ h1{font-size:17px;margin:0 0 2px;line-height:1.2}.sub{font-size:10.5px;color:#64
 .ar{display:flex;justify-content:space-between;align-items:center;color:#fff;border-radius:6px;padding:5px 9px;margin:12px 0 2px;font-size:13px}.ar span{font-size:11px;opacity:.95}.ai{display:inline-flex;align-items:center;justify-content:center;background:#fff;border-radius:5px;vertical-align:middle;margin-right:7px}.ai svg{display:block;flex:none}.ar span{font-size:11px;opacity:.95}
 .sb{display:flex;align-items:center;gap:9px;padding:8px 2px 4px;font-size:12.5px;border-bottom:1px solid #cbd5e1;break-after:avoid}.sb b{flex:1}.sb span{font-size:10.5px;color:#64748b}
 .op{padding:3px 2px 3px 7px;border-left:3px solid;border-bottom:1px solid #f1f5f9;font-size:12.5px;font-variant-numeric:tabular-nums;margin-left:2px}
-.r1{display:flex;align-items:center;gap:6px}.r2{font-size:10px;color:#64748b;margin:0 0 1px 1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.op b{width:46px;font-size:13px}.op .q{width:78px;text-align:right}.op small{font-size:9.5px;color:#64748b}.op i{width:46px;text-align:right;font-style:normal;font-size:11px;color:#64748b}.op s{flex:1;text-align:right;text-decoration:none;font-size:11.5px;color:#334155}
+.r1,.cols{display:grid;grid-template-columns:52px 1fr 44px 50px;align-items:center;column-gap:4px}.r1 .ag{justify-self:center}.r2{font-size:10px;color:#64748b;margin:0 0 1px 1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.op b{font-size:13px}.op .q{justify-self:center;width:84px;text-align:right}.op small{font-size:9.5px;color:#64748b}.gq{justify-self:center;display:flex;gap:8px}.gq .q{white-space:nowrap}.gq .q:first-child{width:80px}.gq .q:last-child{width:66px}.op s{text-align:left;padding-left:2px;text-decoration:none;color:#334155}
 .ag{font-size:10px;font-weight:700;padding:1px 6px;border-radius:99px;text-decoration:none;width:38px;text-align:center;display:inline-block}
+.cols{padding:5px 2px 3px 12px;margin:0;border-bottom:1px solid #cbd5e1;font-size:8.5px;font-weight:700;letter-spacing:.4px;color:#94a3b8;line-height:1.15;align-items:end}.cols b,.cols i,.cols span,.cols u,.cols s{font-style:normal;font-weight:700;text-decoration:none}.cols .q{justify-self:center;width:84px;text-align:right}.cols.g .q{width:72px}.cols i{justify-self:center;width:58px;text-align:right}.cols u{text-align:center}.cols s{text-align:left;padding-left:2px}
 .ag.g{background:#e2e8f0;color:#475569}.ag.y{background:#fdf0a6;color:#7a6200}.ag.o1{background:#fcd9a0;color:#8a4b00}.ag.o2{background:#f8b980;color:#7a3500}.ag.o3{background:#f29a6b;color:#6b2300}.ag.r{background:#e84a4a;color:#fff}
 .late{color:#c62828;font-style:normal;font-weight:700}
 .leg{display:flex;align-items:center;gap:5px;margin-top:12px;font-size:10.5px;color:#475569}.leg b{margin-right:2px}.leg .ag{width:auto;min-width:30px}
