@@ -1182,10 +1182,17 @@ function buildCorreoVendedor(vendCode,filas,T){
     filas.late.forEach(function(r){var fp=pd(r.Fprod||r.FProm),dl=fp?daysDiff(fp,T):0;lines.push(lineaOPSinVend(r,dl+'d vencido'));});
     lines.push('');
   }
-  // Orden del correo: vencidas (si hay) > cerradas recientemente > proxima(s) entrega(s) > siguientes semanas
+  // Orden del correo: vencidas (si hay) > entregas recientes > proxima(s) entrega(s) > siguientes semanas
   if(filas.closedRecent.length){
-    lines.push(textoNegrita('CERRADAS RECIENTEMENTE')+':');
-    filas.closedRecent.forEach(function(r){lines.push(lineaOPSinVend(r,fd(pd(r.FTERM)),'T'));});
+    lines.push(textoNegrita('ENTREGAS RECIENTES'));
+    // Un subtitulo por dia de entrega ("24 nov 26") y debajo sus OPs sin la fecha al final.
+    // closedRecent ya viene ordenada: dia mas reciente primero (cmpCerradas), asi que los dias quedan juntos.
+    var _fCerr=null;
+    filas.closedRecent.forEach(function(r){
+      var _fc=fd(pd(r.FTERM));
+      if(_fc!==_fCerr){lines.push(_fc);_fCerr=_fc;}
+      lines.push(lineaOPSinVend(r,'','T'));
+    });
     lines.push('');
   }
   // Un solo encabezado "PROXIMA(S) ENTREGA(S)"; cada dia va como subtitulo simple ("JUEVES 26:") con sus OPs debajo
