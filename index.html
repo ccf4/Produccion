@@ -1182,29 +1182,26 @@ function buildCorreoVendedor(vendCode,filas,T){
     filas.late.forEach(function(r){var fp=pd(r.Fprod||r.FProm),dl=fp?daysDiff(fp,T):0;lines.push(lineaOPSinVend(r,dl+'d vencido'));});
     lines.push('');
   }
-  var primeraProxima=true;
-  filas.proximas.forEach(function(dia){
-    if(!dia.rows.length)return;
-    var encabezado=primeraProxima?textoNegrita('PR\u00d3XIMA(S) ENTREGA(S)'):textoNegrita('ENTREGAS PROGRAMADAS');
-    primeraProxima=false;
-    lines.push(encabezado+' \u2014 '+dia.label+':');
-    dia.rows.forEach(function(r){lines.push(lineaOPSinVend(r,fd(pd(r.Fprod||r.FProm))));});
-    lines.push('');
-  });
-  if((filas.siguientes||[]).length){
-    lines.push(textoNegrita('ENTREGAS PROGRAMADAS SIGUIENTES SEMANAS')+' ('+filas.siguientes.length+' OP'+(filas.siguientes.length!==1?'s':'')+', por fecha):');
-    var _fPrev=null;
-    filas.siguientes.forEach(function(r){
-      var _f=fd(pd(r.Fprod||r.FProm));
-      if(_fPrev!==null&&_f!==_fPrev)lines.push('');   // renglon en blanco entre fechas distintas
-      _fPrev=_f;
-      lines.push(lineaOPSinVend(r,_f));
-    });
-    lines.push('');
-  }
+  // Orden del correo: vencidas (si hay) > cerradas recientemente > proxima(s) entrega(s) > siguientes semanas
   if(filas.closedRecent.length){
     lines.push(textoNegrita('CERRADAS RECIENTEMENTE')+':');
     filas.closedRecent.forEach(function(r){lines.push(lineaOPSinVend(r,fd(pd(r.FTERM)),'T'));});
+    lines.push('');
+  }
+  // Un solo encabezado "PROXIMA(S) ENTREGA(S)"; cada dia va como subtitulo simple ("JUEVES 26:") con sus OPs debajo
+  var _diasProx=filas.proximas.filter(function(dia){return dia.rows.length;});
+  if(_diasProx.length){
+    lines.push(textoNegrita('PR\u00d3XIMA(S) ENTREGA(S)'));
+    _diasProx.forEach(function(dia){
+      lines.push(dia.label+':');
+      dia.rows.forEach(function(r){lines.push(lineaOPSinVend(r,fd(pd(r.Fprod||r.FProm))));});
+      lines.push('');
+    });
+  }
+  // Siguientes semanas: lista corrida ordenada por fecha, sin renglones en blanco entre OPs
+  if((filas.siguientes||[]).length){
+    lines.push(textoNegrita('ENTREGAS PROGRAMADAS SIGUIENTES SEMANAS')+' ('+filas.siguientes.length+' OP'+(filas.siguientes.length!==1?'s':'')+', por fecha):');
+    filas.siguientes.forEach(function(r){lines.push(lineaOPSinVend(r,fd(pd(r.Fprod||r.FProm))));});
     lines.push('');
   }
   lines.push('Panel de consulta');
