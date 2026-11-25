@@ -1104,8 +1104,15 @@ function lineaOPSinVend(r,extra,statusFiltro){
   var cliStr=nombreLegible(cli&&cli.nombre);
   var arts=getArts(r.OP);
   var artStr=(arts&&arts.length&&arts[0])?arts[0]:((r.SUBAREA||'')+(r.MESH?' '+r.MESH:''));
-  // Orden: pedido · cliente · piezas · OP · artículo · fecha/extra (la OP va después de las piezas para no confundirla con el pedido)
-  var seg=[];if(pedStr)seg.push(pedStr);if(cliStr)seg.push(cliStr);seg.push(fmtNum(totalCant)+' pzas');seg.push('OP '+r.OP);if(artStr)seg.push(artStr);if(extra)seg.push(extra);
+  // "+x articulos": los demas articulos de la OP, contados igual que el "(+1 articulo)" que ya muestra el panel (matex)
+  var masArts=arts.length>1?arts.length-1:0;
+  // Orden: OP · cliente (pedido) · piezas · articulo · +x articulos · fecha/extra
+  var seg=['OP '+r.OP];
+  if(cliStr)seg.push(cliStr+(pedStr?' ('+pedStr+')':''));else if(pedStr)seg.push(pedStr);
+  seg.push(fmtNum(totalCant)+' pzas');
+  if(artStr)seg.push(artStr);
+  if(masArts)seg.push('+'+masArts+(masArts===1?' art\u00edculo':' art\u00edculos'));
+  if(extra)seg.push(extra);
   return '- '+seg.join(' \u00b7 ');
 }
 // Vendedor "efectivo" de una fila: si la OP no trae VENDEDOR (caso frecuente en OPs recien creadas
@@ -1205,10 +1212,16 @@ function buildCorreoVendedor(vendCode,filas,T){
       lines.push('');
     });
   }
-  // Siguientes semanas: lista corrida ordenada por fecha, sin renglones en blanco entre OPs
+  // Siguientes semanas: un subtitulo por fecha ("30 nov 26"), de la mas cercana a la mas lejana, y debajo sus OPs sin la fecha al final
+  // (filas.siguientes ya viene ordenada por fecha ascendente, asi que los dias quedan juntos)
   if((filas.siguientes||[]).length){
     lines.push(textoNegrita('ENTREGAS PROGRAMADAS SIGUIENTES SEMANAS')+' ('+filas.siguientes.length+' OP'+(filas.siguientes.length!==1?'s':'')+', por fecha):');
-    filas.siguientes.forEach(function(r){lines.push(lineaOPSinVend(r,fd(pd(r.Fprod||r.FProm))));});
+    var _fSig=null;
+    filas.siguientes.forEach(function(r){
+      var _fs=fd(pd(r.Fprod||r.FProm));
+      if(_fs!==_fSig){lines.push(_fs);_fSig=_fs;}
+      lines.push(lineaOPSinVend(r,''));
+    });
     lines.push('');
   }
   lines.push('Panel de consulta');
@@ -2194,7 +2207,7 @@ function renderWeekGantt(WS,T){
       se.forEach(function(e){
         var ei=Math.max(0,Math.min(5,Math.floor((e.end-WS)/DAY))),si=Math.floor((e.st-WS)/DAY),before=si<0;si=Math.max(0,Math.min(ei,si));
         var late=e.end<T,w=(ei-si+1)/6*100;
-        h+='<div class="wgg-r" onclick="showDetail(\''+e.op+'\')" title="'+(e.dias!==null?e.dias+' d\u00edas abierta':'')+'"><div class="wgg-l"><b>OP '+e.op+'</b>'+((!EDITOR_MODE&&e.ped)?'<span class="pd">'+e.ped+'</span>':'')+(e.stock?'<span style="font-size:9px;font-weight:700;color:var(--accent4)">STOCK</span>':'')+(e.dias!==null?'<span class="dpill '+(e.dias>60?'r':e.dias>=30?'o':e.dias>=14?'a':'g')+'" style="margin-left:auto">'+e.dias+' d</span>':'')+'</div>'+
+        h+='<div class="wgg-r" onclick="showDetail(\''+e.op+'\')" title="'+(e.dias!==null?e.dias+' d\u00edas abierta':'')+'"><div class="wgg-l"><b>OP '+e.op+'</b>'+((!EDITOR_MODE&&e.ped)?'<span class="pd">'+e.ped+'</span>':'')+(e.stock?'<span style="font-size:9px;font-weight:700;color:var(--accent4)">STOCK</span>':'')+(e.dias!==null?'<span class="dpill '+(e.dias>60?'r':e.dias>30?'o':e.dias>15?'a':'g')+'" style="margin-left:auto">'+e.dias+' d</span>':'')+'</div>'+
           '<div class="wgg-t"><div class="wgg-b" style="left:calc('+(si/6*100)+'% + 2px);width:calc('+w+'% - 8.333% - 2px);background:color-mix(in srgb,'+col+' 70%,#0f172a);'+(late?'box-shadow:inset -5px 0 0 #ef4444;':'')+'">'+(before?'\u25c2 ':'')+fmtNum(e.q)+(e.pack?' gol.':' pzas')+'</div></div></div>';
       });
     });
@@ -3082,7 +3095,7 @@ function renderGantt(){
         var barHtml='<div class="gantt-bar-wrap" data-start="'+(startDay*dayW)+'" data-w="'+barW+'" data-op="'+r.OP+'" onclick="showDetail(\''+r.OP+'\')" style="position:absolute;left:'+(startDay*dayW)+'px;width:'+barW+'px;top:4px;bottom:4px;border-radius:4px;background:'+barCol+';opacity:'+(_stk?'1':'.88')+';cursor:pointer;z-index:1;transition:opacity .15s;'+lateStyle+'" onmouseenter="this.style.opacity=1;showGanttTip(this,\''+r.OP+'\')" onmouseleave="this.style.opacity='+(_stk?'1':'.88')+';hideOpTip()">'+editedDot+
           '<div class="gantt-bar-label" style="position:absolute;left:8px;top:0;right:0;font-size:11px;font-family:IBM Plex Mono,monospace;font-weight:600;color:#fff;white-space:nowrap;line-height:'+(ROW_H-8)+'px;pointer-events:none;overflow:hidden;text-overflow:ellipsis">'+(_stk?stkTag:'')+(_editedOp?calIcon:'')+_daysIn+barLabelText+'</div></div>';
         var _dc=_dAb===null?'#94a3b8':_dAb>=30?'#ef4444':_dAb>=14?'#f59e0b':'#94a3b8';
-        var _dcls=_dAb===null?'g':_dAb>60?'r':_dAb>=30?'o':_dAb>=14?'a':'g';
+        var _dcls=_dAb===null?'g':_dAb>60?'r':_dAb>30?'o':_dAb>15?'a':'g';
         var _mLab=_dTxt?'<span class="dpill '+_dcls+'" title="D\u00edas abierta">'+_dAb+' d abierta</span>':'';
         rows.push({h:ROW_H,pad:'0 4px',center:true,flex:true,labelStyle:'',border:'var(--ov)',bg:'transparent',label:_mLab,content:wkBands()+todayLine()+_daysOut+barHtml});
       });
@@ -3093,7 +3106,7 @@ function renderGantt(){
     var on=!!_gSel[a],c=ac(a);
     return '<button onclick="toggleGanttArea(\''+a+'\')" title="'+(on?'Quitar filtro ':'Filtrar ')+a+'" style="display:inline-flex;align-items:center;gap:4px;background:'+(on?'color-mix(in srgb,'+c+' 22%,var(--surface2))':'var(--surface2)')+';border:1px solid '+(on?c:'var(--border)')+';color:var(--text);border-radius:6px;padding:2px 8px 2px 4px;font-size:11px;font-weight:600;cursor:pointer;opacity:'+(_gAny&&!on?'.55':'1')+'">'+areaIcon(a,16)+aLbl(a)+'</button>';
   }).join('');
-  var _eBtns=[['g','Menos de 14 d'],['a','14 a 29 d'],['r','30 a 60 d'],['rr','M\u00e1s de 60 d']].map(function(x){
+  var _eBtns=[['g','\u2264 15 d'],['a','16\u201330 d'],['r','31\u201360 d'],['rr','> 60 d']].map(function(x){
     var on=!!_eSel[x[0]];
     return '<button onclick="toggleGanttEdad(\''+x[0]+'\')" title="'+(on?'Quitar filtro de antig\u00fcedad':'Filtrar por antig\u00fcedad de la OP')+'" style="display:inline-flex;align-items:center;gap:4px;background:'+(on?'var(--surface)':'var(--surface2)')+';border:1px solid '+(on?'var(--text)':'var(--border)')+';color:var(--text);border-radius:6px;padding:2px 8px;font-size:11px;font-weight:600;cursor:pointer;opacity:'+(_eAny&&!on?'.55':'1')+'"><span class="dpill '+(x[0]==='rr'?'r':x[0]==='r'?'o':x[0])+'" style="padding:0 6px">'+x[1]+'</span></button>';
   }).join('');
@@ -3184,7 +3197,7 @@ function ganttDiasAbierta(op){
   var fe=rows.length?pd(rows[0].FEMIT):null;
   return fe?daysDiff(fe,today()):null;
 }
-function ganttEdadBucket(op){var d=ganttDiasAbierta(op);return d===null||d<14?'g':d<30?'a':d<=60?'r':'rr';}
+function ganttEdadBucket(op){var d=ganttDiasAbierta(op);return d===null||d<=15?'g':d<=30?'a':d<=60?'r':'rr';}
 function toggleGanttEdad(k){
   var s=window._ganttEdades=window._ganttEdades||{};
   s[k]=!s[k];
