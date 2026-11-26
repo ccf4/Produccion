@@ -19,5 +19,13 @@
     "fecha": "11/26/2026",
     "editor": "produccion",
     "timestamp": "2026-11-26T23:15:37.715Z"
+  },
+  {
+    "op": "31606",
+    "part": "1/1",
+    "cant": 100,
+    "fecha": "11/26/2026",
+    "editor": "produccion",
+    "timestamp": "2026-11-26T23:15:39.042Z"
   }
 ]
